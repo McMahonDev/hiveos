@@ -11,7 +11,16 @@ export const schema = createZeroSchema(drizzleSchema, {
       id: true,
       name: true,
       email: true,
-    }
+    },
+    task: {
+      id: true,
+      title: true,
+      description: true,
+      createdAt: true,
+      updatedAt: true,
+      userId: true,
+      status: true,
+    },
   }
 });
 
