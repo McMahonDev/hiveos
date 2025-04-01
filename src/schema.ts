@@ -1,18 +1,18 @@
 import { createZeroSchema } from "drizzle-zero";
 import { definePermissions } from "@rocicorp/zero"
 import type { Row } from "@rocicorp/zero";
-import * as drizzleSchema from "$lib/server/db/schema";
+import * as drizzleSchema from "$lib/zero/schema";
 
 // Convert to Zero schema
 export const schema = createZeroSchema(drizzleSchema, {
 
   tables: {
-    user: {
+    users: {
       id: true,
       name: true,
       email: true,
     },
-    task: {
+    tasks: {
       id: true,
       title: true,
       description: true,
@@ -26,6 +26,7 @@ export const schema = createZeroSchema(drizzleSchema, {
 
 // Define permissions with the inferred types from Drizzle
 export type Schema = typeof schema;
-export type User = Row<typeof schema.tables.user>;
+export type User = Row<typeof schema.tables.users>;
+export type Task = Row<typeof schema.tables.tasks>;
 
 export const permissions = definePermissions(schema, () => ({}));

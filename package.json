@@ -16,7 +16,7 @@
 		"db:push": "drizzle-kit push",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
-		"db:zero-cache": "zero-cache-dev -p src/schema.ts"
+		"db:zero-cache": "zero-cache-dev -p ./src/schema.ts"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^5.2.11",
