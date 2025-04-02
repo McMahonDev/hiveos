@@ -1,32 +1,66 @@
-import { createZeroSchema } from "drizzle-zero";
-import { definePermissions } from "@rocicorp/zero"
-import type { Row } from "@rocicorp/zero";
-import * as drizzleSchema from "$lib/zero/schema";
+import {
+  createSchema,
+  definePermissions,
+  type Row,
+  table,
+  string,
+  relationships,
+  number,
+  boolean,
+  ANYONE_CAN
+} from "@rocicorp/zero";
 
-// Convert to Zero schema
-export const schema = createZeroSchema(drizzleSchema, {
+const users = table("users")
+  .columns({
+    id: string(),
+    name: string(),
+    email: string(),
+  })
+  .primaryKey("id");
 
-  tables: {
-    users: {
-      id: true,
-      name: true,
-      email: true,
-    },
-    tasks: {
-      id: true,
-      title: true,
-      description: true,
-      createdAt: true,
-      updatedAt: true,
-      userId: true,
-      status: true,
-    },
-  }
+const tasks = table("tasks")
+  .columns({
+    id: string(),
+    name: string(),
+    status: boolean(),
+    createdById: string(),
+    assignedToId: string(),
+  })
+  .primaryKey("id");
+
+const taskRelationships = relationships(tasks, ({ one }) => ({
+  createdBy: one({
+    sourceField: ["createdById"],
+    destSchema: users,
+    destField: ["id"],
+  }),
+  assignedTo: one({
+    sourceField: ["assignedToId"],
+    destSchema: users,
+    destField: ["id"],
+  }),
+}));
+
+export const schema = createSchema({
+  tables: [users, tasks],
+  relationships: [taskRelationships],
 });
 
-// Define permissions with the inferred types from Drizzle
 export type Schema = typeof schema;
 export type User = Row<typeof schema.tables.users>;
 export type Task = Row<typeof schema.tables.tasks>;
 
-export const permissions = definePermissions(schema, () => ({}));
+export const permissions = definePermissions(schema, () => {
+return{
+  tasks:{
+    row: {
+      select: ANYONE_CAN,
+      insert: ANYONE_CAN,
+      update:{
+        preMutation: ANYONE_CAN,
+        postMutation: ANYONE_CAN,
+      }
+    }
+  }
+}
+});

@@ -4,7 +4,8 @@
 
 	const tasks = new Query(z.current.query.tasks);
 
-	// Removed randID function as the database auto-increments the id
+	console.log('tasks', tasks.current);
+	const randID = () => Math.random().toString(36).slice(2);
 
 	function onsubmit(event: Event) {
 		event.preventDefault();
@@ -13,22 +14,29 @@
 
 		console.log('newtask', newtask);
 
+		const id = randID();
 		if (newtask) {
-			z.current.mutate.tasks.insert({
-				title: newtask,
-				status: false,
-				description: '',
-				userId: 1
-			});
+			try {
+				z.current.mutate.tasks.insert({
+					id, // Auto-incremented by the database
+					name: newtask,
+					status: false,
+					createdById: 'uu1',
+					assignedToId: 'uu1' // Default value, replace as needed
+				});
+			} catch (error) {
+				console.error('Error inserting task:', error);
+			}
+
 			(event.target as HTMLFormElement).reset();
 		}
 	}
 
 	function toggletask(event: Event) {
 		const checkbox = event.target as HTMLInputElement;
-		const id = Number(checkbox.value);
+		const id = checkbox.value;
 		const completed = checkbox.checked;
-		z.current.mutate.tasks.update({ id, completed });
+		z.current.mutate.tasks.update({ id, status: completed });
 	}
 </script>
 
@@ -46,7 +54,7 @@
 					value={task.id}
 					checked={task.status}
 					oninput={toggletask}
-				/>{task.title}
+				/>{task.name}
 			</li>
 		{/each}
 	</ul>
