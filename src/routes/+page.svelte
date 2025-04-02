@@ -14,7 +14,12 @@
 		console.log('newtask', newtask);
 
 		if (newtask) {
-			z.current.mutate.tasks.insert({ title: newtask, status: false, description: '', userId: 1 });
+			z.current.mutate.tasks.insert({
+				title: newtask,
+				status: false,
+				description: '',
+				userId: 1
+			});
 			(event.target as HTMLFormElement).reset();
 		}
 	}
