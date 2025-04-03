@@ -1,9 +1,9 @@
-import { adapter as cf } from '@sveltejs/adapter-cloudflare';
-import { adapter as node } from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+import adapterNode from '@sveltejs/adapter-node';
+import adapterCloudflare from '@sveltejs/adapter-cloudflare';
 
-const deployment = import.meta.env.VITE_DEPLOYMENT;
-const adapter = deployment === 'node' ? node() : cf();
+const adapter = import.meta.env.VITE_DEPLOYMENT == 'node' ? adapterNode : adapterCloudflare;
+
 const config = {
 	preprocess: vitePreprocess(),
 	kit: { adapter: adapter() }
