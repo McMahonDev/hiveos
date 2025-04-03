@@ -48,5 +48,8 @@
 		"patchedDependencies": {
 			"zero-svelte@0.2.1": "patches/zero-svelte@0.2.1.patch"
 		}
+	},
+	"engines": {
+		"node": ">=22.4.0"
 	}
 }
