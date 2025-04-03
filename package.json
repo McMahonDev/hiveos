@@ -29,6 +29,7 @@
 	},
 	"dependencies": {
 		"@rocicorp/zero": "^0.17.2025031904",
+		"@sveltejs/adapter-cloudflare": "^7.0.0",
 		"drizzle-orm": "^0.40.0",
 		"drizzle-zero": "^0.5.4",
 		"postgres": "^3.4.5",
@@ -37,7 +38,9 @@
 	"pnpm": {
 		"onlyBuiltDependencies": [
 			"@rocicorp/zero-sqlite3",
-			"esbuild"
+			"esbuild",
+			"sharp",
+			"workerd"
 		],
 		"ignoredBuiltDependencies": [
 			"protobufjs"
