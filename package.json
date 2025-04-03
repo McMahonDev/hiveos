@@ -44,6 +44,9 @@
 		],
 		"ignoredBuiltDependencies": [
 			"protobufjs"
-		]
+		],
+		"patchedDependencies": {
+			"zero-svelte@0.2.1": "patches/zero-svelte@0.2.1.patch"
+		}
 	}
 }

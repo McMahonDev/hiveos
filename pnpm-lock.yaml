@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  zero-svelte@0.2.1:
+    hash: c9fb63b2c7d436b4fd5ff54286c5a78a87299bcbce63e78041fe00b81a9aed9d
+    path: patches/zero-svelte@0.2.1.patch
+
 importers:
 
   .:
@@ -25,7 +30,7 @@ importers:
         version: 3.4.5
       zero-svelte:
         specifier: ^0.2.1
-        version: 0.2.1(svelte@5.25.3)
+        version: 0.2.1(patch_hash=c9fb63b2c7d436b4fd5ff54286c5a78a87299bcbce63e78041fe00b81a9aed9d)(svelte@5.25.3)
     devDependencies:
       '@sveltejs/adapter-node':
         specifier: ^5.2.11
@@ -4485,7 +4490,7 @@ snapshots:
       mustache: 4.2.0
       stacktracey: 2.1.8
 
-  zero-svelte@0.2.1(svelte@5.25.3):
+  zero-svelte@0.2.1(patch_hash=c9fb63b2c7d436b4fd5ff54286c5a78a87299bcbce63e78041fe00b81a9aed9d)(svelte@5.25.3):
     dependencies:
       '@rocicorp/zero': 0.17.2025031904
       svelte: 5.25.3
