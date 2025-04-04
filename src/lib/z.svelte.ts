@@ -7,9 +7,9 @@ import { schema, type Schema } from '../schema';
 export function get_z_options() {
 	return {
 		userID: 'anon',
-		server: 'http://localhost:4848',
+		server: import.meta.env.VITE_CONNECTION_STRING,
 		schema,
-        kvStore: 'mem',
+        kvStore: 'idb',
 		// ... other options
 	} as const;
 }
