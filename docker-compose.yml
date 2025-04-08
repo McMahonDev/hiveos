@@ -19,6 +19,23 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./seed-data:/docker-entrypoint-initdb.d
+
+  zero-cache:
+    image: rocicorp/zero
+    restart: always
+    ports:
+      - '4848:4848'
+    environment:
+      - 'ZERO_CHANGE_DB=postgresql://neondb_owner:npg_b9XHtya4uFgl@ep-fragrant-unit-a5n9nzqu.us-east-2.aws.neon.tech/zstart_cdb?sslmode=require'
+      - 'ZERO_CVR_DB=postgresql://neondb_owner:npg_b9XHtya4uFgl@ep-fragrant-unit-a5n9nzqu.us-east-2.aws.neon.tech/zstart_cvr?sslmode=require'
+      - ZERO_REPLICA_FILE=/data/zstart_replica.db
+      - 'ZERO_UPSTREAM_DB=postgresql://neondb_owner:npg_b9XHtya4uFgl@ep-fragrant-unit-a5n9nzqu.us-east-2.aws.neon.tech/zstart?sslmode=require'
+      - 'ZERO_PUSH_URL=postgresql://neondb_owner:npg_b9XHtya4uFgl@ep-fragrant-unit-a5n9nzqu.us-east-2.aws.neon.tech/zstart?sslmode=require'
+    volumes:
+      - zero-replica:/data
+
 volumes:
   pgdata:
     driver: local
+  zero-replica:
+    external: true # You must create this volume ahead of time using: docker volume create zero-replica
