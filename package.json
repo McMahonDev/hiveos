@@ -19,6 +19,7 @@
 		"@sveltejs/adapter-node": "^5.2.11",
 		"@sveltejs/kit": "^2.16.0",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
+		"@types/jsonwebtoken": "^9.0.9",
 		"drizzle-kit": "^0.30.2",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
@@ -30,8 +31,12 @@
 	"dependencies": {
 		"@rocicorp/zero": "^0.17.2025031904",
 		"@sveltejs/adapter-cloudflare": "^7.0.0",
-		"drizzle-orm": "^0.40.0",
+		"cookie": "^1.0.2",
+		"drizzle-orm": "^0.40.1",
 		"drizzle-zero": "^0.5.4",
+		"js-cookie": "^3.0.5",
+		"jsonwebtoken": "^9.0.2",
+		"nanoid": "^5.1.5",
 		"postgres": "^3.4.5",
 		"zero-svelte": "^0.2.1"
 	},

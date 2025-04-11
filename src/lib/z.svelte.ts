@@ -1,8 +1,5 @@
-// import { PUBLIC_SERVER } from '$env/static/public';
 import { Z } from 'zero-svelte';
 import { schema, type Schema } from '../schema';
-// Schema is imported from wherever your Schema type lives.
-// via export type Schema = typeof schema;
 
 export function get_z_options() {
 	return {

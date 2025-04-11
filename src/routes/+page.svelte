@@ -1,10 +1,26 @@
 <script lang="ts">
 	import { Query } from 'zero-svelte';
-	import { z } from '$lib/z.svelte';
+	import { Z } from 'zero-svelte';
+	import { schema, type Schema } from '../schema';
+	import { nanoid } from 'nanoid';
 
-	const tasks = new Query(z.current.query.tasks);
+	let { data } = $props();
 
-	console.log('tasks', tasks.current);
+	function get_z_options() {
+		return {
+			userID: data.id,
+			server: import.meta.env.VITE_CONNECTION_STRING,
+			schema,
+			kvStore: 'idb'
+			// ... other options
+		} as const;
+	}
+
+	const z = new Z<Schema>(get_z_options());
+
+	// const id = data.id;
+	const tasks = new Query(z.current.query.tasks.where('createdById', data.id));
+
 	const randID = () => Math.random().toString(36).slice(2);
 
 	function onsubmit(event: Event) {
@@ -18,11 +34,11 @@
 		if (newtask) {
 			try {
 				z.current.mutate.tasks.insert({
-					id, // Auto-incremented by the database
+					id: nanoid(), // Auto-incremented by the database
 					name: newtask,
 					status: false,
-					createdById: 'uu1',
-					assignedToId: 'uu1' // Default value, replace as needed
+					createdById: data.id,
+					assignedToId: data.id // Default value, replace as needed
 				});
 			} catch (error) {
 				console.error('Error inserting task:', error);
