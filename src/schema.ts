@@ -29,6 +29,18 @@ const tasks = table('tasks')
 	})
 	.primaryKey('id');
 
+const events = table('events')
+	.columns({
+		id: string(),
+		name: string(),
+		timestamp: number(),
+		createdById: string(),
+		assignedToId: string()
+	})
+	.primaryKey('id')
+	
+
+
 const taskRelationships = relationships(tasks, ({ one }) => ({
 	createdBy: one({
 		sourceField: ['createdById'],
@@ -42,14 +54,29 @@ const taskRelationships = relationships(tasks, ({ one }) => ({
 	})
 }));
 
+const eventRelationships = relationships(events, ({ one }) => ({
+	createdBy: one({
+		sourceField: ['createdById'],
+		destSchema: users,
+		destField: ['id']
+	}),
+	assignedTo: one({
+		sourceField: ['assignedToId'],
+		destSchema: users,
+		destField: ['id']
+	})
+}));
+
+
 export const schema = createSchema({
-	tables: [users, tasks],
-	relationships: [taskRelationships]
+	tables: [users, tasks, events],
+	relationships: [taskRelationships, eventRelationships],
 });
 
 export type Schema = typeof schema;
 export type User = Row<typeof schema.tables.users>;
 export type Task = Row<typeof schema.tables.tasks>;
+export type Event = Row<typeof schema.tables.events>;
 
 export const permissions = definePermissions(schema, () => {
 	return {
@@ -64,6 +91,16 @@ export const permissions = definePermissions(schema, () => {
 			}
 		},
 		users: {
+			row: {
+				select: ANYONE_CAN,
+				insert: ANYONE_CAN,
+				update: {
+					preMutation: ANYONE_CAN,
+					postMutation: ANYONE_CAN
+				}
+			}
+		},
+		events: {
 			row: {
 				select: ANYONE_CAN,
 				insert: ANYONE_CAN,

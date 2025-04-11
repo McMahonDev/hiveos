@@ -1,3 +1,4 @@
+	export const ssr = false;
 import { redirect } from '@sveltejs/kit';
 
 interface Locals {

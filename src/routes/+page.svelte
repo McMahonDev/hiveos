@@ -1,36 +1,16 @@
 <script lang="ts">
 	import { Query } from 'zero-svelte';
-	import { Z } from 'zero-svelte';
-	import { schema, type Schema } from '../schema';
 	import { nanoid } from 'nanoid';
 
 	let { data } = $props();
+	let z = data.z;
 
-	function get_z_options() {
-		return {
-			userID: data.id,
-			server: import.meta.env.VITE_CONNECTION_STRING,
-			schema,
-			kvStore: 'idb'
-			// ... other options
-		} as const;
-	}
-
-	const z = new Z<Schema>(get_z_options());
-
-	// const id = data.id;
 	const tasks = new Query(z.current.query.tasks.where('createdById', data.id));
-
-	const randID = () => Math.random().toString(36).slice(2);
 
 	function onsubmit(event: Event) {
 		event.preventDefault();
 		const formData = new FormData(event.target as HTMLFormElement);
 		const newtask = formData.get('newtask') as string;
-
-		console.log('newtask', newtask);
-
-		const id = randID();
 		if (newtask) {
 			try {
 				z.current.mutate.tasks.insert({
