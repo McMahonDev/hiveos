@@ -6,7 +6,6 @@
 	let z = data.z;
 
 	const events = new Query(z.current.query.events.where('assignedToId', data.id));
-	console.log('events', events.current);
 	function onsubmit(event: Event) {
 		event.preventDefault();
 		const formData = new FormData(event.target as HTMLFormElement);
@@ -15,31 +14,17 @@
 		const time = formData.get('time') as string;
 		const dateTime = new Date(`${date}T${time}`);
 		const unixDateTime = Math.floor(dateTime.getTime() / 1000);
-		console.log(name, unixDateTime);
-		if (name && date) {
-			try {
-				console.log('About to insert event', {
-					id: nanoid(),
-					name,
-					timestamp: unixDateTime,
-					createdById: data.id,
-					assignedToId: data.id
-				});
-				console.log('data.id', data.id);
-				z.current.mutate.events.insert({
-					id: nanoid(), // Auto-incremented by the database
-					name,
-					timestamp: 1234567890, // Convert to Unix timestamp
-					// Convert to ISO string
-					createdById: data.id,
-					assignedToId: data.id // Default value, replace as needed
-				});
-				console.log('events', events.current);
-			} catch (error) {
-				console.error('Error inserting event:', error);
-			}
 
-			(event.target as HTMLFormElement).reset();
+		if (name && date) {
+			z.current.mutate.events.insert({
+				id: nanoid(),
+				name,
+				timestamp: unixDateTime,
+				createdById: data.id,
+				assignedToId: data.id
+			});
+
+			// (event.target as HTMLFormElement).reset();
 		}
 	}
 
