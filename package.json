@@ -23,6 +23,7 @@
 		"drizzle-kit": "^0.30.2",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
+		"rollup-plugin-node-polyfills": "^0.2.1",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
 		"typescript": "^5.0.0",
@@ -31,13 +32,17 @@
 	"dependencies": {
 		"@rocicorp/zero": "^0.17.2025031904",
 		"@sveltejs/adapter-cloudflare": "^7.0.0",
+		"buffer": "^6.0.3",
 		"cookie": "^1.0.2",
+		"crypto-browserify": "^3.12.1",
 		"drizzle-orm": "^0.40.1",
 		"drizzle-zero": "^0.5.4",
 		"js-cookie": "^3.0.5",
 		"jsonwebtoken": "^9.0.2",
 		"nanoid": "^5.1.5",
 		"postgres": "^3.4.5",
+		"stream-browserify": "^3.0.0",
+		"vite-plugin-node-polyfills": "^0.23.0",
 		"zero-svelte": "^0.2.1"
 	},
 	"pnpm": {
