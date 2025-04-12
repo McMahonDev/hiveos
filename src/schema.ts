@@ -37,9 +37,7 @@ const events = table('events')
 		createdById: string(),
 		assignedToId: string()
 	})
-	.primaryKey('id')
-	
-
+	.primaryKey('id');
 
 const taskRelationships = relationships(tasks, ({ one }) => ({
 	createdBy: one({
@@ -67,10 +65,9 @@ const eventRelationships = relationships(events, ({ one }) => ({
 	})
 }));
 
-
 export const schema = createSchema({
 	tables: [users, tasks, events],
-	relationships: [taskRelationships, eventRelationships],
+	relationships: [taskRelationships, eventRelationships]
 });
 
 export type Schema = typeof schema;
@@ -107,7 +104,8 @@ export const permissions = definePermissions(schema, () => {
 				update: {
 					preMutation: ANYONE_CAN,
 					postMutation: ANYONE_CAN
-				}
+				},
+				delete: ANYONE_CAN
 			}
 		}
 	};
