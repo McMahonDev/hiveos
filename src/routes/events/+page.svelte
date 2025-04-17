@@ -24,7 +24,7 @@
 				assignedToId: data.id
 			});
 
-			// (event.target as HTMLFormElement).reset();
+			(event.target as HTMLFormElement).reset();
 		}
 	}
 

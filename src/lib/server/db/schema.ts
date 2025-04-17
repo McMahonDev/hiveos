@@ -33,6 +33,14 @@ export const events = pgTable('events', {
   assignedToId: text('assignedToId'),
 });
 
+
+export const shoppingList = pgTable('shoppingList', {
+  id: text('id').primaryKey(),
+  name: text('name'),
+  status: boolean('status'),
+  createdById: text('createdById'),
+  assignedToId: text('assignedToId'),
+});
 // --- Relationships ---
 // Users <-> Tasks
 export const usersRelations = relations(users, ({ many }) => ({
@@ -62,6 +70,18 @@ export const eventsRelations = relations(events, ({ one }) => ({
   }),
   assignedTo: one(users, {
     fields: [events.assignedToId],
+    references: [users.id],
+  }),
+}));
+
+// Shopping List <-> Users
+export const shoppingListRelations = relations(shoppingList, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [shoppingList.createdById],
+    references: [users.id],
+  }),
+  assignedTo: one(users, {
+    fields: [shoppingList.assignedToId],
     references: [users.id],
   }),
 }));
