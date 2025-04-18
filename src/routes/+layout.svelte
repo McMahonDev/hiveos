@@ -20,26 +20,24 @@
 		{/if}
 	</nav>
 </header>
-<Container>
-	<div class="main-layout">
-		<aside>
-			{#if auth}
-				<h2>Welcome {auth}</h2>
-				<ul>
-					<li><a href="/">Dashboard</a></li>
-					<li><a href="/calendar">Calendar</a></li>
-					<li><a href="/events">Events</a></li>
-					<li><a href="/shopping-list">Shopping List</a></li>
-					<li><a href="/tasks">Task list</a></li>
-					<li><a href="/recipies">Recipies</a></li>
-				</ul>
-			{/if}
-		</aside>
-		<main>
-			{@render children()}
-		</main>
-	</div>
-</Container>
+
+<div class="main-layout">
+	<aside>
+		{#if auth}
+			<ul>
+				<li><a href="/">Dashboard</a></li>
+				<li><a href="/calendar">Calendar</a></li>
+				<li><a href="/events">Events</a></li>
+				<li><a href="/shopping-list">Shopping List</a></li>
+				<li><a href="/tasks">Task list</a></li>
+				<li><a href="/recipies">Recipies</a></li>
+			</ul>
+		{/if}
+	</aside>
+	<main>
+		{@render children()}
+	</main>
+</div>
 
 <footer></footer>
 
@@ -76,21 +74,40 @@
 	}
 	.main-layout {
 		display: grid;
-		grid-template-columns: 1fr 3fr;
+		grid-template-columns: auto 1fr;
 		grid-template-rows: 1fr;
 		gap: 20px;
-		margin-top: var(--headerHeight);
+		/* margin-top: var(--headerHeight); */
+		height: calc(100vh - var(--headerHeight) - var(--footerHeight));
 	}
 	main {
 		padding: 20px;
 		background-color: var(--background);
+		margin-right: var(--margin-right);
+		margin-left: var(--margin-left);
 	}
 	aside {
+		height: 100%;
+		width: max-content;
+		min-width: 200px;
 		padding: 20px;
 		background-color: var(--background);
 		ul {
 			list-style: none;
 			padding: 0;
+			margin: 0;
+			display: flex;
+			flex-direction: column;
+			justify-content: flex-start;
+			align-items: flex-start;
+			gap: 10px;
+			height: 100%;
+			a {
+				text-decoration: none;
+				color: var(--textColor);
+				font-size: 1.2rem;
+				font-weight: 600;
+			}
 		}
 	}
 </style>

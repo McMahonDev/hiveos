@@ -5,7 +5,7 @@
     --teal: rgb(32, 247, 229);
     --black: #000;
     --darkBlue: #1a1f51;
-    --grey: #393e46;
+    --grey: #231F20;
     --lightGrey: #eee;
     --lightGreyAlt: #f4f4f4;
     --white: #fff;
@@ -17,7 +17,7 @@
     --danger: var(--red);
     --background: var(--white);
     --backgroundGrey: var(--lightGreyAlt);
-    --textColor: var(--darkBlue);
+    --textColor: var(--grey);
     --buttonTextColor: var(--black);
     --lineColor: var(--transparentBlue);
     --cardBg: var(--white);
@@ -55,9 +55,11 @@
     --gridGap: 15px;
     --containerPadding: 2.5%;
     --headerHeight: 100px;
+    --footerHeight: 100px;
 
     /* Container */
     --container-width: 100%;
+    --margin-right: 15px;
 }
 
 /* From Typescale */
@@ -85,7 +87,6 @@ body {
 
 header {
     --textColor: var(--black);
-    position: fixed;
     width: 100%;
     left: 0;
     top: 0;
@@ -114,18 +115,10 @@ header nav a+a {
 footer {
     background: var(--footerBackground);
     color: var(--footerTextColor);
-    padding: 3rem var(--containerPadding);
+    height: var(--footerHeight);
     text-align: center;
 }
 
-footer a {
-    color: var(--footerTextColor);
-}
-
-footer p {
-    max-width: 100%;
-    margin-bottom: 0;
-}
 
 p {
     margin-bottom: 1rem;
@@ -410,6 +403,8 @@ button.small {
 @media (min-width: 576px) {
     :root {
         --container-width: 525px;
+        --margin-right: calc((100vw - var(--container-width)) / 2);
+        --margin-left: max(calc(((100vw - var(--container-width)) / 2) - 200px), 0);  
     }
 }
 
