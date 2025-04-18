@@ -43,7 +43,7 @@
 
 <section class="events">
 	<div>
-		<h2>Events</h2>
+		<h1>Events</h1>
 		<ul>
 			{#each events.current as event}
 				<li>
@@ -58,10 +58,58 @@
 	<div>
 		<h2>Add an event</h2>
 		<form {onsubmit}>
-			<input type="text" id="name" name="name" />
-			<input type="date" id="date" name="date" />
-			<input type="time" name="time" id="time" />
+			<label for="name"
+				>Event Name
+				<input type="text" id="name" name="name" placeholder="Event Name" />
+			</label>
+			<label for="date"
+				>Date
+				<input type="date" id="date" name="date" />
+			</label>
+			<label for="time"
+				>Time
+				<input type="time" name="time" id="time" />
+			</label>
 			<button type="submit">Add</button>
 		</form>
 	</div>
 </section>
+
+<style>
+	.events {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 20px;
+	}
+	.events h1 {
+		grid-column: 1 / -1;
+	}
+	.events form {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	.events ul {
+		list-style-type: none;
+		padding: 0;
+	}
+	.events li {
+		margin: 10px 0;
+	}
+	.events li h4 {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+	.events label {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+	}
+	.events label input {
+		margin-top: 5px;
+		padding: 5px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+	}
+</style>

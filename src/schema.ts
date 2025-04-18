@@ -7,9 +7,14 @@ import {
 	relationships,
 	number,
 	boolean,
-	ANYONE_CAN
+	ANYONE_CAN,
+	type ExpressionBuilder
 } from '@rocicorp/zero';
 
+type AuthData = {
+  // The logged-in user.
+  sub: string;
+};
 const users = table('users')
 	.columns({
 		id: string(),
@@ -99,7 +104,11 @@ export type Task = Row<typeof schema.tables.tasks>;
 export type Event = Row<typeof schema.tables.events>;
 export type ShoppingList = Row<typeof schema.tables.shoppingList>;
 
-export const permissions = definePermissions(schema, () => {
+export const permissions = definePermissions<AuthData, Schema>(schema, () => {
+  const allowIfIssueCreator = (
+    authData: AuthData,
+	{cmp}: ExpressionBuilder<Schema, 'tasks'>,
+  ) => cmp('id', authData.sub);
 	return {
 		tasks: {
 			row: {

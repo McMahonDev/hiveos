@@ -3,6 +3,7 @@ import { Z } from 'zero-svelte';
 let z: Z<Schema>;
     
 export async function load(event){
+    // console.log(cookies.get('session'));
     if(event.data.auth){
     function get_z_options() {
 		return {

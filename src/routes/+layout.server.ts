@@ -7,7 +7,8 @@ interface Locals {
 	};
 }
 
-export async function load({ locals, url }: { locals: Locals; url: URL }) {
+export async function load({ locals, url, cookies }: { locals: Locals; url: URL; cookies: any }) {
+	console.log(cookies.get('session'));
 	let auth: boolean;
 	let id: string;
 	if (!locals?.user) {

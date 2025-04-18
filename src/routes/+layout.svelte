@@ -1,11 +1,10 @@
 <script lang="ts">
-	// import '$lib/static/normalize.css';
-	// import '$lib/static/global.css';
-
+	import '$lib/static/normalize.css';
+	import '$lib/static/global.css';
+	import Container from '$lib/components/container.svelte';
 	let { children, data } = $props();
-
-	let auth = $state(data.auth);
-	$inspect(auth, 'auth');
+	let auth = $derived(data.auth);
+	$inspect(data);
 </script>
 
 <header>
@@ -21,21 +20,26 @@
 		{/if}
 	</nav>
 </header>
-<div class="main-layout">
-	<aside>
-		<ul>
-			<li><a href="/">Dashboard</a></li>
-			<li><a href="/calendar">Calendar</a></li>
-			<li><a href="/events">Events</a></li>
-			<li><a href="/shopping-list">Shopping List</a></li>
-			<li><a href="/tasks">Task list</a></li>
-			<li><a href="/recipies">Recipies</a></li>
-		</ul>
-	</aside>
-	<main>
-		{@render children()}
-	</main>
-</div>
+<Container>
+	<div class="main-layout">
+		<aside>
+			{#if auth}
+				<h2>Welcome {auth}</h2>
+				<ul>
+					<li><a href="/">Dashboard</a></li>
+					<li><a href="/calendar">Calendar</a></li>
+					<li><a href="/events">Events</a></li>
+					<li><a href="/shopping-list">Shopping List</a></li>
+					<li><a href="/tasks">Task list</a></li>
+					<li><a href="/recipies">Recipies</a></li>
+				</ul>
+			{/if}
+		</aside>
+		<main>
+			{@render children()}
+		</main>
+	</div>
+</Container>
 
 <footer></footer>
 
@@ -45,6 +49,8 @@
 		grid-template-columns: 1fr 1fr;
 		grid-template-rows: 1fr;
 		padding: 10px;
+		background-color: #000000;
+		color: var(--primary);
 	}
 	nav {
 		display: flex;
@@ -58,6 +64,9 @@
 
 	h1 {
 		font-size: 2rem;
+		color: var(--primary);
+		margin: 0;
+		padding: 0;
 	}
 
 	h2 {
@@ -70,5 +79,18 @@
 		grid-template-columns: 1fr 3fr;
 		grid-template-rows: 1fr;
 		gap: 20px;
+		margin-top: var(--headerHeight);
+	}
+	main {
+		padding: 20px;
+		background-color: var(--background);
+	}
+	aside {
+		padding: 20px;
+		background-color: var(--background);
+		ul {
+			list-style: none;
+			padding: 0;
+		}
 	}
 </style>
