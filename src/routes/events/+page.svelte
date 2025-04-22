@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Query } from 'zero-svelte';
 	import { nanoid } from 'nanoid';
+	import EventsList from '$lib/components/eventsList.svelte';
 
 	let { data } = $props();
 	let z = data.z;
@@ -10,16 +11,22 @@
 		event.preventDefault();
 		const formData = new FormData(event.target as HTMLFormElement);
 		const name = formData.get('name') as string;
-		const date = formData.get('date') as string;
-		const time = formData.get('time') as string;
-		const dateTime = new Date(`${date}T${time}`);
-		const unixDateTime = Math.floor(dateTime.getTime() / 1000);
+		let date = formData.get('date') as string;
+		let time = formData.get('time') as string;
+		if (!date) {
+			date = 'false';
+		}
+		if (!time) {
+			time = 'false';
+		}
 
 		if (name && date) {
 			z.current.mutate.events.insert({
 				id: nanoid(),
 				name,
-				timestamp: unixDateTime,
+				date,
+				time,
+				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				createdById: data.id,
 				assignedToId: data.id
 			});
@@ -27,40 +34,17 @@
 			(event.target as HTMLFormElement).reset();
 		}
 	}
-
-	function deleteItem(event: Event) {
-		const target = event.target as HTMLElement | null;
-		const id = target?.dataset?.id;
-		if (!id) {
-			console.error('No ID provided for deletion.');
-			return;
-		}
-		if (id) {
-			z.current.mutate.events.delete({ id });
-		}
-	}
 </script>
 
 <section class="events">
-	<div>
-		<h1>Events</h1>
-		<ul>
-			{#each events.current as event}
-				<li>
-					<h4>
-						{event.name} - {new Date(event.timestamp * 1000).toLocaleString()}
-						<button data-id={event.id} onclick={deleteItem}>Delete</button>
-					</h4>
-				</li>
-			{/each}
-		</ul>
-	</div>
+	<h1>Events</h1>
+	<EventsList {data} />
 	<div>
 		<h2>Add an event</h2>
 		<form {onsubmit}>
 			<label for="name"
 				>Event Name
-				<input type="text" id="name" name="name" placeholder="Event Name" />
+				<input type="text" id="name" name="name" />
 			</label>
 			<label for="date"
 				>Date

@@ -1,7 +1,8 @@
 <script lang="ts">
 	import '$lib/static/normalize.css';
 	import '$lib/static/global.css';
-	import Container from '$lib/components/container.svelte';
+	import LogoutIcon from '$lib/static/icons/logoutIcon.svelte';
+
 	let { children, data } = $props();
 	let auth = $derived(data.auth);
 	$inspect(data);
@@ -13,7 +14,7 @@
 	<nav>
 		<!-- <h2>home</h2> -->
 		{#if auth}
-			<a href="/account/logout">Logout</a>
+			<a href="/account/logout">Logout <LogoutIcon /></a>
 		{:else}
 			<a href="/account/login">Login</a>
 			<a href="/account/register">Register</a>
@@ -46,7 +47,7 @@
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		grid-template-rows: 1fr;
-		padding: 10px;
+		padding: 20px;
 		background-color: #000000;
 		color: var(--primary);
 	}
@@ -57,6 +58,8 @@
 		gap: 20px;
 		a {
 			text-decoration: underline;
+			display: flex;
+			gap: 8px;
 		}
 	}
 
