@@ -4,10 +4,7 @@ import { db } from '$lib/server/db/index';
 import { eq } from 'drizzle-orm';
 import { users } from '$lib/server/db/schema';
 
-// Ensure the user schema includes the email field
-import jwt from 'jsonwebtoken';
 import { nanoid } from 'nanoid';
-const { sign } = jwt;
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ locals }: { locals: { user: any } }) {

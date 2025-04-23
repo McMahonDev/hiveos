@@ -2,6 +2,7 @@
 import { pgTable, text, boolean, integer } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { time } from 'node:console';
+import { date, datetime } from 'drizzle-orm/mysql-core';
 
 // --- Users Table ---
 export const users = pgTable('users', {
@@ -24,8 +25,7 @@ export const tasks = pgTable('tasks', {
 export const events = pgTable('events', {
 	id: text('id').primaryKey(),
 	name: text('name'),
-	date: text('date'),
-	time: text('time'),
+	datetime: integer('datetime'),
 	timezone: text('timezone'),
 	createdById: text('createdById'),
 	assignedToId: text('assignedToId')
@@ -38,6 +38,18 @@ export const shoppingList = pgTable('shoppingList', {
 	createdById: text('createdById'),
 	assignedToId: text('assignedToId')
 });
+
+export const userGroups = pgTable('userGroups', {
+	id: text('id').primaryKey(),
+	name: text('name'),
+	createdById: text('createdById')
+});
+export const userGroupMembers = pgTable('userGroupMembers', {
+	id: text('id').primaryKey(),
+	userId: text('userId'),
+	userGroupId: text('userGroupId')
+});
+
 // --- Relationships ---
 // Users <-> Tasks
 export const usersRelations = relations(users, ({ many }) => ({
@@ -80,5 +92,24 @@ export const shoppingListRelations = relations(shoppingList, ({ one }) => ({
 	assignedTo: one(users, {
 		fields: [shoppingList.assignedToId],
 		references: [users.id]
+	})
+}));
+// UserGroups <-> Users
+export const userGroupsRelations = relations(userGroups, ({ one }) => ({
+	createdBy: one(users, {
+		fields: [userGroups.createdById],
+		references: [users.id]
+	})
+}));
+
+// UserGroupMembers <-> Users and UserGroups
+export const userGroupMembersRelations = relations(userGroupMembers, ({ one }) => ({
+	user: one(users, {
+		fields: [userGroupMembers.userId],
+		references: [users.id]
+	}),
+	userGroup: one(userGroups, {
+		fields: [userGroupMembers.userGroupId],
+		references: [userGroups.id]
 	})
 }));

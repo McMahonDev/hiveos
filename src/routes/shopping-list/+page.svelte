@@ -1,12 +1,9 @@
 <script lang="ts">
-	import { Query } from 'zero-svelte';
+	import ShoppingList from '$lib/components/shoppingList.svelte';
 	import { nanoid } from 'nanoid';
-	import type { ShoppingList } from '../../schema.js';
 
 	let { data } = $props();
 	let z = data.z;
-
-	const shoppingList = new Query(z.current.query.shoppingList.where('assignedToId', data.id));
 
 	function onsubmit(event: Event) {
 		event.preventDefault();
@@ -24,45 +21,48 @@
 			(event.target as HTMLFormElement).reset();
 		}
 	}
-
-	function deleteItem(event: Event) {
-		const target = event.target as HTMLElement | null;
-		const id = target?.dataset?.id;
-		if (!id) {
-			console.error('No ID provided for deletion.');
-			return;
-		}
-		if (id) {
-			z.current.mutate.shoppingList.delete({ id });
-		}
-	}
-
-	function toggletask(event: Event) {
-		const checkbox = event.target as HTMLInputElement;
-		const id = checkbox.value;
-		const completed = checkbox.checked;
-		z.current.mutate.shoppingList.update({ id, status: completed });
-	}
 </script>
 
 <section class="shopping-list">
-	<div>
-		<h2>Shopping List</h2>
-		<ul>
-			{#each shoppingList.current as item}
-				<li>
-					<input type="checkbox" value={item.id} checked={item.status} oninput={toggletask} />
-					{item.name}
-					<button data-id={item.id} onclick={deleteItem}>Delete</button>
-				</li>
-			{/each}
-		</ul>
-	</div>
+	<h1>Shopping List</h1>
+	<ShoppingList {data} />
+
 	<div>
 		<h2>Add an Item</h2>
 		<form {onsubmit}>
-			<input type="text" id="name" name="name" />
+			<label for="name"
+				>Item Name
+				<input type="text" id="name" name="name" />
+			</label>
 			<button type="submit">Add</button>
 		</form>
 	</div>
 </section>
+
+<style>
+	.shopping-list {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 20px;
+	}
+
+	h1 {
+		grid-column: 1 / -1;
+	}
+	form {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	label {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+	}
+	label input {
+		margin-top: 5px;
+		padding: 5px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+	}
+</style>

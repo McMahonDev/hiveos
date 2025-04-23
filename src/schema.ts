@@ -38,8 +38,7 @@ const events = table('events')
 	.columns({
 		id: string(),
 		name: string(),
-		date: string(),
-		time: string(),
+		datetime: number(),
 		timezone: string(),
 		createdById: string(),
 		assignedToId: string()
@@ -53,6 +52,22 @@ const shoppingList = table('shoppingList')
 		status: boolean(),
 		createdById: string(),
 		assignedToId: string()
+	})
+	.primaryKey('id');
+
+const userGroups = table('userGroups')
+	.columns({
+		id: string(),
+		name: string(),
+		createdById: string()
+	})
+	.primaryKey('id');
+
+const userGroupMembers = table('userGroupMembers')
+	.columns({
+		id: string(),
+		userId: string(),
+		userGroupId: string()
 	})
 	.primaryKey('id');
 
@@ -95,9 +110,22 @@ const shoppingListRelationships = relationships(shoppingList, ({ one }) => ({
 	})
 }));
 
+const userGroupRelationships = relationships(userGroups, ({ one }) => ({
+	createdBy: one({
+		sourceField: ['createdById'],
+		destSchema: users,
+		destField: ['id']
+	})
+}));
+
 export const schema = createSchema({
-	tables: [users, tasks, events, shoppingList],
-	relationships: [taskRelationships, eventRelationships, shoppingListRelationships]
+	tables: [users, tasks, events, shoppingList, userGroups, userGroupMembers],
+	relationships: [
+		taskRelationships,
+		eventRelationships,
+		shoppingListRelationships,
+		userGroupRelationships
+	]
 });
 
 export type Schema = typeof schema;
@@ -105,6 +133,8 @@ export type User = Row<typeof schema.tables.users>;
 export type Task = Row<typeof schema.tables.tasks>;
 export type Event = Row<typeof schema.tables.events>;
 export type ShoppingList = Row<typeof schema.tables.shoppingList>;
+export type UserGroup = Row<typeof schema.tables.userGroups>;
+export type UserGroupMember = Row<typeof schema.tables.userGroupMembers>;
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	const allowIfIssueCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'tasks'>) =>
@@ -142,6 +172,28 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 			}
 		},
 		shoppingList: {
+			row: {
+				select: ANYONE_CAN,
+				insert: ANYONE_CAN,
+				update: {
+					preMutation: ANYONE_CAN,
+					postMutation: ANYONE_CAN
+				},
+				delete: ANYONE_CAN
+			}
+		},
+		userGroups: {
+			row: {
+				select: ANYONE_CAN,
+				insert: ANYONE_CAN,
+				update: {
+					preMutation: ANYONE_CAN,
+					postMutation: ANYONE_CAN
+				},
+				delete: ANYONE_CAN
+			}
+		},
+		userGroupMembers: {
 			row: {
 				select: ANYONE_CAN,
 				insert: ANYONE_CAN,

@@ -13,26 +13,39 @@
 		const name = formData.get('name') as string;
 		let date = formData.get('date') as string;
 		let time = formData.get('time') as string;
+
 		if (!date) {
-			date = 'false';
+			date = new Date().toISOString().split('T')[0];
 		}
 		if (!time) {
-			time = 'false';
+			time = '00:00';
 		}
+		const datetime = Math.floor(new Date(`${date}T${time}`).getTime() / 1000);
+
+		console.log(datetime);
 
 		if (name && date) {
 			z.current.mutate.events.insert({
 				id: nanoid(),
 				name,
-				date,
-				time,
-				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				datetime,
+				timezone: getTimeZoneAbbreviation(),
 				createdById: data.id,
 				assignedToId: data.id
 			});
 
 			(event.target as HTMLFormElement).reset();
 		}
+	}
+
+	function getTimeZoneAbbreviation(): string {
+		const date = new Date();
+		const formatter = new Intl.DateTimeFormat('en-US', {
+			timeZoneName: 'short'
+		});
+		const parts = formatter.formatToParts(date);
+		const tzPart = parts.find((part) => part.type === 'timeZoneName');
+		return tzPart?.value ?? 'UTC'; // fallback just in case
 	}
 </script>
 
@@ -65,32 +78,20 @@
 		grid-template-columns: 1fr 1fr;
 		gap: 20px;
 	}
-	.events h1 {
+	h1 {
 		grid-column: 1 / -1;
 	}
-	.events form {
+	form {
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
 	}
-	.events ul {
-		list-style-type: none;
-		padding: 0;
-	}
-	.events li {
-		margin: 10px 0;
-	}
-	.events li h4 {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
-	.events label {
+	label {
 		display: flex;
 		flex-direction: column;
 		width: 100%;
 	}
-	.events label input {
+	label input {
 		margin-top: 5px;
 		padding: 5px;
 		border: 1px solid #ccc;

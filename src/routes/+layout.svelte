@@ -32,6 +32,7 @@
 				<li><a href="/shopping-list">Shopping List</a></li>
 				<li><a href="/tasks">Task list</a></li>
 				<li><a href="/recipies">Recipies</a></li>
+				<li class="bottom"><a href="/account">Account</a></li>
 			</ul>
 		{/if}
 	</aside>
@@ -105,6 +106,11 @@
 			align-items: flex-start;
 			gap: 10px;
 			height: 100%;
+			li {
+				&.bottom {
+					margin-top: auto;
+				}
+			}
 			a {
 				text-decoration: none;
 				color: var(--textColor);

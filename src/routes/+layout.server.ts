@@ -1,4 +1,4 @@
-	export const ssr = false;
+export const ssr = false;
 import { redirect } from '@sveltejs/kit';
 
 interface Locals {
@@ -8,7 +8,7 @@ interface Locals {
 }
 
 export async function load({ locals, url, cookies }: { locals: Locals; url: URL; cookies: any }) {
-	console.log(cookies.get('session'));
+	// console.log(cookies.get('session'));
 	let auth: boolean;
 	let id: string;
 	if (!locals?.user) {
