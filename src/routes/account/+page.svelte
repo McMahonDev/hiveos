@@ -7,6 +7,10 @@
 
 	let groupId = $state(data.groupid) as string;
 	let userId = $state(data.id);
+	console.log('groupId', groupId);
+	if (!groupId) {
+		groupId = '0';
+	}
 	let group = $state(new Query(z.current.query.userGroups.where('id', groupId)));
 
 	const user = new Query(z.current.query.users.where('id', userId));
