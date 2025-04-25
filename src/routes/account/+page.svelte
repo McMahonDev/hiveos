@@ -5,24 +5,19 @@
 	const { data } = $props();
 	const z = data.z;
 
-	let groupId = data.groupid as string;
+	let groupId = $state(data.groupid) as string;
 	let userId = $state(data.id);
-	// let groupName = $state('No group found');
-	let group = $state();
+	let group = $state(new Query(z.current.query.userGroups.where('id', groupId)));
 
 	const user = new Query(z.current.query.users.where('id', userId));
-
-	// $inspect('userData', user.current);
-
 	const userGroupMembers = new Query(z.current.query.userGroupMembers.where('userId', userId));
+
 	$effect(() => {
 		group = new Query(z.current.query.userGroups.where('id', groupId));
 	});
 
-	// let groupName = $derived(group.current[0]?.name ?? 'No group found');
-
-	$inspect('group', group);
-	// $inspect(userGroup);
+	let groupName = $derived(group.current[0]?.name ?? 'No group found');
+	let showDeleteGroup = $derived(group.current[0]?.name ? true : false);
 
 	function createGroup(event: Event) {
 		event.preventDefault();
@@ -41,21 +36,14 @@
 				userId: userId,
 				userGroupId: id
 			});
-			console.log('Group created', id);
-			groupName = name;
-			// group.current = new Query(z.current.query.userGroups.where('id', id));
 			groupId = id;
-
-			group = new Query(z.current.query.userGroups.where('id', id));
 		}
-		console.log('Group created');
 	}
 	function deleteGroup(event: Event) {
 		event.preventDefault();
 		if (group.current[0]?.id) {
 			z.current.mutate.userGroups.delete({ id: group.current[0]?.id });
 			z.current.mutate.userGroupMembers.delete({ id: userGroupMembers.current[0]?.id });
-			groupName = 'No group found';
 		}
 	}
 </script>
@@ -72,7 +60,7 @@
 				<button class="" type="submit">Generate Group</button>
 			</form>
 		{/if}
-		{#if group.current[0]?.name}
+		{#if showDeleteGroup}
 			<form onsubmit={deleteGroup}>
 				<button class="" type="submit">Delete Group</button>
 			</form>
