@@ -7,7 +7,6 @@
 
 	let groupId = $state(data.groupid) as string;
 	let userId = $state(data.id);
-	console.log('groupId', groupId);
 	if (!groupId) {
 		groupId = '0';
 	}

@@ -9,7 +9,7 @@
 		z.current.query.events.where('assignedToId', data.id).orderBy('datetime', 'asc')
 	);
 
-	$inspect(events.current);
+	// $inspect(events.current);
 
 	function deleteItem(event: Event) {
 		console.log('deleteItem', event);
