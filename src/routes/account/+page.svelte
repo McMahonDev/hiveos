@@ -5,40 +5,48 @@
 	const { data } = $props();
 	const z = data.z;
 
-	let groupId = $state(data.groupid);
-	$inspect('groupId', groupId);
+	let groupId = data.groupid as string;
+	let userId = $state(data.id);
+	// let groupName = $state('No group found');
+	let group = $state();
 
-	const user = new Query(z.current.query.users.where('id', data.id));
-	const userData = user.current[0];
-	$inspect('userData', userData);
+	const user = new Query(z.current.query.users.where('id', userId));
 
-	const userGroupMembers = new Query(z.current.query.userGroupMembers.where('userId', data.id));
+	// $inspect('userData', user.current);
 
-	const group = new Query(z.current.query.userGroups.where('id', groupId));
+	const userGroupMembers = new Query(z.current.query.userGroupMembers.where('userId', userId));
+	$effect(() => {
+		group = new Query(z.current.query.userGroups.where('id', groupId));
+	});
 
-	// $inspect('group', group.current[0]);
+	// let groupName = $derived(group.current[0]?.name ?? 'No group found');
+
+	$inspect('group', group);
 	// $inspect(userGroup);
 
 	function createGroup(event: Event) {
 		event.preventDefault();
 		const form = event.target as HTMLFormElement;
-		const groupName = form.groupName.value;
-		console.log(groupName);
-		if (groupName) {
+		const name = form.groupName.value;
+		console.log(name);
+		if (name) {
 			const id = nanoid();
 			z.current.mutate.userGroups.insert({
 				id,
-				name: groupName,
-				createdById: data.id
+				name: name,
+				createdById: userId
 			});
 			z.current.mutate.userGroupMembers.insert({
 				id: nanoid(),
-				userId: data.id,
+				userId: userId,
 				userGroupId: id
 			});
 			console.log('Group created', id);
+			groupName = name;
 			// group.current = new Query(z.current.query.userGroups.where('id', id));
 			groupId = id;
+
+			group = new Query(z.current.query.userGroups.where('id', id));
 		}
 		console.log('Group created');
 	}
@@ -47,6 +55,7 @@
 		if (group.current[0]?.id) {
 			z.current.mutate.userGroups.delete({ id: group.current[0]?.id });
 			z.current.mutate.userGroupMembers.delete({ id: userGroupMembers.current[0]?.id });
+			groupName = 'No group found';
 		}
 	}
 </script>
@@ -54,17 +63,9 @@
 <div class="container">
 	<h1>Your details</h1>
 	<div class="details">
-		<p><strong>Name:</strong> {userData.name}</p>
-		<p><strong>Email:</strong> {userData.email}</p>
-		<p>
-			<strong>Group:</strong>
-
-			{#if group.current[0]?.name}
-				{group.current[0]?.name}
-			{:else}
-				No group found
-			{/if}
-		</p>
+		<p><strong>Name:</strong> {user.current[0]?.name}</p>
+		<p><strong>Email:</strong> {user.current[0]?.email}</p>
+		<p><strong>Group:</strong> {groupName}</p>
 		{#if !group.current[0]?.name}
 			<form onsubmit={createGroup}>
 				<input type="text" name="groupName" placeholder="Group Name" />

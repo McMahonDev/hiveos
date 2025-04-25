@@ -13,7 +13,7 @@
 
 	function deleteItem(event: Event) {
 		console.log('deleteItem', event);
-		const target = event.target.ownerSVGElement.parentElement as HTMLElement | null;
+		const target = event?.target?.ownerSVGElement?.parentElement as HTMLElement | null;
 		const id = target?.dataset?.id;
 		if (!id) {
 			console.error('No ID provided for deletion.');

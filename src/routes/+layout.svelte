@@ -5,7 +5,7 @@
 
 	let { children, data } = $props();
 	let auth = $derived(data.auth);
-	$inspect(data);
+	// $inspect(data);
 </script>
 
 <header>
