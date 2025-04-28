@@ -11,7 +11,7 @@ export async function load({ locals }: { locals: { user: any } }) {
 		.select()
 		.from(userGroupMembers)
 		.where(eq(userGroupMembers.userId, locals.user.id))
-		.execute();
+		.execute() ?? "0";
 
 	const email = await db.select().from(users).where(eq(users.id, locals.user.id)).execute();
 

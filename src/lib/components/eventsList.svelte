@@ -4,16 +4,21 @@
 
 	let { data } = $props();
 	let z = data.z;
+	let groupId = data.groupId;
+	if (groupId === '0') {
+		groupId = data.id;
+	}
 
 	const events = new Query(
-		z.current.query.events.where('assignedToId', data.id).orderBy('datetime', 'asc')
+		z.current.query.events.where('assignedToId', groupId).orderBy('datetime', 'asc')
 	);
 
 	// $inspect(events.current);
 
 	function deleteItem(event: Event) {
 		console.log('deleteItem', event);
-		const target = event?.target?.ownerSVGElement?.parentElement as HTMLElement | null;
+		const target = (event?.target as SVGElement)?.ownerSVGElement
+			?.parentElement as HTMLElement | null;
 		const id = target?.dataset?.id;
 		if (!id) {
 			console.error('No ID provided for deletion.');

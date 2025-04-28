@@ -23,6 +23,7 @@ export async function load(event){
      return{
             auth: event.data.auth,
             id: event.data.id,
+            groupId: event.data.groupId,
         z,
      }
 

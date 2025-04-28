@@ -4,9 +4,12 @@
 	import EventsList from '$lib/components/eventsList.svelte';
 
 	let { data } = $props();
+	console.log(data);
 	let z = data.z;
 
 	const events = new Query(z.current.query.events.where('assignedToId', data.id));
+	const group = new Query(z.current.query.userGroups.where('id', data.groupId));
+	let groupid = $derived(group.current[0]?.id ?? data.groupId);
 	function onsubmit(event: Event) {
 		event.preventDefault();
 		const formData = new FormData(event.target as HTMLFormElement);
@@ -21,8 +24,9 @@
 			time = '00:00';
 		}
 		const datetime = Math.floor(new Date(`${date}T${time}`).getTime() / 1000);
-
-		console.log(datetime);
+		if (groupid === '0') {
+			groupid = data.id;
+		}
 
 		if (name && date) {
 			z.current.mutate.events.insert({
@@ -31,7 +35,7 @@
 				datetime,
 				timezone: getTimeZoneAbbreviation(),
 				createdById: data.id,
-				assignedToId: data.id
+				assignedToId: groupid
 			});
 
 			(event.target as HTMLFormElement).reset();
