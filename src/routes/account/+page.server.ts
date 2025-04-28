@@ -13,26 +13,11 @@ export async function load({ locals }: { locals: { user: any } }) {
 		.where(eq(userGroupMembers.userId, locals.user.id))
 		.execute();
 
-	// 	let group;
-	// 	if (groupid[0]?.userGroupId) {
-	// 		group = await db
-	// 			.select()
-	// 			.from(userGroups)
-	// 			.where(eq(userGroups.id, groupid[0].userGroupId))
-	// 			.execute();
-	// 	} else {
-	// 		group = false;
-	// 	}
-
-	// 	console.log(group);
-
-	// 	let groupName = false;
-	// 	if (group) {
-	// 		groupName = group[0].name;
-	// 	}
+	const email = await db.select().from(users).where(eq(users.id, locals.user.id)).execute();
 
 	return {
-		groupid: groupid[0]?.userGroupId
+		groupid: groupid[0]?.userGroupId,
+		email: email[0]?.email
 	};
 }
 

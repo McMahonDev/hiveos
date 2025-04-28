@@ -50,6 +50,20 @@
       "when": 1745364750922,
       "tag": "0006_sturdy_taskmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1745616873071,
+      "tag": "0007_perpetual_sister_grimm",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1745618526234,
+      "tag": "0008_gigantic_red_skull",
+      "breakpoints": true
     }
   ]
 }

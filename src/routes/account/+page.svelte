@@ -7,13 +7,23 @@
 
 	let groupId = $state(data.groupid) as string;
 	let userId = $state(data.id);
+	let email = data.email?.toLowerCase() as string;
+
 	if (!groupId) {
 		groupId = '0';
 	}
 	let group = $state(new Query(z.current.query.userGroups.where('id', groupId)));
 
 	const user = new Query(z.current.query.users.where('id', userId));
-	const userGroupMembers = new Query(z.current.query.userGroupMembers.where('userId', userId));
+	const userGroupMembers = new Query(
+		z.current.query.userGroupMembers.where('userGroupId', groupId)
+	);
+
+	let userGroupRequests = $state(
+		new Query(z.current.query.userGroupRequests.where('email', email))
+	);
+
+	$inspect(userGroupRequests.current);
 
 	$effect(() => {
 		group = new Query(z.current.query.userGroups.where('id', groupId));
@@ -49,6 +59,47 @@
 			z.current.mutate.userGroupMembers.delete({ id: userGroupMembers.current[0]?.id });
 		}
 	}
+	function inviteMember(event: Event) {
+		event.preventDefault();
+		const form = event.target as HTMLFormElement;
+		const email = form.email.value;
+		if (email) {
+			const id = nanoid();
+			z.current.mutate.userGroupRequests.insert({
+				id,
+				email: email,
+				userGroupId: group.current[0]?.id,
+				status: false,
+				sentByEmail: email,
+				groupName: group.current[0]?.name
+			});
+		}
+	}
+	function acceptRequest(event: Event) {
+		event.preventDefault();
+		const requestId = event?.target?.closest('li').dataset.id;
+		if (requestId) {
+			const request = userGroupRequests.current.find((r) => r.id === requestId);
+			if (request) {
+				z.current.mutate.userGroupMembers.insert({
+					id: nanoid(),
+					userId: userId,
+					userGroupId: request.userGroupId
+				});
+				z.current.mutate.userGroupRequests.update({
+					id: requestId,
+					status: true
+				});
+			}
+		}
+	}
+	function rejectRequest(event: Event) {
+		event.preventDefault();
+		const requestId = event?.target?.closest('li').dataset.id;
+		if (requestId) {
+			z.current.mutate.userGroupRequests.delete({ id: requestId });
+		}
+	}
 </script>
 
 <div class="container">
@@ -62,11 +113,40 @@
 				<input type="text" name="groupName" placeholder="Group Name" />
 				<button class="" type="submit">Generate Group</button>
 			</form>
+			{#if userGroupRequests.current.length > 0}
+				<p>Pending Requests</p>
+				<ul>
+					{#each userGroupRequests.current as request}
+						<li data-id={request.id}>
+							Group:{request.groupName} from {request.sentByEmail}
+							<button onclick={acceptRequest}>Accept</button>
+							<button onclick={rejectRequest}>Reject</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
 		{/if}
 		{#if showDeleteGroup}
 			<form onsubmit={deleteGroup}>
 				<button class="" type="submit">Delete Group</button>
 			</form>
+			<div>
+				<div>
+					<p>All members:</p>
+					<ul>
+						{#each userGroupMembers.current as member}
+							<li>{member.userId}</li>
+						{/each}
+					</ul>
+				</div>
+				<div>
+					<p>Invite Members:</p>
+					<form onsubmit={inviteMember}>
+						<input type="email" name="email" placeholder="Email" />
+						<button class="" type="submit">Invite Member</button>
+					</form>
+				</div>
+			</div>
 		{/if}
 	</div>
 </div>

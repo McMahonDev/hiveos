@@ -71,6 +71,17 @@ const userGroupMembers = table('userGroupMembers')
 	})
 	.primaryKey('id');
 
+const userGroupRequests = table('userGroupRequests')
+	.columns({
+		id: string(),
+		email: string(),
+		userGroupId: string(),
+		status: boolean(),
+		sentByEmail: string(),
+		groupName: string()
+	})
+	.primaryKey('id');
+
 const taskRelationships = relationships(tasks, ({ one }) => ({
 	createdBy: one({
 		sourceField: ['createdById'],
@@ -118,13 +129,27 @@ const userGroupRelationships = relationships(userGroups, ({ one }) => ({
 	})
 }));
 
+const userGroupRequestsRelationships = relationships(userGroupRequests, ({ one }) => ({
+	createdBy: one({
+		sourceField: ['sentByEmail'],
+		destSchema: users,
+		destField: ['id']
+	}),
+	userGroup: one({
+		sourceField: ['userGroupId'],
+		destSchema: userGroups,
+		destField: ['id']
+	})
+}));
+
 export const schema = createSchema({
-	tables: [users, tasks, events, shoppingList, userGroups, userGroupMembers],
+	tables: [users, tasks, events, shoppingList, userGroups, userGroupMembers, userGroupRequests],
 	relationships: [
 		taskRelationships,
 		eventRelationships,
 		shoppingListRelationships,
-		userGroupRelationships
+		userGroupRelationships,
+		userGroupRequestsRelationships
 	]
 });
 
@@ -135,6 +160,7 @@ export type Event = Row<typeof schema.tables.events>;
 export type ShoppingList = Row<typeof schema.tables.shoppingList>;
 export type UserGroup = Row<typeof schema.tables.userGroups>;
 export type UserGroupMember = Row<typeof schema.tables.userGroupMembers>;
+export type UserGroupRequest = Row<typeof schema.tables.userGroupRequests>;
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	const allowIfIssueCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'tasks'>) =>
@@ -194,6 +220,17 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 			}
 		},
 		userGroupMembers: {
+			row: {
+				select: ANYONE_CAN,
+				insert: ANYONE_CAN,
+				update: {
+					preMutation: ANYONE_CAN,
+					postMutation: ANYONE_CAN
+				},
+				delete: ANYONE_CAN
+			}
+		},
+		userGroupRequests: {
 			row: {
 				select: ANYONE_CAN,
 				insert: ANYONE_CAN,

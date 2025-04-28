@@ -50,6 +50,16 @@ export const userGroupMembers = pgTable('userGroupMembers', {
 	userGroupId: text('userGroupId')
 });
 
+// --- UserGroupRequests Table ---
+export const userGroupRequests = pgTable('userGroupRequests', {
+	id: text('id').primaryKey(),
+	email: text('email'),
+	userGroupId: text('userGroupId'),
+	status: boolean('status'),
+	sentByEmail: text('sentByEmail'),
+	groupName: text('groupName')
+});
+
 // --- Relationships ---
 // Users <-> Tasks
 export const usersRelations = relations(users, ({ many }) => ({
@@ -110,6 +120,18 @@ export const userGroupMembersRelations = relations(userGroupMembers, ({ one }) =
 	}),
 	userGroup: one(userGroups, {
 		fields: [userGroupMembers.userGroupId],
+		references: [userGroups.id]
+	})
+}));
+
+// UserGroupRequests <-> Users and UserGroups
+export const userGroupRequestsRelations = relations(userGroupRequests, ({ one }) => ({
+	createdBy: one(users, {
+		fields: [userGroupRequests.sentByEmail],
+		references: [users.id]
+	}),
+	userGroup: one(userGroups, {
+		fields: [userGroupRequests.userGroupId],
 		references: [userGroups.id]
 	})
 }));
