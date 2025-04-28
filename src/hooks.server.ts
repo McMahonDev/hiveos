@@ -2,7 +2,7 @@ import { parse } from 'cookie';
 import jwt from 'jsonwebtoken';
 const { verify } = jwt;
 import { db } from '$lib/server/db/index';
-import { users } from '$lib/server/db/schema';
+import { userGroupMembers, users } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
 interface Locals {
@@ -33,10 +33,17 @@ export async function handle({
 			if (!account[0]) {
 				throw new Error('User not found');
 			}
+			const group = await db.select().from(userGroupMembers).where(eq(userGroupMembers.userId, account[0].id)).execute();
+			console.log('run group query');
+			let groupId = group[0]?.userGroupId;
+			if (!groupId) {
+				groupId = "0"
+			}
 
 			const sessionUser = {
 				id: account[0].id,
-				email: account[0].email
+				email: account[0].email,
+				groupId: groupId
 			};
 
 			event.locals.user = sessionUser;

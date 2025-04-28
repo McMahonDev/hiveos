@@ -1,9 +1,13 @@
 <script lang="ts">
 	import ShoppingList from '$lib/components/shoppingList.svelte';
+	import { Query } from 'zero-svelte';
 	import { nanoid } from 'nanoid';
 
 	let { data } = $props();
 	let z = data.z;
+
+	const group = new Query(z.current.query.userGroups.where('id', data.groupId));
+	let groupid = $derived(group.current[0]?.id ?? data.groupId);
 
 	function onsubmit(event: Event) {
 		event.preventDefault();
@@ -11,11 +15,14 @@
 		const name = formData.get('name') as string;
 		const id = nanoid();
 		if (name) {
+			if (groupid === '0') {
+				groupid = data.id;
+			}
 			z.current.mutate.shoppingList.insert({
 				id,
 				name,
 				status: false,
-				assignedToId: data.id,
+				assignedToId: groupid,
 				createdById: data.id
 			});
 			(event.target as HTMLFormElement).reset();

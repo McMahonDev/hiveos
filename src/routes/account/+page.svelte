@@ -30,7 +30,9 @@
 	});
 
 	let groupName = $derived(group.current[0]?.name ?? 'No group found');
-	let showDeleteGroup = $derived(group.current[0]?.name ? true : false);
+	let showDeleteGroup = $derived(
+		group.current[0]?.name && group.current[0]?.createdById === userId ? true : false
+	);
 
 	function createGroup(event: Event) {
 		event.preventDefault();
@@ -78,17 +80,17 @@
 	function acceptRequest(event: Event) {
 		event.preventDefault();
 		const requestId = event?.target?.closest('li').dataset.id;
+		console.log(requestId);
 		if (requestId) {
 			const request = userGroupRequests.current.find((r) => r.id === requestId);
 			if (request) {
-				z.current.mutate.userGroupMembers.insert({
+				z.current.mutate.userGroupMembers.upsert({
 					id: nanoid(),
 					userId: userId,
 					userGroupId: request.userGroupId
 				});
-				z.current.mutate.userGroupRequests.update({
-					id: requestId,
-					status: true
+				z.current.mutate.userGroupRequests.delete({
+					id: requestId
 				});
 			}
 		}

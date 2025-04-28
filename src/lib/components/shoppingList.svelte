@@ -6,7 +6,12 @@
 	let { data } = $props();
 	let z = data.z;
 
-	const shoppingList = new Query(z.current.query.shoppingList.where('assignedToId', data.id));
+	let groupid = data.groupId;
+	if (groupid === '0') {
+		groupid = data.id;
+	}
+
+	const shoppingList = new Query(z.current.query.shoppingList.where('assignedToId', groupid));
 	function deleteItem(event: Event) {
 		const target = event.target as HTMLElement | null;
 		const id = target?.dataset?.id;
