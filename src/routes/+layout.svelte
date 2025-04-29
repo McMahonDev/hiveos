@@ -5,7 +5,6 @@
 
 	let { children, data } = $props();
 	let auth = $derived(data.auth);
-	let open = true;
 </script>
 
 <header>
@@ -23,7 +22,7 @@
 </header>
 
 <div class="main-layout">
-	<aside class={open ? 'open' : ''}>
+	<aside>
 		{#if auth}
 			<ul>
 				<li><a href="/">Dashboard</a></li>
@@ -94,13 +93,17 @@
 		padding: 0;
 	}
 	.main-layout {
+		/* Enable container queries */
+		container-type: inline-size;
 		display: grid;
 		grid-template-columns: auto 1fr;
 		grid-template-rows: 1fr;
 		gap: 20px;
-		/* margin-top: var(--headerHeight); */
 		height: calc(100vh - var(--headerHeight) - var(--footerHeight));
 	}
+
+	/* Container query for smaller widths */
+
 	main {
 		padding: 20px;
 		background-color: var(--background);
@@ -113,6 +116,7 @@
 		min-width: 200px;
 		padding: 20px;
 		background-color: var(--background);
+
 		ul {
 			list-style: none;
 			padding: 0;
@@ -123,6 +127,7 @@
 			align-items: flex-start;
 			gap: 10px;
 			height: 100%;
+
 			li {
 				&.bottom {
 					margin-top: auto;
@@ -134,6 +139,39 @@
 				font-size: 1.2rem;
 				font-weight: 600;
 			}
+		}
+	}
+	/* @container (min-width: 0px) and (max-width: 689px) {
+		.main-layout {
+			grid-template-columns: 1fr;
+		}
+		aside {
+			display: none;
+		}
+		main {
+			margin-right: auto;
+			margin-left: auto;
+			width: 100vw;
+		}
+	} */
+	@container (max-width: 690px) {
+		.main-layout {
+			grid-template-columns: 1fr;
+		}
+		aside {
+			display: none;
+		}
+		main {
+			margin-right: auto;
+			margin-left: auto;
+			width: 100vw;
+		}
+	}
+
+	/* Container query for medium widths */
+	@container (min-width: 691px) and (max-width: 900px) {
+		.main-layout {
+			grid-template-columns: 1fr 2fr;
 		}
 	}
 </style>
