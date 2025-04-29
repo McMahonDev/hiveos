@@ -23,7 +23,7 @@
 	--cardBg: var(--white);
 	--headerBackground: var(--darkBlue);
 	--footerTextColor: var(--lightGrey);
-	--footerBackground: var(--black);
+	--footerBackground: var(--primary);
 	--iconColor: var(--darkBlue);
 	--placeholderBackground: var(--lightGreyAlt);
 	--placeholderLineColor: var(--lineColor);
@@ -99,6 +99,7 @@ header {
 	height: var(--headerHeight);
 	padding: 0 var(--containerPadding);
 	z-index: 100;
+	position: relative;
 }
 
 header nav a {

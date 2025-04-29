@@ -10,6 +10,10 @@ export async function load({ cookies }) {
 		maxAge: 0
 	});
 
+	return {
+		loggedIn: false
+	};
+
 	// Redirect to the login page
-	throw redirect(302, '/account/login');
+	// throw redirect(302, '/account/login');
 }

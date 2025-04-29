@@ -5,7 +5,7 @@
 
 	let { children, data } = $props();
 	let auth = $derived(data.auth);
-	// $inspect(data);
+	let open = true;
 </script>
 
 <header>
@@ -14,7 +14,7 @@
 	<nav>
 		<!-- <h2>home</h2> -->
 		{#if auth}
-			<a href="/account/logout">Logout <LogoutIcon /></a>
+			<a class="button" href="/account/logout">Logout <LogoutIcon /></a>
 		{:else}
 			<a href="/account/login">Login</a>
 			<a href="/account/register">Register</a>
@@ -23,7 +23,7 @@
 </header>
 
 <div class="main-layout">
-	<aside>
+	<aside class={open ? 'open' : ''}>
 		{#if auth}
 			<ul>
 				<li><a href="/">Dashboard</a></li>
@@ -49,8 +49,8 @@
 		grid-template-columns: 1fr 1fr;
 		grid-template-rows: 1fr;
 		padding: 20px;
-		background-color: #000000;
-		color: var(--primary);
+		background-color: var(--primary);
+		color: #000;
 	}
 	nav {
 		display: flex;
@@ -60,13 +60,30 @@
 		a {
 			text-decoration: underline;
 			display: flex;
-			gap: 8px;
+			gap: 10px;
+
+			&.button {
+				background-color: #000;
+				--svg-fill: #fff;
+				color: #fff;
+				padding: 10px 20px;
+				border-radius: 5px;
+				/* text-decoration: none; */
+				transition: all 0.3s ease;
+				box-shadow: var(--level-2);
+				&:hover {
+					transform: translateY(-1px);
+				}
+				&:active {
+					transform: translateY(1px);
+				}
+			}
 		}
 	}
 
 	h1 {
 		font-size: 2rem;
-		color: var(--primary);
+		color: #000;
 		margin: 0;
 		padding: 0;
 	}

@@ -6,8 +6,10 @@
 
 <style>
 	svg {
+		/* --svg-fill: var(--primary); */
 		width: 20px;
 		height: auto;
-		fill: var(--primary);
+		fill: var(--svg-fill);
+		cursor: pointer;
 	}
 </style>
