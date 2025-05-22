@@ -48,4 +48,22 @@
 		text-decoration: underline;
 		color: inherit;
 	}
+	@container (max-width: 690px) {
+		.container {
+			grid-template-columns: 1fr;
+			grid-template-rows: auto auto auto;
+			.events {
+				grid-column: 1 / 2;
+				grid-row: 2 / 3;
+			}
+			.weather {
+				grid-column: 1 / 2;
+				grid-row: 1 / 2;
+			}
+			.shoppingList {
+				grid-column: 1 / 2;
+				grid-row: 3 / 4;
+			}
+		}
+	}
 </style>
