@@ -1,10 +1,15 @@
 <script lang="ts">
 	import '$lib/static/normalize.css';
 	import '$lib/static/global.css';
+	import { fly } from 'svelte/transition';
 	import LogoutIcon from '$lib/static/icons/logoutIcon.svelte';
+	import MenuIcon from '$lib/static/icons/menuIcon.svelte';
+	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 
 	let { children, data } = $props();
 	let auth = $derived(data.auth);
+
+	let menuOpen = $state(false);
 </script>
 
 <header>
@@ -13,7 +18,14 @@
 	<nav>
 		<!-- <h2>home</h2> -->
 		{#if auth}
-			<a class="button" href="/account/logout">Logout <LogoutIcon /></a>
+			<a class="button logout" href="/account/logout">Logout <LogoutIcon /></a>
+			<button class="button" onclick={() => (menuOpen = !menuOpen)}>
+				{#if menuOpen}
+					<CloseIcon />
+				{:else}
+					<MenuIcon />
+				{/if}
+			</button>
 		{:else}
 			<a href="/account/login">Login</a>
 			<a href="/account/register">Register</a>
@@ -22,19 +34,28 @@
 </header>
 
 <div class="main-layout">
-	<aside>
-		{#if auth}
-			<ul>
-				<li><a href="/">Dashboard</a></li>
-				<li><a href="/calendar">Calendar</a></li>
-				<li><a href="/events">Events</a></li>
-				<li><a href="/shopping-list">Shopping List</a></li>
-				<li><a href="/tasks">Task list</a></li>
-				<li><a href="/recipies">Recipies</a></li>
-				<li class="bottom"><a href="/account">Account</a></li>
-			</ul>
-		{/if}
-	</aside>
+	{#if menuOpen}
+		<aside transition:fly class:mobileOpen={menuOpen}>
+			{#if !auth}
+				<ul>
+					<li><a href="/account/login">Login</a></li>
+					<li><a href="/account/register">Register</a></li>
+				</ul>
+			{/if}
+			{#if auth}
+				<ul>
+					<li><a href="/">Dashboard</a></li>
+					<li><a href="/calendar">Calendar</a></li>
+					<li><a href="/events">Events</a></li>
+					<li><a href="/shopping-list">Shopping List</a></li>
+					<li><a href="/tasks">Task list</a></li>
+					<li><a href="/recipies">Recipies</a></li>
+					<li><a class="button" href="/account/logout">Logout <LogoutIcon /></a></li>
+					<li class="bottom"><a href="/account">Account</a></li>
+				</ul>
+			{/if}
+		</aside>
+	{/if}
 	<main>
 		{@render children()}
 	</main>
@@ -53,6 +74,7 @@
 	}
 	nav {
 		display: flex;
+		container-type: inline-size;
 		justify-content: flex-end;
 		align-items: center;
 		gap: 20px;
@@ -116,6 +138,16 @@
 		min-width: 200px;
 		padding: 20px;
 		background-color: var(--background);
+		&.mobileOpen {
+			display: block;
+			position: absolute;
+			top: var(--headerHeight);
+			left: 0;
+			width: 100vw;
+			height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+			background-color: var(--background);
+			z-index: 10;
+		}
 
 		ul {
 			list-style: none;
@@ -141,19 +173,6 @@
 			}
 		}
 	}
-	/* @container (min-width: 0px) and (max-width: 689px) {
-		.main-layout {
-			grid-template-columns: 1fr;
-		}
-		aside {
-			display: none;
-		}
-		main {
-			margin-right: auto;
-			margin-left: auto;
-			width: 100vw;
-		}
-	} */
 	@container (max-width: 690px) {
 		.main-layout {
 			grid-template-columns: 1fr;
@@ -165,6 +184,9 @@
 			margin-right: auto;
 			margin-left: auto;
 			width: 100vw;
+		}
+		nav .logout {
+			display: none;
 		}
 	}
 
