@@ -10,6 +10,25 @@
 	let auth = $derived(data.auth);
 
 	let menuOpen = $state(false);
+	let showButtons = $state(true);
+
+	$effect(() => {
+		// get window width
+		window.addEventListener('resize', () => {
+			const width = window.innerWidth;
+			if (width < 690) {
+				menuOpen = false;
+			} else {
+				menuOpen = true;
+			}
+		});
+		const width = window.innerWidth;
+		if (width > 690) {
+			menuOpen = true;
+		} else {
+			menuOpen = false;
+		}
+	});
 </script>
 
 <header>
@@ -19,13 +38,15 @@
 		<!-- <h2>home</h2> -->
 		{#if auth}
 			<a class="button logout" href="/account/logout">Logout <LogoutIcon /></a>
-			<button class="button" onclick={() => (menuOpen = !menuOpen)}>
-				{#if menuOpen}
-					<CloseIcon />
-				{:else}
-					<MenuIcon />
-				{/if}
-			</button>
+			{#if showButtons}
+				<button class="button menuButton" onclick={() => (menuOpen = !menuOpen)}>
+					{#if menuOpen}
+						<CloseIcon />
+					{:else}
+						<MenuIcon />
+					{/if}
+				</button>
+			{/if}
 		{:else}
 			<a href="/account/login">Login</a>
 			<a href="/account/register">Register</a>
@@ -72,6 +93,9 @@
 		background-color: var(--primary);
 		color: #000;
 	}
+	button.menuButton {
+		display: none;
+	}
 	nav {
 		display: flex;
 		container-type: inline-size;
@@ -115,8 +139,6 @@
 		padding: 0;
 	}
 	.main-layout {
-		/* Enable container queries */
-		container-type: inline-size;
 		display: grid;
 		grid-template-columns: auto 1fr;
 		grid-template-rows: 1fr;
@@ -138,16 +160,6 @@
 		min-width: 200px;
 		padding: 20px;
 		background-color: var(--background);
-		&.mobileOpen {
-			display: block;
-			position: absolute;
-			top: var(--headerHeight);
-			left: 0;
-			width: 100vw;
-			height: calc(100vh - var(--headerHeight) - var(--footerHeight));
-			background-color: var(--background);
-			z-index: 10;
-		}
 
 		ul {
 			list-style: none;
@@ -173,12 +185,23 @@
 			}
 		}
 	}
-	@container (max-width: 690px) {
+
+	@media (max-width: 690px) {
 		.main-layout {
 			grid-template-columns: 1fr;
 		}
 		aside {
 			display: none;
+			&.mobileOpen {
+				display: block;
+				position: absolute;
+				top: var(--headerHeight);
+				left: 0;
+				width: 100vw;
+				height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+				background-color: var(--background);
+				z-index: 10;
+			}
 		}
 		main {
 			margin-right: auto;
@@ -188,12 +211,8 @@
 		nav .logout {
 			display: none;
 		}
-	}
-
-	/* Container query for medium widths */
-	@container (min-width: 691px) and (max-width: 900px) {
-		.main-layout {
-			grid-template-columns: 1fr 2fr;
+		button.menuButton {
+			display: block;
 		}
 	}
 </style>
