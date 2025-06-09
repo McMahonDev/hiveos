@@ -8,8 +8,25 @@
 
 	let { children, data } = $props();
 	let auth = $derived(data.auth);
-
 	let menuOpen = $state(false);
+	let menu: HTMLElement;
+	function toggleMenu() {
+		menuOpen = !menuOpen;
+	}
+	$effect(() => {
+		window.addEventListener('resize', () => {
+			if (window.innerWidth > 690) {
+				menuOpen = false;
+			}
+		});
+
+		menu.querySelectorAll('a').forEach((link) => {
+			console.log(link);
+			link.addEventListener('click', () => {
+				menuOpen = false;
+			});
+		});
+	});
 </script>
 
 <header>
@@ -18,8 +35,8 @@
 	<nav>
 		<!-- <h2>home</h2> -->
 		{#if auth}
-			<a class="button logout" href="/account/logout">Logout <LogoutIcon /></a>
-			<button class="button" onclick={() => (menuOpen = !menuOpen)}>
+			<a class="button" href="/account/logout">Logout <LogoutIcon /></a>
+			<button onclick={toggleMenu} class="menu-button" aria-label="Open menu">
 				{#if menuOpen}
 					<CloseIcon />
 				{:else}
@@ -34,28 +51,20 @@
 </header>
 
 <div class="main-layout">
-	{#if menuOpen}
-		<aside transition:fly class:mobileOpen={menuOpen}>
-			{#if !auth}
-				<ul>
-					<li><a href="/account/login">Login</a></li>
-					<li><a href="/account/register">Register</a></li>
-				</ul>
-			{/if}
-			{#if auth}
-				<ul>
-					<li><a href="/">Dashboard</a></li>
-					<li><a href="/calendar">Calendar</a></li>
-					<li><a href="/events">Events</a></li>
-					<li><a href="/shopping-list">Shopping List</a></li>
-					<li><a href="/tasks">Task list</a></li>
-					<li><a href="/recipies">Recipies</a></li>
-					<li><a class="button" href="/account/logout">Logout <LogoutIcon /></a></li>
-					<li class="bottom"><a href="/account">Account</a></li>
-				</ul>
-			{/if}
-		</aside>
-	{/if}
+	<aside bind:this={menu} class:menuOpen>
+		{#if auth}
+			<ul>
+				<li><a href="/">Dashboard</a></li>
+				<li><a href="/calendar">Calendar</a></li>
+				<li><a href="/events">Events</a></li>
+				<li><a href="/shopping-list">Shopping List</a></li>
+				<li><a href="/tasks">Task list</a></li>
+				<li><a href="/recipies">Recipies</a></li>
+				<li class="bottom"><a href="/account">Account</a></li>
+			</ul>
+		{/if}
+	</aside>
+
 	<main>
 		{@render children()}
 	</main>
@@ -72,6 +81,7 @@
 		background-color: var(--primary);
 		color: #000;
 	}
+
 	nav {
 		display: flex;
 		container-type: inline-size;
@@ -138,16 +148,7 @@
 		min-width: 200px;
 		padding: 20px;
 		background-color: var(--background);
-		&.mobileOpen {
-			display: block;
-			position: absolute;
-			top: var(--headerHeight);
-			left: 0;
-			width: 100vw;
-			height: calc(100vh - var(--headerHeight) - var(--footerHeight));
-			background-color: var(--background);
-			z-index: 10;
-		}
+		transition: all 0.3s ease;
 
 		ul {
 			list-style: none;
@@ -172,8 +173,69 @@
 				font-weight: 600;
 			}
 		}
+
+		@media screen and (max-width: 690px) {
+			left: 0;
+			top: -100%;
+			position: fixed;
+			display: block;
+			position: fixed;
+
+			width: 100%;
+			height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+			text-align: center;
+			&.menuOpen {
+				top: calc(var(--headerHeight));
+			}
+		}
 	}
-	@container (max-width: 690px) {
+	/* @container (min-width: 0px) and (max-width: 689px) {
+		.main-layout {
+			grid-template-columns: 1fr;
+		}
+		aside {
+			display: none;
+			&.mobileOpen {
+				display: block;
+				position: absolute;
+				top: var(--headerHeight);
+				left: 0;
+				width: 100vw;
+				height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+				background-color: var(--background);
+				z-index: 10;
+			}
+		}
+		main {
+			margin-right: auto;
+			margin-left: auto;
+			width: 100vw;
+		}
+		nav .logout {
+			display: none;
+		}
+		main {
+			margin-right: auto;
+			margin-left: auto;
+			width: 100vw;
+		}
+	}
+
+	/* Container query for medium widths */
+	@container (min-width: 691px) and (max-width: 900px) {
+		.main-layout {
+			grid-template-columns: 1fr 2fr;
+		}
+	}
+
+	.menu-button {
+		display: none;
+
+		@media screen and (max-width: 690px) {
+			display: block;
+		}
+	}
+	/* @container (max-width: 690px) {
 		.main-layout {
 			grid-template-columns: 1fr;
 		}
@@ -188,7 +250,7 @@
 		nav .logout {
 			display: none;
 		}
-	}
+	} */
 
 	/* Container query for medium widths */
 	@container (min-width: 691px) and (max-width: 900px) {
