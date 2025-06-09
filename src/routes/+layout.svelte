@@ -21,8 +21,8 @@
 		});
 
 		menu.querySelectorAll('a').forEach((link) => {
+			console.log(link);
 			link.addEventListener('click', () => {
-				// menu.classList.remove('menuOpen');
 				menuOpen = false;
 			});
 		});

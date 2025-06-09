@@ -49,8 +49,18 @@
 <style>
 	.shopping-list {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: 1fr;
 		gap: 20px;
+		@media screen and (min-width: 690px) {
+			grid-template-columns: 1fr 1fr;
+		}
+		div {
+			grid-row: 2;
+			grid-column: 1;
+			@media screen and (min-width: 690px) {
+				grid-column: 2;
+			}
+		}
 	}
 
 	h1 {
