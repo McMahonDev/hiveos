@@ -11,7 +11,6 @@
 	let menuOpen = $state(false);
 	let menu: HTMLElement;
 	function toggleMenu() {
-		console.log('toggleMenu', menuOpen);
 		menuOpen = !menuOpen;
 	}
 	$effect(() => {
