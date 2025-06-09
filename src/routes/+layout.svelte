@@ -27,6 +27,7 @@
 			});
 		});
 	});
+
 </script>
 
 <header>
@@ -37,21 +38,11 @@
 		{#if auth}
 			<a class="button" href="/account/logout">Logout <LogoutIcon /></a>
 			<button onclick={toggleMenu} class="menu-button" aria-label="Open menu">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="24"
-					height="24"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				>
-					<line x1="3" y1="12" x2="21" y2="12"></line>
-					<line x1="3" y1="6" x2="21" y2="6"></line>
-					<line x1="3" y1="18" x2="21" y2="18"></line>
-				</svg>
+				{#if menuOpen}
+					<CloseIcon />
+				{:else}
+					<MenuIcon />
+				{/if}
 			</button>
 		{:else}
 			<a href="/account/login">Login</a>
@@ -74,6 +65,7 @@
 			</ul>
 		{/if}
 	</aside>
+
 	<main>
 		{@render children()}
 	</main>
@@ -134,6 +126,8 @@
 		padding: 0;
 	}
 	.main-layout {
+		/* Enable container queries */
+		container-type: inline-size;
 		display: grid;
 		grid-template-columns: auto 1fr;
 		grid-template-rows: 1fr;
@@ -240,6 +234,29 @@
 
 		@media screen and (max-width: 690px) {
 			display: block;
+		}
+	}
+	@container (max-width: 690px) {
+		.main-layout {
+			grid-template-columns: 1fr;
+		}
+		aside {
+			display: none;
+		}
+		main {
+			margin-right: auto;
+			margin-left: auto;
+			width: 100vw;
+		}
+		nav .logout {
+			display: none;
+		}
+	}
+
+	/* Container query for medium widths */
+	@container (min-width: 691px) and (max-width: 900px) {
+		.main-layout {
+			grid-template-columns: 1fr 2fr;
 		}
 	}
 </style>
