@@ -8,27 +8,11 @@
 
 	let { children, data } = $props();
 	let auth = $derived(data.auth);
-
 	let menuOpen = $state(false);
-	let showButtons = $state(true);
-
-	$effect(() => {
-		// get window width
-		window.addEventListener('resize', () => {
-			const width = window.innerWidth;
-			if (width < 690) {
-				menuOpen = false;
-			} else {
-				menuOpen = true;
-			}
-		});
-		const width = window.innerWidth;
-		if (width > 690) {
-			menuOpen = true;
-		} else {
-			menuOpen = false;
-		}
-	});
+	let menu: HTMLElement;
+	function toggleMenu() {
+		menuOpen = !menuOpen;
+	}
 </script>
 
 <header>
@@ -37,16 +21,24 @@
 	<nav>
 		<!-- <h2>home</h2> -->
 		{#if auth}
-			<a class="button logout" href="/account/logout">Logout <LogoutIcon /></a>
-			{#if showButtons}
-				<button class="button menuButton" onclick={() => (menuOpen = !menuOpen)}>
-					{#if menuOpen}
-						<CloseIcon />
-					{:else}
-						<MenuIcon />
-					{/if}
-				</button>
-			{/if}
+			<a class="button" href="/account/logout">Logout <LogoutIcon /></a>
+			<button onclick={toggleMenu} class="menu-button" aria-label="Open menu">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<line x1="3" y1="12" x2="21" y2="12"></line>
+					<line x1="3" y1="6" x2="21" y2="6"></line>
+					<line x1="3" y1="18" x2="21" y2="18"></line>
+				</svg>
+			</button>
 		{:else}
 			<a href="/account/login">Login</a>
 			<a href="/account/register">Register</a>
@@ -55,28 +47,19 @@
 </header>
 
 <div class="main-layout">
-	{#if menuOpen}
-		<aside transition:fly class:mobileOpen={menuOpen}>
-			{#if !auth}
-				<ul>
-					<li><a href="/account/login">Login</a></li>
-					<li><a href="/account/register">Register</a></li>
-				</ul>
-			{/if}
-			{#if auth}
-				<ul>
-					<li><a href="/">Dashboard</a></li>
-					<li><a href="/calendar">Calendar</a></li>
-					<li><a href="/events">Events</a></li>
-					<li><a href="/shopping-list">Shopping List</a></li>
-					<li><a href="/tasks">Task list</a></li>
-					<li><a href="/recipies">Recipies</a></li>
-					<li><a class="button" href="/account/logout">Logout <LogoutIcon /></a></li>
-					<li class="bottom"><a href="/account">Account</a></li>
-				</ul>
-			{/if}
-		</aside>
-	{/if}
+	<aside bind:this={menu} class:menuOpen>
+		{#if auth}
+			<ul>
+				<li><a href="/">Dashboard</a></li>
+				<li><a href="/calendar">Calendar</a></li>
+				<li><a href="/events">Events</a></li>
+				<li><a href="/shopping-list">Shopping List</a></li>
+				<li><a href="/tasks">Task list</a></li>
+				<li><a href="/recipies">Recipies</a></li>
+				<li class="bottom"><a href="/account">Account</a></li>
+			</ul>
+		{/if}
+	</aside>
 	<main>
 		{@render children()}
 	</main>
@@ -184,9 +167,19 @@
 				font-weight: 600;
 			}
 		}
+		&.menuOpen {
+			@media screen and (max-width: 690px) {
+				display: block;
+				position: fixed;
+				top: calc(var(--headerHeight));
+				left: 0;
+				width: 100%;
+				height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+				text-align: center;
+			}
+		}
 	}
-
-	@media (max-width: 690px) {
+	/* @container (min-width: 0px) and (max-width: 689px) {
 		.main-layout {
 			grid-template-columns: 1fr;
 		}
@@ -211,7 +204,24 @@
 		nav .logout {
 			display: none;
 		}
-		button.menuButton {
+		main {
+			margin-right: auto;
+			margin-left: auto;
+			width: 100vw;
+		}
+	}
+
+	/* Container query for medium widths */
+	@container (min-width: 691px) and (max-width: 900px) {
+		.main-layout {
+			grid-template-columns: 1fr 2fr;
+		}
+	}
+
+	.menu-button {
+		display: none;
+
+		@media screen and (max-width: 690px) {
 			display: block;
 		}
 	}
