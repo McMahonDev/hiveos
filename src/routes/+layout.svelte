@@ -11,6 +11,7 @@
 	let menuOpen = $state(false);
 	let menu: HTMLElement;
 	function toggleMenu() {
+		console.log('toggleMenu', menuOpen);
 		menuOpen = !menuOpen;
 	}
 	$effect(() => {
@@ -27,7 +28,6 @@
 			});
 		});
 	});
-
 </script>
 
 <header>
@@ -236,7 +236,7 @@
 			display: block;
 		}
 	}
-	@container (max-width: 690px) {
+	/* @container (max-width: 690px) {
 		.main-layout {
 			grid-template-columns: 1fr;
 		}
@@ -251,7 +251,7 @@
 		nav .logout {
 			display: none;
 		}
-	}
+	} */
 
 	/* Container query for medium widths */
 	@container (min-width: 691px) and (max-width: 900px) {
