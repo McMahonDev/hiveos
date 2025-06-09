@@ -13,6 +13,20 @@
 	function toggleMenu() {
 		menuOpen = !menuOpen;
 	}
+	$effect(() => {
+		window.addEventListener('resize', () => {
+			if (window.innerWidth > 690) {
+				menuOpen = false;
+			}
+		});
+
+		menu.querySelectorAll('a').forEach((link) => {
+			link.addEventListener('click', () => {
+				// menu.classList.remove('menuOpen');
+				menuOpen = false;
+			});
+		});
+	});
 </script>
 
 <header>
@@ -76,9 +90,7 @@
 		background-color: var(--primary);
 		color: #000;
 	}
-	button.menuButton {
-		display: none;
-	}
+
 	nav {
 		display: flex;
 		container-type: inline-size;
@@ -143,6 +155,7 @@
 		min-width: 200px;
 		padding: 20px;
 		background-color: var(--background);
+		transition: all 0.3s ease;
 
 		ul {
 			list-style: none;
@@ -167,15 +180,19 @@
 				font-weight: 600;
 			}
 		}
-		&.menuOpen {
-			@media screen and (max-width: 690px) {
-				display: block;
-				position: fixed;
+
+		@media screen and (max-width: 690px) {
+			left: 0;
+			top: -100%;
+			position: fixed;
+			display: block;
+			position: fixed;
+
+			width: 100%;
+			height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+			text-align: center;
+			&.menuOpen {
 				top: calc(var(--headerHeight));
-				left: 0;
-				width: 100%;
-				height: calc(100vh - var(--headerHeight) - var(--footerHeight));
-				text-align: center;
 			}
 		}
 	}
