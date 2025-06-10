@@ -26,21 +26,28 @@
 <style>
 	.container {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
-		grid-template-rows: auto auto;
+		grid-template-columns: 1fr;
+		grid-template-rows: auto;
 		gap: 20px;
-
-		.events {
-			grid-column: 1 / 2;
-			grid-row: 1 / 3;
-		}
 		.weather {
-			grid-column: 2 / 3;
-			grid-row: 1 / 2;
+			grid-row: 1;
 		}
-		.shoppingList {
-			grid-column: 2 / 3;
-			grid-row: 2 / 3;
+
+		@media screen and (min-width: 691px) {
+			grid-template-columns: 1fr 1fr;
+			grid-template-rows: auto auto;
+			.events {
+				grid-column: 1 / 2;
+				grid-row: 1 / 3;
+			}
+			.weather {
+				grid-column: 2 / 3;
+				grid-row: 1 / 2;
+			}
+			.shoppingList {
+				grid-column: 2 / 3;
+				grid-row: 2 / 3;
+			}
 		}
 	}
 
