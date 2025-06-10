@@ -19,13 +19,6 @@
 				menuOpen = false;
 			}
 		});
-
-		menu.querySelectorAll('a').forEach((link) => {
-			console.log(link);
-			link.addEventListener('click', () => {
-				menuOpen = false;
-			});
-		});
 	});
 </script>
 
@@ -54,18 +47,18 @@
 	<aside bind:this={menu} class:menuOpen>
 		{#if auth}
 			<ul>
-				<li><a href="/">Dashboard</a></li>
-				<li><a href="/calendar">Calendar</a></li>
-				<li><a href="/events">Events</a></li>
-				<li><a href="/shopping-list">Shopping List</a></li>
-				<li><a href="/tasks">Task list</a></li>
-				<li><a href="/recipies">Recipies</a></li>
-				<li class="bottom"><a href="/account">Account</a></li>
+				<li><a onclick={() => (menuOpen = false)} href="/">Dashboard</a></li>
+				<li><a onclick={() => (menuOpen = false)} href="/calendar">Calendar</a></li>
+				<li><a onclick={() => (menuOpen = false)} href="/events">Events</a></li>
+				<li><a onclick={() => (menuOpen = false)} href="/shopping-list">Shopping List</a></li>
+				<li><a onclick={() => (menuOpen = false)} href="/tasks">Task list</a></li>
+				<li><a onclick={() => (menuOpen = false)} href="/recipies">Recipies</a></li>
+				<li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
 			</ul>
 		{/if}
 	</aside>
 
-	<main>
+	<main class:menuOpen>
 		{@render children()}
 	</main>
 </div>
@@ -119,19 +112,16 @@
 		padding: 0;
 	}
 
-	h2 {
-		font-size: 1.5rem;
-		margin: 0;
-		padding: 0;
-	}
 	.main-layout {
-		/* Enable container queries */
-		container-type: inline-size;
 		display: grid;
-		grid-template-columns: auto 1fr;
+		grid-template-columns: 1fr 2fr;
 		grid-template-rows: 1fr;
 		gap: 20px;
 		height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+		@media screen and (max-width: 690px) {
+			grid-template-columns: 1fr;
+			grid-template-rows: auto 1fr;
+		}
 	}
 
 	/* Container query for smaller widths */
@@ -141,6 +131,12 @@
 		background-color: var(--background);
 		margin-right: var(--margin-right);
 		margin-left: var(--margin-left);
+		opacity: 1;
+		transition: all 0.3s ease;
+		&.menuOpen {
+			opacity: 0;
+			pointer-events: none;
+		}
 	}
 	aside {
 		height: 100%;
@@ -189,73 +185,12 @@
 			}
 		}
 	}
-	/* @container (min-width: 0px) and (max-width: 689px) {
-		.main-layout {
-			grid-template-columns: 1fr;
-		}
-		aside {
-			display: none;
-			&.mobileOpen {
-				display: block;
-				position: absolute;
-				top: var(--headerHeight);
-				left: 0;
-				width: 100vw;
-				height: calc(100vh - var(--headerHeight) - var(--footerHeight));
-				background-color: var(--background);
-				z-index: 10;
-			}
-		}
-		main {
-			margin-right: auto;
-			margin-left: auto;
-			width: 100vw;
-		}
-		nav .logout {
-			display: none;
-		}
-		main {
-			margin-right: auto;
-			margin-left: auto;
-			width: 100vw;
-		}
-	}
-
-	/* Container query for medium widths */
-	@container (min-width: 691px) and (max-width: 900px) {
-		.main-layout {
-			grid-template-columns: 1fr 2fr;
-		}
-	}
 
 	.menu-button {
 		display: none;
 
 		@media screen and (max-width: 690px) {
 			display: block;
-		}
-	}
-	/* @container (max-width: 690px) {
-		.main-layout {
-			grid-template-columns: 1fr;
-		}
-		aside {
-			display: none;
-		}
-		main {
-			margin-right: auto;
-			margin-left: auto;
-			width: 100vw;
-		}
-		nav .logout {
-			display: none;
-		}
-	} */
-
-	/* Container query for medium widths */
-	@container (min-width: 691px) and (max-width: 900px) {
-		.main-layout {
-			grid-template-columns: 1fr 2fr;
 		}
 	}
 </style>
