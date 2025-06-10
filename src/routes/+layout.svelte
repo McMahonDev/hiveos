@@ -117,7 +117,7 @@
 		grid-template-columns: 1fr 2fr;
 		grid-template-rows: 1fr;
 		gap: 20px;
-		height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+		height: calc(100dvh - var(--headerHeight) - var(--footerHeight));
 		@media screen and (max-width: 690px) {
 			grid-template-columns: 1fr;
 			grid-template-rows: auto 1fr;
@@ -161,12 +161,23 @@
 				&.bottom {
 					margin-top: auto;
 				}
+				@media screen and (max-width: 690px) {
+					width: 100%;
+				}
 			}
 			a {
 				text-decoration: none;
 				color: var(--textColor);
 				font-size: 1.2rem;
 				font-weight: 600;
+				@media screen and (max-width: 690px) {
+					display: block;
+					width: 100%;
+					font-size: 1.5rem;
+					padding: 10px;
+					text-align: center;
+					cursor: pointer;
+				}
 			}
 		}
 
@@ -178,7 +189,7 @@
 			position: fixed;
 
 			width: 100%;
-			height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+			height: calc(100dvh - var(--headerHeight) - var(--footerHeight));
 			text-align: center;
 			&.menuOpen {
 				top: calc(var(--headerHeight));
