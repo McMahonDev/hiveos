@@ -117,7 +117,7 @@
 		grid-template-columns: 1fr 2fr;
 		grid-template-rows: 1fr;
 		gap: 20px;
-		height: calc(100dvh - var(--headerHeight) - var(--footerHeight));
+		height: calc(100vh - var(--headerHeight) - var(--footerHeight));
 		@media screen and (max-width: 690px) {
 			grid-template-columns: 1fr;
 			grid-template-rows: auto 1fr;
@@ -189,7 +189,7 @@
 			position: fixed;
 
 			width: 100%;
-			height: calc(100dvh - var(--headerHeight) - var(--footerHeight));
+			height: calc(100vh - var(--headerHeight) - var(--footerHeight));
 			text-align: center;
 			&.menuOpen {
 				top: calc(var(--headerHeight));
