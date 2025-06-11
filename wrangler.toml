@@ -1,0 +1,5 @@
+name = "hiveos"
+
+main = "./.svelte-kit/cloudflare/_worker.js"
+compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2025-06-11"
