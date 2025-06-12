@@ -3,6 +3,8 @@ import { hash } from '$lib/utils/hash.js';
 import { db } from '$lib/server/db/index';
 import { eq } from 'drizzle-orm';
 import { users } from '$lib/server/db/schema';
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Ensure the user schema includes the email field
 import jwt from 'jsonwebtoken';
