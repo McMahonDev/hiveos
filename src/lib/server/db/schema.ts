@@ -1,8 +1,6 @@
 // drizzle/schema.ts
 import { pgTable, text, boolean, integer } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { time } from 'node:console';
-import { date, datetime } from 'drizzle-orm/mysql-core';
 
 // --- Users Table ---
 export const users = pgTable('users', {

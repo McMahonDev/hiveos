@@ -4,7 +4,7 @@ interface HashFunction {
 }
 export const hash: HashFunction = (a) => {
 	let hashed = crypto
-		.pbkdf2Sync(a, import.meta.env.VITE_INTERNAL_HASH as string, 1000, 64, `sha512`)
+		.pbkdf2Sync(a, process.env.VITE_INTERNAL_HASH as string, 1000, 64, `sha512`)
 		.toString(`hex`);
 	return hashed;
 };
