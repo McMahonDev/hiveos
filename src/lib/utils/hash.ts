@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const hashSalt = import.meta.env.INTERNAL_HASH || process.env.INTERNAL_HASH;
+const hashSalt = import.meta.env.VITE_INTERNAL_HASH || process.env.VITE_INTERNAL_HASH;
 if (!hashSalt) throw new Error('INTERNAL_HASH is not set');
 
 interface HashFunction {

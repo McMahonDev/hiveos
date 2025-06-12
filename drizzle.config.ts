@@ -2,7 +2,7 @@ import { defineConfig } from 'drizzle-kit';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const url = import.meta.env?.DATABASE_URL || process.env.DATABASE_URL;
+const url = import.meta.env?.VITE_DATABASE_URL || process.env.VITE_DATABASE_URL;
 
 if (!url) throw new Error('DATABASE_URL is not set');
 console.log('DATABASE_URL', url);

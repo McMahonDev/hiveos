@@ -3,7 +3,7 @@ import { schema, type Schema } from '../schema';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const url = import.meta.env?.CONNECTION_STRING || process.env.CONNECTION_STRING;
+const url = import.meta.env?.VITE_CONNECTION_STRING || process.env.VITE_CONNECTION_STRING;
 if (!url) throw new Error('CONNECTION_STRING is not set');
 
 let z: Z<Schema>;

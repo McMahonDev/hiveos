@@ -6,7 +6,7 @@ import { users } from '$lib/server/db/schema';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const hashSalt = import.meta.env.INTERNAL_HASH_SALT || process.env.INTERNAL_HASH_SALT;
+const hashSalt = import.meta.env.VITE_INTERNAL_HASH_SALT || process.env.VITE_INTERNAL_HASH_SALT;
 if (!hashSalt) throw new Error('INTERNAL_HASH_SALT is not set');
 
 // Ensure the user schema includes the email field

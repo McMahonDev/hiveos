@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const salt = import.meta.env.INTERNAL_HASH_SALT || process.env.INTERNAL_HASH_SALT;
+const salt = import.meta.env.VITE_INTERNAL_HASH_SALT || process.env.VITE_INTERNAL_HASH_SALT;
 if (!salt) {
 	throw new Error('INTERNAL_HASH_SALT is not defined in environment variables');
 }
