@@ -1,7 +1,12 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
+// src/lib/server/db.ts or schema.ts
 import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import dotenv from 'dotenv';
 dotenv.config();
-if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
-const client = postgres(process.env.DATABASE_URL);
+
+const url = import.meta.env?.DATABASE_URL || process.env.DATABASE_URL;
+
+if (!url) throw new Error('DATABASE_URL is not set');
+
+const client = postgres(url);
 export const db = drizzle(client);
