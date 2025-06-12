@@ -38,11 +38,15 @@ export const actions = {
 		const account = await db.select().from(users).where(eq(users.email, email)).execute();
 		const hashedPassword = hash(password);
 		if (account[0] && account[0].password === hashedPassword) {
+			const secret = process.env.INTERNAL_HASH_SALT;
+			if (!secret) {
+				throw new Error('INTERNAL_HASH_SALT is not defined in environment variables');
+			}
 			token = sign(
 				{
 					user: email
 				},
-				process.env.INTERNAL_HASH_SALT,
+				secret,
 				{ expiresIn: '30d' }
 			);
 		} else {

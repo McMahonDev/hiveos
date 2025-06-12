@@ -25,7 +25,10 @@ export async function handle({
 		const token = cookies.session;
 
 		try {
-			const jwtUser = verify(token, process.env.INTERNAL_HASH_SALT);
+			if (!process.env.INTERNAL_HASH_SALT) {
+				throw new Error('INTERNAL_HASH_SALT is not defined in environment variables');
+			}
+			const jwtUser = verify(token, process.env.INTERNAL_HASH_SALT as string);
 			if (typeof jwtUser === 'string') {
 				throw new Error('Something went wrong');
 			}
@@ -46,9 +49,12 @@ export async function handle({
 				groupId = '0';
 			}
 
+			if (account[0].email === null) {
+				throw new Error('User email is null');
+			}
 			const sessionUser = {
 				id: account[0].id,
-				email: account[0].email,
+				email: account[0].email as string,
 				groupId: groupId
 			};
 
@@ -64,7 +70,7 @@ export async function handle({
 }
 
 /** @type {import('@sveltejs/kit').GetSession} */
-export async function getSession({ locals }) {
+export async function getSession({ locals }: { locals: Locals }) {
 	return {
 		user: locals.user
 	};
