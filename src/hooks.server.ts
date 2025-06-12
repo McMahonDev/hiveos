@@ -4,6 +4,8 @@ const { verify } = jwt;
 import { db } from '$lib/server/db/index';
 import { userGroupMembers, users } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import dotenv from 'dotenv';
+dotenv.config();
 
 interface Locals {
 	user: { id: string; email: string } | null;
@@ -23,7 +25,7 @@ export async function handle({
 		const token = cookies.session;
 
 		try {
-			const jwtUser = verify(token, import.meta.env.VITE_INTERNAL_HASH_SALT);
+			const jwtUser = verify(token, process.env.INTERNAL_HASH_SALT);
 			if (typeof jwtUser === 'string') {
 				throw new Error('Something went wrong');
 			}
@@ -33,11 +35,15 @@ export async function handle({
 			if (!account[0]) {
 				throw new Error('User not found');
 			}
-			const group = await db.select().from(userGroupMembers).where(eq(userGroupMembers.userId, account[0].id)).execute();
+			const group = await db
+				.select()
+				.from(userGroupMembers)
+				.where(eq(userGroupMembers.userId, account[0].id))
+				.execute();
 			console.log('run group query');
 			let groupId = group[0]?.userGroupId;
 			if (!groupId) {
-				groupId = "0"
+				groupId = '0';
 			}
 
 			const sessionUser = {

@@ -1,4 +1,6 @@
 import { redirect } from '@sveltejs/kit';
+import dotenv from 'dotenv';
+dotenv.config();
 
 export async function load({ cookies }) {
 	// Clear the session cookie
@@ -6,7 +8,7 @@ export async function load({ cookies }) {
 		path: '/',
 		httpOnly: true,
 		sameSite: 'strict',
-		secure: import.meta.env.VITE_NODE_ENV === 'production',
+		secure: process.env.NODE_ENV === 'production',
 		maxAge: 0
 	});
 
