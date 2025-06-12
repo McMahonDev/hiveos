@@ -40,7 +40,7 @@ export const actions = {
 				{
 					user: email
 				},
-				import.meta.env.VITE_INTERNAL_HASH_SALT,
+				process.env.INTERNAL_HASH_SALT,
 				{ expiresIn: '30d' }
 			);
 		} else {
@@ -54,7 +54,7 @@ export const actions = {
 				path: '/',
 				httpOnly: true,
 				sameSite: 'strict',
-				secure: import.meta.env.VITE_NODE_ENV === 'production',
+				secure: process.env.NODE_ENV === 'production',
 				maxAge: 60 * 60 * 24 * 30 // 30 days
 			});
 		}

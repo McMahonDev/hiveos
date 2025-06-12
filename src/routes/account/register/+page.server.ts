@@ -58,3 +58,5 @@ export const actions = {
 		throw redirect(302, '/account/login');
 	}
 };
+
+// No changes needed unless you reference import.meta.env.VITE_... variables
