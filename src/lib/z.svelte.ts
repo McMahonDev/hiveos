@@ -3,10 +3,13 @@ import { schema, type Schema } from '../schema';
 import dotenv from 'dotenv';
 dotenv.config();
 
+const url = import.meta.env?.DATABASE_URL || process.env.DATABASE_URL;
+if (!url) throw new Error('DATABASE_URL is not set');
+
 export function get_z_options() {
 	return {
 		userID: 'uu1',
-		server: process.env.CONNECTION_STRING,
+		server: url,
 		schema,
 		kvStore: 'idb'
 		// ... other options

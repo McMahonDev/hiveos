@@ -2,6 +2,10 @@ import { Z } from 'zero-svelte';
 import { schema, type Schema } from '../schema';
 import dotenv from 'dotenv';
 dotenv.config();
+
+const url = import.meta.env?.CONNECTION_STRING || process.env.CONNECTION_STRING;
+if (!url) throw new Error('CONNECTION_STRING is not set');
+
 let z: Z<Schema>;
 
 export async function load(event) {
@@ -10,7 +14,7 @@ export async function load(event) {
 		function get_z_options() {
 			return {
 				userID: event.data.id,
-				server: process.env.CONNECTION_STRING,
+				server: url,
 				schema,
 				kvStore: 'idb'
 				// ... other options

@@ -7,6 +7,10 @@ import { eq } from 'drizzle-orm';
 import dotenv from 'dotenv';
 dotenv.config();
 
+const salt = import.meta.env.INTERNAL_HASH_SALT || process.env.INTERNAL_HASH_SALT;
+if (!salt) {
+	throw new Error('INTERNAL_HASH_SALT is not defined in environment variables');
+}
 interface Locals {
 	user: { id: string; email: string } | null;
 }
@@ -25,10 +29,10 @@ export async function handle({
 		const token = cookies.session;
 
 		try {
-			if (!process.env.INTERNAL_HASH_SALT) {
+			if (!salt) {
 				throw new Error('INTERNAL_HASH_SALT is not defined in environment variables');
 			}
-			const jwtUser = verify(token, process.env.INTERNAL_HASH_SALT as string);
+			const jwtUser = verify(token, salt);
 			if (typeof jwtUser === 'string') {
 				throw new Error('Something went wrong');
 			}
