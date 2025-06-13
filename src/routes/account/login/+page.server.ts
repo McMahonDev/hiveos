@@ -32,43 +32,30 @@ export const actions = {
 		const data = await request.formData();
 		const email = data.get('email') as string | null;
 		if (!email) {
-			// TODO: add error handling for missing email
-			throw redirect(302, '/account/login');
+			return { error: 'Email is required.' };
 		}
-		const password = data.get('password') as string;
-		let token;
 
+		const password = data.get('password') as string;
 		const account = await db.select().from(users).where(eq(users.email, email)).execute();
 		const hashedPassword = hash(password);
-		if (account[0] && account[0].password === hashedPassword) {
-			const secret = hashSalt;
-			if (!secret) {
-				throw new Error('INTERNAL_HASH_SALT is not defined in environment variables');
-			}
-			token = sign(
-				{
-					user: email
-				},
-				secret,
-				{ expiresIn: '30d' }
-			);
-		} else {
-			console.log('wrong password');
-			// TODO: add error
-			// throw redirect(302, '/account/login');
+
+		if (!account[0] || account[0].password !== hashedPassword) {
+			// Don't redirect on failure — just return an error
+			return {
+				error: 'Invalid email or password.'
+			};
 		}
 
-		if (token) {
-			cookies.set('session', token, {
-				path: '/',
-				httpOnly: true,
-				sameSite: 'strict',
-				secure: process.env.NODE_ENV === 'production',
-				maxAge: 60 * 60 * 24 * 30 // 30 days
-			});
-		}
+		const token = sign({ user: email }, hashSalt!, { expiresIn: '30d' });
 
-		// redirect the user
+		cookies.set('session', token, {
+			path: '/',
+			httpOnly: true,
+			sameSite: 'strict',
+			secure: process.env.NODE_ENV === 'production',
+			maxAge: 60 * 60 * 24 * 30 // 30 days
+		});
+
 		throw redirect(302, '/');
 	}
 };
