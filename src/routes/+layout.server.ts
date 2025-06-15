@@ -10,7 +10,7 @@ interface Locals {
 }
 
 export async function load({ locals, url, cookies }: { locals: Locals; url: URL; cookies: any }) {
-	// console.log(locals);
+	console.log(locals);
 	let auth: boolean;
 	let id: string;
 	let groupId: string;
