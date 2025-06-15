@@ -3,6 +3,7 @@ import { hash } from '$lib/utils/hash.js';
 import { db } from '$lib/server/db/index';
 import { eq } from 'drizzle-orm';
 import { users } from '$lib/server/db/schema';
+import { user } from '$lib/state/user.svelte';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -18,12 +19,11 @@ export async function load({ locals }: { locals: { user: any } }) {
 	// Check if the user is already logged in
 	if (locals?.user) {
 		throw redirect(302, '/');
+	} else {
+		return {
+			loggedIn: false
+		};
 	}
-	return {
-		props: {
-			user: locals.user
-		}
-	};
 }
 
 /** @type {import('./$types').Actions} */

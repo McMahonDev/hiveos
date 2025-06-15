@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { user } from '$lib/state/user.svelte';
 
 	// Define the type for form to include an optional error property
 	type FormType = {
@@ -7,8 +8,16 @@
 		[key: string]: any;
 	};
 
-	let { form }: { form?: FormType } = $props();
+	let { form, data } = $props();
 	console.log('Form:', form);
+	console.log('Data:', data);
+	if (data.loggedIn === false) {
+		user.auth = false;
+		user.isLoggedIn = false;
+		user.email = '';
+		user.userID = '';
+		user.groupId = '';
+	}
 </script>
 
 <section>

@@ -5,9 +5,18 @@
 	import LogoutIcon from '$lib/static/icons/logoutIcon.svelte';
 	import MenuIcon from '$lib/static/icons/menuIcon.svelte';
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
+	import { user } from '$lib/state/user.svelte';
 
+	// $inspect('user from layout', user);
 	let { children, data } = $props();
-	let auth = $derived(data.auth);
+	// console.log('Layout data:', data);
+	user.auth = data?.auth;
+	user.userID = data.id;
+	user.groupId = data.groupId;
+
+	// $inspect('user after layout', user);
+	// $inspect('user auth', user.auth);
+	let auth = $derived(user.auth);
 	let menuOpen = $state(false);
 	let menu: HTMLElement;
 	function toggleMenu() {
@@ -48,11 +57,11 @@
 		{#if auth}
 			<ul>
 				<li><a onclick={() => (menuOpen = false)} href="/">Dashboard</a></li>
-				<li><a onclick={() => (menuOpen = false)} href="/calendar">Calendar</a></li>
+				<!-- <li><a onclick={() => (menuOpen = false)} href="/calendar">Calendar</a></li> -->
 				<li><a onclick={() => (menuOpen = false)} href="/events">Events</a></li>
 				<li><a onclick={() => (menuOpen = false)} href="/shopping-list">Shopping List</a></li>
-				<li><a onclick={() => (menuOpen = false)} href="/tasks">Task list</a></li>
-				<li><a onclick={() => (menuOpen = false)} href="/recipies">Recipies</a></li>
+				<!-- <li><a onclick={() => (menuOpen = false)} href="/tasks">Task list</a></li> -->
+				<!-- <li><a onclick={() => (menuOpen = false)} href="/recipies">Recipies</a></li> -->
 				<li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
 			</ul>
 		{/if}

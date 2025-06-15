@@ -47,7 +47,7 @@ export async function handle({
 				.from(userGroupMembers)
 				.where(eq(userGroupMembers.userId, account[0].id))
 				.execute();
-			console.log('run group query');
+			// console.log('run group query');
 			let groupId = group[0]?.userGroupId;
 			if (!groupId) {
 				groupId = '0';

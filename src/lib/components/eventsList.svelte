@@ -16,7 +16,7 @@
 	// $inspect(events.current);
 
 	function deleteItem(event: Event) {
-		console.log('deleteItem', event);
+		// console.log('deleteItem', event);
 		const target = (event?.target as SVGElement)?.ownerSVGElement
 			?.parentElement as HTMLElement | null;
 		const id = target?.dataset?.id;
@@ -31,9 +31,9 @@
 </script>
 
 <div>
-	{#if events.current.length === 0}
+	{#if Array.isArray(events.current) && events.current.length === 0}
 		<p>No events found.</p>
-	{:else}
+	{:else if Array.isArray(events.current)}
 		<ul>
 			{#each events.current as event}
 				<li>
@@ -42,6 +42,8 @@
 				</li>
 			{/each}
 		</ul>
+	{:else}
+		<p>Loading events...</p>
 	{/if}
 </div>
 

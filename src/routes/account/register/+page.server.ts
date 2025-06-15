@@ -19,20 +19,20 @@ export async function load({ locals }: { locals: { user: any } }) {
 export const actions = {
 	createAccount: async ({ request }) => {
 		const data = await request.formData();
-		console.log(data);
+		// console.log(data);
 		const email = data.get('email') as string;
 		const password = data.get('password') as string;
 		const confirmPassword = data.get('confirmPassword') as string;
 		const name = data.get('name') as string;
 
-		console.log(email, password, confirmPassword);
+		// console.log(email, password, confirmPassword);
 		if (password !== confirmPassword) {
 			// TODO: add error
 			throw redirect(302, '/account/login');
 		}
 
 		const account = await db.select().from(users).where(eq(users.email, email)).execute();
-		console.log(account);
+		// console.log(account);
 		if (account[0]) {
 			// TODO: add error
 			throw redirect(302, '/account/login');
