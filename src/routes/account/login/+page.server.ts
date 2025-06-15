@@ -3,7 +3,6 @@ import { hash } from '$lib/utils/hash.js';
 import { db } from '$lib/server/db/index';
 import { eq } from 'drizzle-orm';
 import { users } from '$lib/server/db/schema';
-import { user } from '$lib/state/user.svelte';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -56,6 +55,6 @@ export const actions = {
 			maxAge: 60 * 60 * 24 * 30 // 30 days
 		});
 
-		throw redirect(302, '/');
+		return redirect(302, '/');
 	}
 };
