@@ -55,6 +55,8 @@ export const actions = {
 			maxAge: 60 * 60 * 24 * 30 // 30 days
 		});
 
-		return redirect(302, '/');
+		console.log(`User ${email} logged in.`);
+		// Instead of redirect, return success and let client-side handle redirect
+		return { success: true };
 	}
 };

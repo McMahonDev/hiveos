@@ -18,12 +18,18 @@
 		user.userID = '';
 		user.groupId = '';
 	}
+	if (form?.success) {
+		console.log('Login successful, redirecting...');
+	}
 </script>
 
 <section>
 	<h1>Login</h1>
 	{#if form?.error}
 		<p class="text-red-500">{form.error}</p>
+	{/if}
+	{#if form?.success}
+		<p class="text-green-500">Login successful! Redirecting...</p>
 	{/if}
 	<form use:enhance method="POST" action="?/login">
 		<input type="email" name="email" placeholder="Email" required />
