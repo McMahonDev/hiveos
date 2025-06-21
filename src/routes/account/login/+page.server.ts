@@ -56,7 +56,7 @@ export const actions = {
 		});
 
 		console.log(`User ${email} logged in.`);
-		// Instead of redirect, return success and let client-side handle redirect
-		return { success: true };
+		// Redirect to the home page after successful login
+		throw redirect(302, '/');
 	}
 };
