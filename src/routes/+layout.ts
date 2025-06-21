@@ -7,12 +7,10 @@ import type { LayoutLoad } from './$types';
 const url = import.meta.env?.VITE_CONNECTION_STRING;
 if (!url) throw new Error('CONNECTION_STRING is not set');
 
-let z: Z<Schema> | undefined;
-
 export const load: LayoutLoad = async (event) => {
 	let { auth, id, groupId } = event.data;
 	const sessionUser = auth && id && groupId ? { id, groupId } : null;
-
+	let z: Z<Schema> | undefined;
 	// Defaults
 	auth = false;
 	id = '';
