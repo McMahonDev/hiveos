@@ -5,12 +5,12 @@
 	const { data } = $props();
 	const z = data.z;
 
-	let groupId = $state('0') as string;
+	let groupId = $state(data.groupId) as string;
 	let userId = $state(data.id);
 
 	let group = $state(new Query(z.current.query.userGroups.where('id', groupId)));
 
-	const user = new Query(z.current.query.users.where('id', userId));
+	const user = new Query(z.current.query.user.where('id', userId));
 	const email = $derived(user.current[0]?.email ?? '');
 	const userGroupMembers = new Query(
 		z.current.query.userGroupMembers.where('userGroupId', groupId)

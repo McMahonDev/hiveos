@@ -5,9 +5,9 @@
 	let { data } = $props();
 	let z = data.z;
 	let groupId = data.groupId;
-	if (groupId === '0') {
-		groupId = data.id;
-	}
+
+	// groupId is now properly set to userId when no group membership exists
+	// so we don't need to check for '0' fallback anymore
 
 	const events = new Query(
 		z.current.query.events.where('assignedToId', groupId).orderBy('datetime', 'asc')

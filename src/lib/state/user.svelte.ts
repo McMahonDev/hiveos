@@ -3,5 +3,5 @@ export const user = $state({
 	isLoggedIn: false,
 	userID: '',
 	email: '',
-	groupId: '0'
+	groupId: '' // Will be set to userId when user logs in
 });

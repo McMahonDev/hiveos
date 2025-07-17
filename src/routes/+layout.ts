@@ -8,18 +8,18 @@ const url = import.meta.env?.VITE_CONNECTION_STRING;
 if (!url) throw new Error('CONNECTION_STRING is not set');
 
 export const load: LayoutLoad = async (event) => {
-	let { auth, id, groupId } = event.data;
-	const sessionUser = auth && id && groupId ? { id, groupId } : null;
+	let { auth, id, groupId, user: sessionUser, session } = event.data;
+	const authenticatedUser = auth && id && groupId ? { id, groupId } : null;
 	let z: Z<Schema> | undefined;
 	// Defaults
 	auth = false;
 	id = '';
-	groupId = '0';
+	groupId = id || '0'; // Use userId as fallback for groupId
 
-	if (sessionUser) {
+	if (authenticatedUser) {
 		auth = true;
-		id = sessionUser.id;
-		groupId = sessionUser.groupId;
+		id = authenticatedUser.id;
+		groupId = authenticatedUser.groupId;
 
 		// Z init
 		function get_z_options() {
@@ -37,8 +37,9 @@ export const load: LayoutLoad = async (event) => {
 		user.groupId = groupId;
 		user.auth = auth;
 		user.isLoggedIn = true;
+		user.email = sessionUser?.email || '';
 
-		console.log('User session found:', sessionUser);
+		console.log('User session found:', authenticatedUser);
 	} else {
 		console.log('No session, skipping Z init');
 		z = undefined;
@@ -48,6 +49,8 @@ export const load: LayoutLoad = async (event) => {
 		auth,
 		id,
 		groupId,
+		user: sessionUser,
+		session,
 		z
 	};
 };

@@ -1,14 +1,12 @@
 // drizzle/schema.ts
-import { pgTable, text, boolean, integer } from 'drizzle-orm/pg-core';
+import { pgTable, text,timestamp, boolean, integer } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
-// --- Users Table ---
-export const users = pgTable('users', {
-	id: text('id').primaryKey(),
-	name: text('name'),
-	email: text('email'),
-	password: text('password')
-});
+// Import and re-export the Better Auth tables
+import { user, session, account, verification } from '../../../../auth-schema';
+
+// Re-export Better Auth tables so Drizzle can see them
+export { user, session, account, verification };
 
 // --- Tasks Table ---
 export const tasks = pgTable('tasks', {
@@ -60,61 +58,61 @@ export const userGroupRequests = pgTable('userGroupRequests', {
 
 // --- Relationships ---
 // Users <-> Tasks
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(user, ({ many }) => ({
 	createdTasks: many(tasks, { relationName: 'createdById' }),
 	assignedTasks: many(tasks, { relationName: 'assignedToId' })
 }));
 
 // Tasks <-> Users and Events
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
-	createdBy: one(users, {
+	createdBy: one(user, {
 		fields: [tasks.createdById],
-		references: [users.id],
+		references: [user.id],
 		relationName: 'createdById'
 	}),
-	assignedTo: one(users, {
+	assignedTo: one(user, {
 		fields: [tasks.assignedToId],
-		references: [users.id],
+		references: [user.id],
 		relationName: 'assignedToId'
 	})
 }));
 
 // Events <-> Users
 export const eventsRelations = relations(events, ({ one }) => ({
-	createdBy: one(users, {
+	createdBy: one(user, {
 		fields: [events.createdById],
-		references: [users.id]
+		references: [user.id]
 	}),
-	assignedTo: one(users, {
+	assignedTo: one(user, {
 		fields: [events.assignedToId],
-		references: [users.id]
+		references: [user.id]
 	})
 }));
 
 // Shopping List <-> Users
 export const shoppingListRelations = relations(shoppingList, ({ one }) => ({
-	createdBy: one(users, {
+	createdBy: one(user, {
 		fields: [shoppingList.createdById],
-		references: [users.id]
+		references: [user.id]
 	}),
-	assignedTo: one(users, {
+	assignedTo: one(user, {
 		fields: [shoppingList.assignedToId],
-		references: [users.id]
+		references: [user.id]
 	})
 }));
 // UserGroups <-> Users
 export const userGroupsRelations = relations(userGroups, ({ one }) => ({
-	createdBy: one(users, {
+	createdBy: one(user, {
 		fields: [userGroups.createdById],
-		references: [users.id]
+		references: [user.id]
 	})
 }));
 
 // UserGroupMembers <-> Users and UserGroups
 export const userGroupMembersRelations = relations(userGroupMembers, ({ one }) => ({
-	user: one(users, {
+	user: one(user, {
 		fields: [userGroupMembers.userId],
-		references: [users.id]
+		references: [user.id]
 	}),
 	userGroup: one(userGroups, {
 		fields: [userGroupMembers.userGroupId],
@@ -124,9 +122,9 @@ export const userGroupMembersRelations = relations(userGroupMembers, ({ one }) =
 
 // UserGroupRequests <-> Users and UserGroups
 export const userGroupRequestsRelations = relations(userGroupRequests, ({ one }) => ({
-	createdBy: one(users, {
+	createdBy: one(user, {
 		fields: [userGroupRequests.sentByEmail],
-		references: [users.id]
+		references: [user.id]
 	}),
 	userGroup: one(userGroups, {
 		fields: [userGroupRequests.userGroupId],
