@@ -11,8 +11,8 @@ export const load: LayoutLoad = async (event) => {
 	let { auth, id, groupId, user: sessionUser, session } = event.data;
 	const authenticatedUser = auth && id && groupId ? { id, groupId } : null;
 	let z: Z<Schema> | undefined;
-	// Defaults
-	//  // Use userId as fallback for groupId
+
+
 
 	if (authenticatedUser) {
 		auth = true;
