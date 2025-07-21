@@ -1,19 +1,7 @@
-import { redirect } from '@sveltejs/kit';
+// This server-side logout is no longer needed since we handle logout client-side
+// The logout functionality is now handled by the handleLogout function in +layout.svelte
 
-export async function load({ cookies }) {
-	// Clear the session cookie
-	cookies.set('session', '', {
-		path: '/',
-		httpOnly: true,
-		sameSite: 'strict',
-		secure: import.meta.env.VITE_NODE_ENV === 'production',
-		maxAge: 0
-	});
-
-	return {
-		loggedIn: false
-	};
-
-	// Redirect to the login page
-	// throw redirect(302, '/account/login');
+export async function load() {
+	// Return empty object - logout is handled client-side
+	return {};
 }

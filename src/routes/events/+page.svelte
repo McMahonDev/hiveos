@@ -4,12 +4,12 @@
 	import EventsList from '$lib/components/eventsList.svelte';
 
 	let { data } = $props();
-	console.log(data);
+	// console.log(data);
 	let z = data.z;
 
-	const events = new Query(z.current.query.events.where('assignedToId', data.id));
-	const group = new Query(z.current.query.userGroups.where('id', data.groupId));
-	let groupid = $derived(group.current[0]?.id ?? data.groupId);
+	const events = z ? new Query(z.current.query.events.where('assignedToId', data.id)) : null;
+	const group = z ? new Query(z.current.query.userGroups.where('id', data.groupId)) : null;
+	let groupid = $derived((group && group.current[0]?.id) ?? data.groupId);
 	function onsubmit(event: Event) {
 		event.preventDefault();
 		const formData = new FormData(event.target as HTMLFormElement);
@@ -28,7 +28,7 @@
 			groupid = data.id;
 		}
 
-		if (name && date) {
+		if (name && date && z) {
 			z.current.mutate.events.insert({
 				id: nanoid(),
 				name,

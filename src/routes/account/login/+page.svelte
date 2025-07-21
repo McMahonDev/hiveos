@@ -1,12 +1,72 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import { authClient } from '$lib/auth/client';
+	import { goto } from '$app/navigation';
+	import { user } from '$lib/state/user.svelte';
+	import { onMount } from 'svelte';
+
+	let email = '';
+	let password = '';
+	let error = '';
+	let isLoading = false;
+
+	onMount(() => {
+		console.log('Login page mounted');
+		console.log('Current user state:', user);
+	});
+
+	async function handleLogin() {
+		console.log('Starting login process');
+		error = '';
+		isLoading = true;
+
+		try {
+			const { data, error: err } = await authClient.signIn.email({
+				email,
+				password
+			});
+
+			if (err) {
+				console.error('Login error:', err);
+				error = err.message ?? 'An unknown error occurred.';
+			} else {
+				console.log('Login successful, updating user state');
+
+				// Update user state immediately for instant UI update
+				user.auth = true;
+				user.isLoggedIn = true;
+				user.email = email;
+
+				console.log('User state updated, redirecting to dashboard');
+
+				// Use client-side navigation without page refresh
+				goto('/', { replaceState: true, noScroll: true });
+			}
+		} catch (e) {
+			console.error('Login catch error:', e);
+			error = 'Login failed. Please try again.';
+		} finally {
+			isLoading = false;
+		}
+	}
 </script>
 
-<section>
-	<h1>Login</h1>
-	<form use:enhance method="POST" action="?/login">
-		<input type="email" name="email" placeholder="Email" required />
-		<input type="password" name="password" placeholder="Password" required />
-		<button type="submit">Login</button>
-	</form>
-</section>
+<h1>Login</h1>
+<form on:submit|preventDefault={handleLogin}>
+	<input type="email" bind:value={email} placeholder="Email" required disabled={isLoading} />
+	<input
+		type="password"
+		bind:value={password}
+		placeholder="Password"
+		required
+		disabled={isLoading}
+	/>
+	<button type="submit" disabled={isLoading}>
+		{isLoading ? 'Logging in...' : 'Login'}
+	</button>
+</form>
+{#if error}
+	<p style="color: red;">{error}</p>
+{/if}
+<p>
+	Don't have an account? <a href="/account/register">Sign up</a>
+</p>
