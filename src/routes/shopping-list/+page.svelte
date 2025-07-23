@@ -5,9 +5,10 @@
 
 	let { data } = $props();
 	let z = data.z;
+	let groupId = data.groupId;
 
 	const group = new Query(z.current.query.userGroups.where('id', data.groupId));
-	let groupid = $derived(group.current[0]?.id ?? data.groupId);
+	// let groupId = $derived(group.current[0]?.id ?? data.groupId);
 
 	function onsubmit(event: Event) {
 		event.preventDefault();
@@ -15,14 +16,14 @@
 		const name = formData.get('name') as string;
 		const id = nanoid();
 		if (name) {
-			if (groupid === '0') {
-				groupid = data.id;
+			if (groupId === '0') {
+				groupId = data.id;
 			}
 			z.current.mutate.shoppingList.insert({
 				id,
 				name,
 				status: false,
-				assignedToId: groupid,
+				assignedToId: groupId,
 				createdById: data.id
 			});
 			(event.target as HTMLFormElement).reset();

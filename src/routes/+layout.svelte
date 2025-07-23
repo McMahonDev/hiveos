@@ -76,7 +76,7 @@
 
 	<nav>
 		{#if auth}
-			<button class="button" onclick={handleLogout}>Logout <LogoutIcon /></button>
+			<button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button>
 			<button onclick={toggleMenu} class="menu-button" aria-label="Open menu">
 				{#if menuOpen}
 					<CloseIcon />
@@ -101,7 +101,8 @@
 				<li><a onclick={() => (menuOpen = false)} href="/shopping-list">Shopping List</a></li>
 				<!-- <li><a onclick={() => (menuOpen = false)} href="/tasks">Task list</a></li> -->
 				<!-- <li><a onclick={() => (menuOpen = false)} href="/recipies">Recipies</a></li> -->
-				<li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
+				<button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button>
+				<!-- <li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li> -->
 			</ul>
 		</aside>
 	{/if}
@@ -111,7 +112,7 @@
 	</main>
 </div>
 
-<footer></footer>
+<!-- <footer></footer> -->
 
 <style>
 	header {
@@ -156,6 +157,11 @@
 			&:active {
 				transform: translateY(1px);
 			}
+			&.logout {
+				@media screen and (max-width: 690px) {
+					display: none;
+				}
+			}
 		}
 	}
 
@@ -171,7 +177,8 @@
 		grid-template-columns: 1fr 2fr;
 		grid-template-rows: 1fr;
 		gap: 20px;
-		height: calc(100dvh - var(--headerHeight) - var(--footerHeight));
+		/* height: calc(100dvh - var(--headerHeight) - var(--footerHeight)); */
+		min-height: calc(100dvh - var(--headerHeight));
 		@media screen and (max-width: 690px) {
 			grid-template-columns: 1fr;
 			grid-template-rows: auto 1fr;
@@ -233,6 +240,12 @@
 					cursor: pointer;
 				}
 			}
+			.logout {
+				display: none;
+				@media screen and (max-width: 690px) {
+					display: unset;
+				}
+			}
 		}
 
 		@media screen and (max-width: 690px) {
@@ -243,7 +256,7 @@
 			position: fixed;
 
 			width: 100%;
-			height: calc(100dvh - var(--headerHeight) - var(--footerHeight));
+			height: calc(100dvh - var(--headerHeight));
 			text-align: center;
 			&.menuOpen {
 				top: calc(var(--headerHeight));

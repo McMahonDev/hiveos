@@ -12,8 +12,6 @@ export const load: LayoutLoad = async (event) => {
 	const authenticatedUser = auth && id && groupId ? { id, groupId } : null;
 	let z: Z<Schema> | undefined;
 
-
-
 	if (authenticatedUser) {
 		auth = true;
 		id = authenticatedUser.id;

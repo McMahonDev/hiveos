@@ -60,6 +60,7 @@
 	/* Container */
 	--container-width: 100%;
 	--margin-right: 15px;
+	--margin-left: 15px;
 }
 
 /* From Typescale */
