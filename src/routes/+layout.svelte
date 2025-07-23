@@ -69,6 +69,37 @@
 			window.removeEventListener('popstate', unlisten);
 		};
 	});
+
+	let notificationPermission = $state<NotificationPermission | undefined>(undefined);
+
+	// Svelte 5: convert onMount to $effect with browser check
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		// Register service worker
+		if ('serviceWorker' in navigator) {
+			navigator.serviceWorker.register('/service-worker.js');
+		}
+		// Register manifest
+		const manifest = document.createElement('link');
+		manifest.rel = 'manifest';
+		manifest.href = '/manifest.webmanifest';
+		document.head.appendChild(manifest);
+		// Get current notification permission
+		if ('Notification' in window) {
+			notificationPermission = Notification.permission;
+		}
+	});
+
+	function requestNotificationPermission() {
+		if ('Notification' in window) {
+			Notification.requestPermission().then((permission) => {
+				notificationPermission = permission;
+			});
+		}
+	}
+
+	// Example: show notification on content change
+	// Replace this with your actual content change logic
 </script>
 
 <header>
@@ -103,6 +134,16 @@
 				<!-- <li><a onclick={() => (menuOpen = false)} href="/recipies">Recipies</a></li> -->
 				<button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button>
 				<!-- <li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li> -->
+				{#if notificationPermission !== 'granted'}
+					<button
+						onclick={requestNotificationPermission}
+						disabled={notificationPermission === 'granted'}
+					>
+						{notificationPermission === 'granted'
+							? 'Notifications Enabled'
+							: 'Enable Notifications'}
+					</button>
+				{/if}
 			</ul>
 		</aside>
 	{/if}

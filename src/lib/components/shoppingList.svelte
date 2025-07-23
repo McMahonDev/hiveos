@@ -2,6 +2,7 @@
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
 	import { Query } from 'zero-svelte';
 	import type { ShoppingList } from '../../schema.js';
+	import { notifyContentChange } from '$lib/utils/notification';
 
 	let { data } = $props();
 	let z = data.z;
@@ -21,6 +22,7 @@
 		}
 		if (id) {
 			z.current.mutate.shoppingList.delete({ id });
+			notifyContentChange('Shopping List Updated', 'An item was deleted from the shopping list.');
 		}
 	}
 
@@ -29,6 +31,7 @@
 		const id = checkbox.value;
 		const completed = checkbox.checked;
 		z.current.mutate.shoppingList.update({ id, status: completed });
+		notifyContentChange('Shopping List Updated', 'An item was updated in the shopping list.');
 	}
 </script>
 

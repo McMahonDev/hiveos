@@ -1,6 +1,7 @@
 <script lang="ts">
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
 	import { Query } from 'zero-svelte';
+	import { notifyContentChange } from '$lib/utils/notification';
 
 	let { data } = $props();
 	let z = data.z;
@@ -26,6 +27,7 @@
 		}
 		if (id) {
 			z.current.mutate.events.delete({ id });
+			notifyContentChange('Events Updated', 'An event was deleted.');
 		}
 	}
 </script>
