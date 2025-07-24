@@ -51,7 +51,8 @@ const shoppingList = table('shoppingList')
 		name: string(),
 		status: boolean(),
 		createdById: string(),
-		assignedToId: string()
+		assignedToId: string(),
+		created_at: number() // Database uses snake_case
 	})
 	.primaryKey('id');
 

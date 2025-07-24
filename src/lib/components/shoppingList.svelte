@@ -11,7 +11,9 @@
 		groupid = data.id;
 	}
 
-	const shoppingList = new Query(z.current.query.shoppingList.where('assignedToId', groupid));
+	const shoppingList = new Query(
+		z.current.query.shoppingList.where('assignedToId', groupid).orderBy('createdAt', 'desc')
+	);
 	function deleteItem(event: Event) {
 		const target = event.target as HTMLElement | null;
 		const id = target?.dataset?.id;
