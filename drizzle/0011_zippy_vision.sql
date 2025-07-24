@@ -1,0 +1,1 @@
+ALTER TABLE "shoppingList" ADD COLUMN "createdAt" timestamp;

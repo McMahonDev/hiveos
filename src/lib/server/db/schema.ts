@@ -32,7 +32,8 @@ export const shoppingList = pgTable('shoppingList', {
 	name: text('name'),
 	status: boolean('status'),
 	createdById: text('createdById'),
-	assignedToId: text('assignedToId')
+	assignedToId: text('assignedToId'),
+	createdAt: timestamp('createdAt')
 });
 
 export const userGroups = pgTable('userGroups', {
