@@ -10,6 +10,8 @@
 
 	const shoppingList = new Query(z.current.query.shoppingList.where('assignedToId', groupId));
 
+	$inspect(shoppingList.current);
+
 	// order by createdAt asc
 	shoppingList.current = shoppingList.current.sort((a, b) => a.createdAt - b.createdAt);
 
