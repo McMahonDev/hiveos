@@ -47,7 +47,7 @@
 		"process": "^0.11.10",
 		"stream-browserify": "^3.0.0",
 		"util": "^0.12.5",
-		"zero-svelte": "^0.2.1"
+		"zero-svelte": "^0.3.6"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [
@@ -58,10 +58,7 @@
 		],
 		"ignoredBuiltDependencies": [
 			"protobufjs"
-		],
-		"patchedDependencies": {
-			"zero-svelte@0.2.1": "patches/zero-svelte@0.2.1.patch"
-		}
+		]
 	},
 	"engines": {
 		"node": ">=22.4.0"
