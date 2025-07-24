@@ -10,7 +10,6 @@
 
 	let modalOpen = $state(false);
 
-
 	function onsubmit(event: Event) {
 		event.preventDefault();
 		const formData = new FormData(event.target as HTMLFormElement);
@@ -22,7 +21,8 @@
 				name,
 				status: false,
 				assignedToId: groupId,
-				createdById: data.id
+				createdById: data.id,
+				createdAt: Date.now()
 			});
 			(event.target as HTMLFormElement).reset();
 		}

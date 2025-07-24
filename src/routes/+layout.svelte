@@ -75,10 +75,6 @@
 	// Svelte 5: convert onMount to $effect with browser check
 	$effect(() => {
 		if (typeof window === 'undefined') return;
-		// Register service worker
-		if ('serviceWorker' in navigator) {
-			navigator.serviceWorker.register('/service-worker.js');
-		}
 		// Register manifest
 		const manifest = document.createElement('link');
 		manifest.rel = 'manifest';
