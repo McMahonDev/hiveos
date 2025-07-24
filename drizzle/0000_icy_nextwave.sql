@@ -40,7 +40,8 @@ CREATE TABLE "shoppingList" (
 	"name" text,
 	"status" boolean,
 	"createdById" text,
-	"assignedToId" text
+	"assignedToId" text,
+	"createdAt" timestamp
 );
 --> statement-breakpoint
 CREATE TABLE "tasks" (

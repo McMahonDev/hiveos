@@ -25,7 +25,7 @@ const user = table('user')
 		email_verified: boolean(), // Database uses snake_case
 		image: string().optional(),
 		created_at: number(), // Database uses snake_case
-		updated_at: number()  // Database uses snake_case
+		updated_at: number() // Database uses snake_case
 	})
 	.primaryKey('id');
 
@@ -56,7 +56,7 @@ const account = table('account')
 		scope: string().optional(),
 		password: string().optional(),
 		created_at: number(), // Database uses snake_case
-		updated_at: number()  // Database uses snake_case
+		updated_at: number() // Database uses snake_case
 	})
 	.primaryKey('id');
 
@@ -67,7 +67,7 @@ const verification = table('verification')
 		value: string(),
 		expires_at: number(), // Database uses snake_case
 		created_at: number().optional(), // Database uses snake_case
-		updated_at: number().optional()  // Database uses snake_case
+		updated_at: number().optional() // Database uses snake_case
 	})
 	.primaryKey('id');
 
@@ -100,7 +100,7 @@ const shoppingList = table('shoppingList')
 		status: boolean(),
 		createdById: string(),
 		assignedToId: string(),
-		created_at: number() // Database uses snake_case
+		createdAt: number() // Added missing createdAt column
 	})
 	.primaryKey('id');
 
@@ -209,7 +209,18 @@ const accountRelationships = relationships(account, ({ one }) => ({
 }));
 
 export const schema = createSchema({
-	tables: [user, session, account, verification, tasks, events, shoppingList, userGroups, userGroupMembers, userGroupRequests],
+	tables: [
+		user,
+		session,
+		account,
+		verification,
+		tasks,
+		events,
+		shoppingList,
+		userGroups,
+		userGroupMembers,
+		userGroupRequests
+	],
 	relationships: [
 		taskRelationships,
 		eventRelationships,

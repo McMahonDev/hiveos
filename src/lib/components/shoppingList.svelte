@@ -1,20 +1,17 @@
 <script lang="ts">
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
 	import { Query } from 'zero-svelte';
-	import type { ShoppingList } from '../../schema.js';
 	import { notifyContentChange } from '$lib/utils/notification';
 
 	let { data } = $props();
 	let z = data.z;
 
-	let groupid = data.groupId;
-	if (groupid === '0') {
-		groupid = data.id;
-	}
+	let groupId = data.groupId;
 
 	const shoppingList = new Query(
-		z.current.query.shoppingList.where('assignedToId', groupid).orderBy('createdAt', 'desc')
+		z.current.query.shoppingList.where('assignedToId', groupId).orderBy('createdAt', 'asc')
 	);
+
 	function deleteItem(event: Event) {
 		const target = event.target as HTMLElement | null;
 		const id = target?.dataset?.id;

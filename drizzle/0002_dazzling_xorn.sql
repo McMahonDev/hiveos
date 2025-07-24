@@ -1,0 +1,1 @@
+ALTER TABLE "shoppingList" DROP COLUMN "created_at";

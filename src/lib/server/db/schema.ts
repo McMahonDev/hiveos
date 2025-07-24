@@ -1,5 +1,5 @@
 // drizzle/schema.ts
-import { pgTable, text,timestamp, boolean, integer } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Import and re-export the Better Auth tables
@@ -33,7 +33,7 @@ export const shoppingList = pgTable('shoppingList', {
 	status: boolean('status'),
 	createdById: text('createdById'),
 	assignedToId: text('assignedToId'),
-	createdAt: timestamp('createdAt')
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
 });
 
 export const userGroups = pgTable('userGroups', {
