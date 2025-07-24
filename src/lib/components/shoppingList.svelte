@@ -8,9 +8,10 @@
 
 	let groupId = data.groupId;
 
-	const shoppingList = new Query(
-		z.current.query.shoppingList.where('assignedToId', groupId).orderBy('createdAt', 'asc')
-	);
+	const shoppingList = new Query(z.current.query.shoppingList.where('assignedToId', groupId));
+
+	// order by createdAt asc
+	shoppingList.current = shoppingList.current.sort((a, b) => a.createdAt - b.createdAt);
 
 	function deleteItem(event: Event) {
 		const target = event.target as HTMLElement | null;
