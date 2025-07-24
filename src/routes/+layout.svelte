@@ -5,30 +5,109 @@
 	import LogoutIcon from '$lib/static/icons/logoutIcon.svelte';
 	import MenuIcon from '$lib/static/icons/menuIcon.svelte';
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
+	import { user } from '$lib/state/user.svelte';
+	import { authClient } from '$lib/auth/client';
+	import { goto } from '$app/navigation';
 
+	// $inspect('user from layout', user);
 	let { children, data } = $props();
-	let auth = $derived(data.auth);
+	// console.log('Layout data:', data);
+	user.auth = data?.auth;
+	user.isLoggedIn = data?.auth;
+	user.userID = data.id;
+	user.groupId = data.groupId;
+	user.email = data.user?.email || '';
+
+	// $inspect('user after layout', user);
+	// $inspect('user auth', user.auth);
+	let auth = $derived(user.auth);
 	let menuOpen = $state(false);
 	let menu: HTMLElement;
+
 	function toggleMenu() {
 		menuOpen = !menuOpen;
 	}
+
+	async function handleLogout() {
+		console.log('Starting logout process');
+		try {
+			// Sign out using Better Auth
+			console.log('Calling Better Auth signOut');
+			await authClient.signOut();
+
+			console.log('Clearing user state');
+			// Clear local user state
+			user.auth = false;
+			user.isLoggedIn = false;
+			user.email = '';
+			user.userID = '';
+			user.groupId = '';
+
+			menuOpen = false; // Close menu on logout
+
+			console.log('User state cleared, redirecting to login');
+			// Use client-side navigation without page refresh
+			await goto('/account/login', { replaceState: true, noScroll: true });
+			console.log('Navigation to login complete');
+		} catch (error) {
+			console.error('Logout failed:', error);
+		}
+	}
+
 	$effect(() => {
 		window.addEventListener('resize', () => {
 			if (window.innerWidth > 690) {
 				menuOpen = false;
 			}
 		});
+
+		// Listen for SvelteKit navigation events
+		const unlisten = window.addEventListener('popstate', () => {
+			menuOpen = false;
+		});
+		return () => {
+			window.removeEventListener('popstate', unlisten);
+		};
 	});
+
+	let notificationPermission = $state<NotificationPermission | undefined>(undefined);
+
+	// Svelte 5: convert onMount to $effect with browser check
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		// Register service worker
+		if ('serviceWorker' in navigator) {
+			navigator.serviceWorker.register('/service-worker.js');
+		}
+		// Register manifest
+		const manifest = document.createElement('link');
+		manifest.rel = 'manifest';
+		manifest.href = '/manifest.webmanifest';
+		document.head.appendChild(manifest);
+		// Get current notification permission
+		if ('Notification' in window) {
+			notificationPermission = Notification.permission;
+		}
+	});
+
+	function requestNotificationPermission() {
+		if ('Notification' in window) {
+			Notification.requestPermission().then((permission) => {
+				notificationPermission = permission;
+			});
+		}
+	}
+
+	// Example: show notification on content change
+	// Replace this with your actual content change logic
 </script>
 
 <header>
 	<h1>HiveOS</h1>
 
 	<nav>
-		<!-- <h2>home</h2> -->
 		{#if auth}
-			<a class="button" href="/account/logout">Logout <LogoutIcon /></a>
+			<button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button>
 			<button onclick={toggleMenu} class="menu-button" aria-label="Open menu">
 				{#if menuOpen}
 					<CloseIcon />
@@ -44,26 +123,37 @@
 </header>
 
 <div class="main-layout">
-	<aside bind:this={menu} class:menuOpen>
-		{#if auth}
+	{#if auth}
+		<aside bind:this={menu} class:menuOpen>
 			<ul>
 				<li><a onclick={() => (menuOpen = false)} href="/">Dashboard</a></li>
-				<li><a onclick={() => (menuOpen = false)} href="/calendar">Calendar</a></li>
+				<!-- <li><a onclick={() => (menuOpen = false)} href="/calendar">Calendar</a></li> -->
 				<li><a onclick={() => (menuOpen = false)} href="/events">Events</a></li>
 				<li><a onclick={() => (menuOpen = false)} href="/shopping-list">Shopping List</a></li>
-				<li><a onclick={() => (menuOpen = false)} href="/tasks">Task list</a></li>
-				<li><a onclick={() => (menuOpen = false)} href="/recipies">Recipies</a></li>
-				<li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
+				<!-- <li><a onclick={() => (menuOpen = false)} href="/tasks">Task list</a></li> -->
+				<!-- <li><a onclick={() => (menuOpen = false)} href="/recipies">Recipies</a></li> -->
+				<button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button>
+				<!-- <li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li> -->
+				{#if notificationPermission !== 'granted'}
+					<button
+						onclick={requestNotificationPermission}
+						disabled={notificationPermission === 'granted'}
+					>
+						{notificationPermission === 'granted'
+							? 'Notifications Enabled'
+							: 'Enable Notifications'}
+					</button>
+				{/if}
 			</ul>
-		{/if}
-	</aside>
+		</aside>
+	{/if}
 
 	<main class:menuOpen>
 		{@render children()}
 	</main>
 </div>
 
-<footer></footer>
+<!-- <footer></footer> -->
 
 <style>
 	header {
@@ -85,21 +175,32 @@
 			text-decoration: underline;
 			display: flex;
 			gap: 10px;
+		}
 
-			&.button {
-				background-color: #000;
-				--svg-fill: #fff;
-				color: #fff;
-				padding: 10px 20px;
-				border-radius: 5px;
-				/* text-decoration: none; */
-				transition: all 0.3s ease;
-				box-shadow: var(--level-2);
-				&:hover {
-					transform: translateY(-1px);
-				}
-				&:active {
-					transform: translateY(1px);
+		button.button {
+			background-color: #000;
+			--svg-fill: #fff;
+			color: #fff;
+			padding: 10px 20px;
+			border-radius: 5px;
+			border: none;
+			cursor: pointer;
+			text-decoration: none;
+			transition: all 0.3s ease;
+			box-shadow: var(--level-2);
+			display: flex;
+			align-items: center;
+			gap: 5px;
+
+			&:hover {
+				transform: translateY(-1px);
+			}
+			&:active {
+				transform: translateY(1px);
+			}
+			&.logout {
+				@media screen and (max-width: 690px) {
+					display: none;
 				}
 			}
 		}
@@ -117,7 +218,8 @@
 		grid-template-columns: 1fr 2fr;
 		grid-template-rows: 1fr;
 		gap: 20px;
-		height: calc(100dvh - var(--headerHeight) - var(--footerHeight));
+		/* height: calc(100dvh - var(--headerHeight) - var(--footerHeight)); */
+		min-height: calc(100dvh - var(--headerHeight));
 		@media screen and (max-width: 690px) {
 			grid-template-columns: 1fr;
 			grid-template-rows: auto 1fr;
@@ -179,6 +281,12 @@
 					cursor: pointer;
 				}
 			}
+			.logout {
+				display: none;
+				@media screen and (max-width: 690px) {
+					display: unset;
+				}
+			}
 		}
 
 		@media screen and (max-width: 690px) {
@@ -189,7 +297,7 @@
 			position: fixed;
 
 			width: 100%;
-			height: calc(100dvh - var(--headerHeight) - var(--footerHeight));
+			height: calc(100dvh - var(--headerHeight));
 			text-align: center;
 			&.menuOpen {
 				top: calc(var(--headerHeight));

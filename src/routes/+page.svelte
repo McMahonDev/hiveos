@@ -1,7 +1,7 @@
 <script lang="ts">
 	import EventsList from '$lib/components/eventsList.svelte';
 	import ShoppingList from '$lib/components/shoppingList.svelte';
-
+	import { user } from '$lib/state/user.svelte';
 	let { data } = $props();
 	// }
 </script>

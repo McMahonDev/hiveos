@@ -7,7 +7,9 @@
 	let { data } = $props();
 	let z = data.z;
 	let groupId = data.groupId;
+
 	let modalOpen = $state(false);
+
 
 	function onsubmit(event: Event) {
 		event.preventDefault();
@@ -19,7 +21,7 @@
 				id,
 				name,
 				status: false,
-				assignedToId: groupid,
+				assignedToId: groupId,
 				createdById: data.id
 			});
 			(event.target as HTMLFormElement).reset();

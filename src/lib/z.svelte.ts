@@ -1,10 +1,13 @@
 import { Z } from 'zero-svelte';
 import { schema, type Schema } from '../schema';
 
+const url = import.meta.env?.VITE_DATABASE_URL;
+if (!url) throw new Error('DATABASE_URL is not set');
+
 export function get_z_options() {
 	return {
 		userID: 'uu1',
-		server: import.meta.env.VITE_CONNECTION_STRING,
+		server: url,
 		schema,
 		kvStore: 'idb'
 		// ... other options

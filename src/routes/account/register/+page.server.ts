@@ -1,60 +1,18 @@
 import { redirect } from '@sveltejs/kit';
-import { hash } from '$lib/utils/hash.js';
-import { db } from '$lib/server/db/index';
-import { eq } from 'drizzle-orm';
-import { users } from '$lib/server/db/schema';
-
-import { nanoid } from 'nanoid';
+import { auth } from '$lib/auth/auth';
 
 /** @type {import('./$types').PageServerLoad} */
-export async function load({ locals }: { locals: { user: any } }) {
-	return {
-		props: {
-			user: locals.user
-		}
-	};
-}
+export async function load({ request }) {
+	// Check if the user is already logged in using Better Auth
+	const session = await auth.api.getSession({
+		headers: request.headers
+	});
 
-/** @type {import('./$types').Actions} */
-export const actions = {
-	createAccount: async ({ request }) => {
-		const data = await request.formData();
-		console.log(data);
-		const email = data.get('email') as string;
-		const password = data.get('password') as string;
-		const confirmPassword = data.get('confirmPassword') as string;
-		const name = data.get('name') as string;
-
-		console.log(email, password, confirmPassword);
-		if (password !== confirmPassword) {
-			// TODO: add error
-			throw redirect(302, '/account/login');
-		}
-
-		const account = await db.select().from(users).where(eq(users.email, email)).execute();
-		console.log(account);
-		if (account[0]) {
-			// TODO: add error
-			throw redirect(302, '/account/login');
-		}
-
-		const hashedPassword = hash(password);
-		const now = new Date().toISOString();
-		try {
-			await db
-				.insert(users)
-				.values({
-					id: nanoid(),
-					email,
-					name,
-					password: hashedPassword
-				})
-				.execute();
-		} catch (error) {
-			console.log(error);
-		}
-
-		// redirect the user
-		throw redirect(302, '/account/login');
+	// If user is already logged in, redirect to home page
+	if (session) {
+		throw redirect(302, '/');
 	}
-};
+
+	// Return empty object if not logged in
+	return {};
+}
