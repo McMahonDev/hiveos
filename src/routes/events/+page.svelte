@@ -7,7 +7,7 @@
 	// console.log(data);
 	let z = data.z;
 
-	const events = z ? new Query(z.current.query.events.where('assignedToId', data.id)) : null;
+	// const events = z ? new Query(z.current.query.events.where('assignedToId', data.id)) : null;
 	const group = z ? new Query(z.current.query.userGroups.where('id', data.groupId)) : null;
 	let groupid = $derived((group && group.current[0]?.id) ?? data.groupId);
 	function onsubmit(event: Event) {
@@ -24,9 +24,9 @@
 			time = '00:00';
 		}
 		const datetime = Math.floor(new Date(`${date}T${time}`).getTime() / 1000);
-		if (groupid === '0') {
-			groupid = data.id;
-		}
+		// if (groupid === '0') {
+		// 	groupid = data.id;
+		// }
 
 		if (name && date && z) {
 			z.current.mutate.events.insert({
