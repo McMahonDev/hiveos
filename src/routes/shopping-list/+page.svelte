@@ -8,6 +8,8 @@
 	let z = data.z;
 	let groupId = data.groupId;
 
+	console.log('test', data);
+
 	let modalOpen = $state(false);
 
 	function onsubmit(event: Event) {
@@ -26,20 +28,6 @@
 			});
 			(event.target as HTMLFormElement).reset();
 		}
-	}
-
-	function escToClose(node) {
-		function handle(event) {
-			if (event.key === 'Escape') {
-				modalOpen = false;
-			}
-		}
-		document.addEventListener('keydown', handle, true);
-		return {
-			destroy() {
-				document.removeEventListener('keydown', handle, true);
-			}
-		};
 	}
 </script>
 
@@ -65,7 +53,7 @@
 				}}
 				aria-label="Close modal"
 			></div>
-			<form {onsubmit} use:escToClose>
+			<form {onsubmit}>
 				<label for="name"
 					>Item Name
 					<input type="text" id="name" name="name" />

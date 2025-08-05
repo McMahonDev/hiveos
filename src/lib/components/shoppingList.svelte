@@ -4,6 +4,7 @@
 	import { notifyContentChange } from '$lib/utils/notification';
 
 	let { data } = $props();
+	$inspect(data);
 	let z = data.z;
 
 	let groupId = data.groupId;
@@ -13,7 +14,7 @@
 	$inspect(shoppingList.current);
 
 	// order by createdAt asc
-	shoppingList.current = shoppingList.current.sort((a, b) => a.createdAt - b.createdAt);
+	// shoppingList.current = shoppingList.current.sort((a, b) => a.createdAt - b.createdAt);
 
 	function deleteItem(event: Event) {
 		const target = event.target as HTMLElement | null;
