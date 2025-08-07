@@ -8,8 +8,6 @@
 	let z = data.z;
 	let groupId = data.groupId;
 
-	console.log('test', data);
-
 	let modalOpen = $state(false);
 
 	function onsubmit(event: Event) {
