@@ -1,6 +1,6 @@
 // src/routes/+layout.ts
 import { Z } from 'zero-svelte';
-import { schema, type Schema } from '../schema';
+import { schema, type Schema } from '../zero-schema';
 import { user } from '$lib/state/user.svelte';
 import type { LayoutLoad } from './$types';
 
