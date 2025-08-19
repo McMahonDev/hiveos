@@ -23,7 +23,7 @@ export const load: LayoutLoad = async (event) => {
 				userID: id,
 				server: url,
 				schema,
-				kvStore: 'idb'
+				kvStore: 'mem'
 			} as const;
 		}
 		z = new Z<Schema>(get_z_options());
