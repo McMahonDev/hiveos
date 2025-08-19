@@ -7,7 +7,7 @@
 5. migrate drizzle schema
 
 ```bash
-npx zero-deploy-permissions -p '.\src\schema.ts'
+pnpm zero-deploy-permissions -p '.\src\zero-schema.ts' || pnpm zero-deploy-permissions -p './src/zero-schema.ts'
 pnpm drizzle-kit generate
 pnpm drizzle-kit migrate
 ```

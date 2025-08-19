@@ -37,7 +37,7 @@
 		<ul>
 			{#each events.current as event}
 				<li>
-					{event.name} - {event.id}
+					{event.name}
 					<button data-id={event.id} onclick={deleteItem}><DeleteIcon /></button>
 				</li>
 			{/each}

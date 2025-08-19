@@ -31,7 +31,7 @@
 		"vite-plugin-node-polyfills": "^0.23.0"
 	},
 	"dependencies": {
-		"@rocicorp/zero": "^0.22.2025080200",
+		"@rocicorp/zero": "^0.20.2025052100",
 		"assert": "^2.1.0",
 		"better-auth": "^1.2.12",
 		"buffer": "^6.0.3",
