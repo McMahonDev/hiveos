@@ -28,8 +28,3 @@ jobs:
           pnpm zero-deploy-permissions -p './src/zero-schema.ts'
           pnpm drizzle-kit generate
           pnpm drizzle-kit migrate
-
-      - name: Trigger Coolify Deploy
-        run: curl -X POST "$COOLIFY_WEBHOOK_URL"
-        env:
-          COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
