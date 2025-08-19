@@ -72,20 +72,6 @@
 
 	let notificationPermission = $state<NotificationPermission | undefined>(undefined);
 
-	// Svelte 5: convert onMount to $effect with browser check
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-		// Register manifest
-		const manifest = document.createElement('link');
-		manifest.rel = 'manifest';
-		manifest.href = '/manifest.webmanifest';
-		document.head.appendChild(manifest);
-		// Get current notification permission
-		if ('Notification' in window) {
-			notificationPermission = Notification.permission;
-		}
-	});
-
 	function requestNotificationPermission() {
 		if ('Notification' in window) {
 			Notification.requestPermission().then((permission) => {

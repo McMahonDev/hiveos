@@ -10,11 +10,9 @@
 	// groupId is now properly set to userId when no group membership exists
 	// so we don't need to check for '0' fallback anymore
 
-	const events = new Query(
+	let events = new Query(
 		z.current.query.events.where('assignedToId', groupId).orderBy('datetime', 'asc')
 	);
-
-	// $inspect(events.current);
 
 	function deleteItem(event: Event) {
 		// console.log('deleteItem', event);

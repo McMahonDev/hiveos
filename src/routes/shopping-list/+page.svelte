@@ -27,20 +27,6 @@
 			(event.target as HTMLFormElement).reset();
 		}
 	}
-
-	function escToClose(node) {
-		function handle(event) {
-			if (event.key === 'Escape') {
-				modalOpen = false;
-			}
-		}
-		document.addEventListener('keydown', handle, true);
-		return {
-			destroy() {
-				document.removeEventListener('keydown', handle, true);
-			}
-		};
-	}
 </script>
 
 <section class="shopping-list">
@@ -65,7 +51,7 @@
 				}}
 				aria-label="Close modal"
 			></div>
-			<form {onsubmit} use:escToClose>
+			<form {onsubmit}>
 				<label for="name"
 					>Item Name
 					<input type="text" id="name" name="name" />

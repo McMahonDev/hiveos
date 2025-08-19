@@ -1,5 +1,5 @@
 import { Z } from 'zero-svelte';
-import { schema, type Schema } from '../schema';
+import { schema, type Schema } from '../../schema';
 
 const url = import.meta.env?.VITE_DATABASE_URL;
 if (!url) throw new Error('DATABASE_URL is not set');
