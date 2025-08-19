@@ -45,5 +45,8 @@ This short guidance helps an AI coding assistant become productive in this repo 
 - `drizzle/*.sql` — migration history
 - `.env` — connection strings & Zero-specific DB envs
 - `README.md` — basic deploy/migration commands
+- `sveltekit-llm.txt` — Svelte 5 & SvelteKit docs
+- `llm.txt` — Better Auth Docs
+- `zero-docs-llm.txt` — Zero Sync documentation
 
 If anything in these instructions is unclear or you want more detail (examples of schema changes, example psql commands, or automated tests), tell me which area to expand. After approval I'll integrate minor edits or expand to include common PR checklists.
