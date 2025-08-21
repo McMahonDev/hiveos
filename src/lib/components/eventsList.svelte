@@ -1,21 +1,46 @@
 <script lang="ts">
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
 	import { Query } from 'zero-svelte';
-	import { notifyContentChange } from '$lib/utils/notification';
+	import { ui, setGroupActive, getGroupActive } from '$lib/state/ui.svelte';
 
 	let { data } = $props();
 	let z = data.z;
 	let groupId = data.groupId;
 
+	let groupActive = $derived(data.groupActive);
+
+	$effect(() => {
+		console.log('groupActive:', $ui.groupActive);
+	});
+
 	// groupId is now properly set to userId when no group membership exists
 	// so we don't need to check for '0' fallback anymore
 
-	let events = new Query(
-		z.current.query.events.where('assignedToId', groupId).orderBy('datetime', 'asc')
-	);
+	let events;
+	if ($ui.groupActive) {
+		events = new Query(
+			z.current.query.events.where('assignedToId', data.groupId).orderBy('datetime', 'asc')
+		);
+	} else {
+		events = new Query(
+			z.current.query.events.where('assignedToId', data.id).orderBy('datetime', 'asc')
+		);
+	}
+
+	$effect(() => {
+		console.log('test');
+		if (groupActive) {
+			events = new Query(
+				z.current.query.events.where('assignedToId', data.groupId).orderBy('datetime', 'asc')
+			);
+		} else {
+			events = new Query(
+				z.current.query.events.where('assignedToId', data.id).orderBy('datetime', 'asc')
+			);
+		}
+	});
 
 	function deleteItem(event: Event) {
-		// console.log('deleteItem', event);
 		const target = (event?.target as SVGElement)?.ownerSVGElement
 			?.parentElement as HTMLElement | null;
 		const id = target?.dataset?.id;
@@ -25,7 +50,6 @@
 		}
 		if (id) {
 			z.current.mutate.events.delete({ id });
-			notifyContentChange('Events Updated', 'An event was deleted.');
 		}
 	}
 </script>
@@ -37,7 +61,7 @@
 		<ul>
 			{#each events.current as event}
 				<li>
-					{event.name}
+					{event.name} - {data.id}
 					<button data-id={event.id} onclick={deleteItem}><DeleteIcon /></button>
 				</li>
 			{/each}

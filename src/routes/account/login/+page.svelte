@@ -9,13 +9,7 @@
 	let error = '';
 	let isLoading = false;
 
-	onMount(() => {
-		console.log('Login page mounted');
-		console.log('Current user state:', user);
-	});
-
 	async function handleLogin() {
-		console.log('Starting login process');
 		error = '';
 		isLoading = true;
 
@@ -29,16 +23,10 @@
 				console.error('Login error:', err);
 				error = err.message ?? 'An unknown error occurred.';
 			} else {
-				console.log('Login successful, updating user state');
-
 				// Update user state immediately for instant UI update
 				user.auth = true;
 				user.isLoggedIn = true;
 				user.email = email;
-
-				console.log('User state updated, redirecting to dashboard');
-
-				// Use client-side navigation without page refresh
 				goto('/', { replaceState: true, noScroll: true });
 			}
 		} catch (e) {

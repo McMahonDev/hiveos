@@ -5,50 +5,30 @@
 	import LogoutIcon from '$lib/static/icons/logoutIcon.svelte';
 	import MenuIcon from '$lib/static/icons/menuIcon.svelte';
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
-	import { user } from '$lib/state/user.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { goto } from '$app/navigation';
+	import { ui, setGroupActive } from '$lib/state/ui.svelte';
 
-	// $inspect('user from layout', user);
 	let { children, data } = $props();
-	// console.log('Layout data:', data);
-	user.auth = data?.auth;
-	user.isLoggedIn = data?.auth;
-	user.userID = data.id;
-	user.groupId = data.groupId;
-	user.email = data.user?.email || '';
 
-	// $inspect('user after layout', user);
-	// $inspect('user auth', user.auth);
-	let auth = $derived(user.auth);
+	let auth = $derived(data.auth);
 	let menuOpen = $state(false);
-	let menu: HTMLElement;
+	let inGroup = $derived(data.groupId !== data.id);
+	let menu = $state<HTMLElement | null>(null);
+
+	$effect(() => {
+		data.groupActive = $ui.groupActive;
+	});
 
 	function toggleMenu() {
 		menuOpen = !menuOpen;
 	}
 
 	async function handleLogout() {
-		console.log('Starting logout process');
 		try {
-			// Sign out using Better Auth
-			console.log('Calling Better Auth signOut');
 			await authClient.signOut();
-
-			console.log('Clearing user state');
-			// Clear local user state
-			user.auth = false;
-			user.isLoggedIn = false;
-			user.email = '';
-			user.userID = '';
-			user.groupId = '';
-
 			menuOpen = false; // Close menu on logout
-
-			console.log('User state cleared, redirecting to login');
-			// Use client-side navigation without page refresh
 			await goto('/account/login', { replaceState: true, noScroll: true });
-			console.log('Navigation to login complete');
 		} catch (error) {
 			console.error('Logout failed:', error);
 		}
@@ -62,26 +42,25 @@
 		});
 
 		// Listen for SvelteKit navigation events
-		const unlisten = window.addEventListener('popstate', () => {
+		const popstateHandler = () => {
 			menuOpen = false;
-		});
+		};
+		window.addEventListener('popstate', popstateHandler);
 		return () => {
-			window.removeEventListener('popstate', unlisten);
+			window.removeEventListener('popstate', popstateHandler);
 		};
 	});
 
-	let notificationPermission = $state<NotificationPermission | undefined>(undefined);
-
-	function requestNotificationPermission() {
-		if ('Notification' in window) {
-			Notification.requestPermission().then((permission) => {
-				notificationPermission = permission;
-			});
-		}
+	function switchToGroup() {
+		menuOpen = false;
+		setGroupActive(true);
 	}
 
-	// Example: show notification on content change
-	// Replace this with your actual content change logic
+	function switchToPersonal() {
+		console.log('Switching to Personal');
+		menuOpen = false;
+		setGroupActive(false);
+	}
 </script>
 
 <header>
@@ -115,16 +94,19 @@
 				<!-- <li><a onclick={() => (menuOpen = false)} href="/tasks">Task list</a></li> -->
 				<!-- <li><a onclick={() => (menuOpen = false)} href="/recipies">Recipies</a></li> -->
 				<button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button>
-				<!-- <li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li> -->
-				{#if notificationPermission !== 'granted'}
-					<button
-						onclick={requestNotificationPermission}
-						disabled={notificationPermission === 'granted'}
-					>
-						{notificationPermission === 'granted'
-							? 'Notifications Enabled'
-							: 'Enable Notifications'}
-					</button>
+				{#if inGroup}
+					{#if $ui.groupActive}
+						<li class="bottom">
+							<button class="link" onclick={switchToPersonal}>Switch to Personal</button>
+						</li>
+					{:else}
+						<li class="bottom">
+							<button class="link" onclick={switchToGroup}>Switch to Group</button>
+						</li>
+					{/if}
+					<li class=""><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
+				{:else}
+					<li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
 				{/if}
 			</ul>
 		</aside>
@@ -186,6 +168,21 @@
 				}
 			}
 		}
+	}
+	button.link {
+		background: none;
+		border: none;
+		color: var(--textColor);
+		padding: 0;
+		cursor: pointer;
+		box-shadow: none;
+		display: block;
+		width: 100%;
+		font-size: 1.5rem;
+		padding: 10px;
+		text-align: center;
+		cursor: pointer;
+		font-weight: 600;
 	}
 
 	h1 {

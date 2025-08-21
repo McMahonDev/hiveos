@@ -10,31 +10,23 @@ export async function load({ request, url, cookies }) {
 	let userId: string;
 	let groupId: string;
 
-	console.log('Loading layout server');
 
 	// Use Better Auth to get the session
 	const session = await auth.api.getSession({
 		headers: request.headers
 	});
 
-	if (session) {
-		console.log('Session found:', session);
-	} else {
-		console.log('No session found');
-	}
+	
 
 	if (!session) {
-		console.log('No user found, redirecting to login');
 		isAuthenticated = false;
 		userId = '';
 		groupId = '0';
 		if (url.pathname !== '/account/login' && url.pathname !== '/account/register') {
-			console.log('Redirecting to login page');
-			console.log('Current URL:', url.pathname);
 			throw redirect(302, '/account/login');
 		}
 	} else {
-		console.log('User found, setting auth to true');
+
 		isAuthenticated = true;
 		userId = session.user.id;
 		
@@ -48,7 +40,6 @@ export async function load({ request, url, cookies }) {
 			
 			// If user is in a group, use that groupId, otherwise use userId as groupId
 			groupId = userGroupMembership[0]?.userGroupId || session.user.id;
-			console.log('User groupId:', groupId);
 		} catch (error) {
 			console.error('Error fetching user group membership:', error);
 			// Fall back to userId as groupId

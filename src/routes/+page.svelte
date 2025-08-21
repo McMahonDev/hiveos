@@ -12,10 +12,10 @@
 		<EventsList {data} />
 	</div>
 
-	<div class="weather">
+	<!-- <div class="weather">
 		<h2>Weather</h2>
 		<p>Weather component goes here</p>
-	</div>
+	</div> -->
 
 	<div class="shoppingList">
 		<h2><a href="/shopping-list">Shopping List</a></h2>
@@ -29,9 +29,9 @@
 		grid-template-columns: 1fr;
 		grid-template-rows: auto;
 		gap: 20px;
-		.weather {
+		/* .weather {
 			grid-row: 1;
-		}
+		} */
 
 		@media screen and (min-width: 691px) {
 			grid-template-columns: 1fr 1fr;
@@ -40,10 +40,10 @@
 				grid-column: 1 / 2;
 				grid-row: 1 / 3;
 			}
-			.weather {
+			/* .weather {
 				grid-column: 2 / 3;
 				grid-row: 1 / 2;
-			}
+			} */
 			.shoppingList {
 				grid-column: 2 / 3;
 				grid-row: 2 / 3;
@@ -63,10 +63,10 @@
 				grid-column: 1 / 2;
 				grid-row: 2 / 3;
 			}
-			.weather {
+			/* .weather {
 				grid-column: 1 / 2;
 				grid-row: 1 / 2;
-			}
+			} */
 			.shoppingList {
 				grid-column: 1 / 2;
 				grid-row: 3 / 4;
