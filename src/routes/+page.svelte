@@ -3,6 +3,7 @@
 	import NewTab from '$lib/static/icons/newTab.svelte';
 
 	import EventsList from '$lib/components/eventsList.svelte';
+	import ShoppingList from '$lib/components/shoppingList.svelte';
 
 	let { data } = $props();
 	let shortlist: boolean = true;
@@ -41,13 +42,18 @@
 	</a>
 
 	<a class="card shoppingList" href="/shopping-list">
-		<h2>Shopping List</h2>
-		<NewTab />
-		<p>
-			{shoppingListCount === 0
-				? 'No items in your shopping list.'
-				: `You have ${shoppingListCount} item${shoppingListCount > 1 ? 's' : ''} in your shopping list.`}
-		</p>
+		<div>
+			<h2>Shopping List</h2>
+			<NewTab />
+			<p>
+				{shoppingListCount === 0
+					? 'No items in your shopping list.'
+					: `You have ${shoppingListCount} item${shoppingListCount > 1 ? 's' : ''} in your shopping list.`}
+			</p>
+		</div>
+		{#if shoppingListCount > 0}
+			<ShoppingList {data} {shortlist} />
+		{/if}
 	</a>
 </div>
 

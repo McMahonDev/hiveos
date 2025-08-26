@@ -11,6 +11,7 @@
 		? new Query(z.current.query.events.where('assignedToId', groupId).orderBy('createdAt', 'asc'))
 		: null;
 
+	let numberOfItems = $derived(events.current?.length ?? 0);
 	// Client-side derived sort:
 	// 1) Events that have a datetime (truthy) come first, sorted by datetime ascending
 	// 2) Events without datetime come after, sorted by createdAt ascending
@@ -51,6 +52,9 @@
 						</li>
 					{/if}
 				{/each}
+				{#if numberOfItems > 3}
+					<li>and {numberOfItems - 3} more...</li>
+				{/if}
 			</ul>
 		{/if}
 	{:else if Array.isArray(sortedEvents) && sortedEvents.length === 0}
