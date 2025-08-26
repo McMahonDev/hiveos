@@ -17,7 +17,7 @@
 		let time = formData.get('time') as string;
 
 		if (!date) {
-			date = new Date().toISOString().split('T')[0];
+			date = '0000-00-00';
 		}
 		if (!time) {
 			time = '00:00';
@@ -34,7 +34,8 @@
 				datetime,
 				timezone: getTimeZoneAbbreviation(),
 				createdById: data.id,
-				assignedToId: assignedToId()
+				assignedToId: assignedToId(),
+				createdAt: Date.now()
 			});
 
 			(event.target as HTMLFormElement).reset();

@@ -48,7 +48,7 @@
 </script>
 
 <header>
-	<h1>HiveOS</h1>
+	<h1><a href="/">HiveOS</a></h1>
 
 	<nav>
 		{#if auth}
@@ -146,6 +146,10 @@
 		color: #000;
 		margin: 0;
 		padding: 0;
+		a {
+			text-decoration: none;
+			color: inherit;
+		}
 	}
 
 	.main-layout {

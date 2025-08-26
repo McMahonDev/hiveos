@@ -89,7 +89,8 @@ const events = table('events')
 		datetime: number(),
 		timezone: string(),
 		createdById: string(),
-		assignedToId: string()
+		assignedToId: string(),
+		createdAt: number()
 	})
 	.primaryKey('id');
 

@@ -24,7 +24,8 @@ export const events = pgTable('events', {
 	datetime: integer('datetime'),
 	timezone: text('timezone'),
 	createdById: text('createdById'),
-	assignedToId: text('assignedToId')
+	assignedToId: text('assignedToId'),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
 });
 
 export const shoppingList = pgTable('shoppingList', {
