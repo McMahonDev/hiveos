@@ -7,7 +7,6 @@
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { goto } from '$app/navigation';
-	import { ui, setGroupActive } from '$lib/state/ui.svelte';
 
 	let { children, data } = $props();
 
@@ -15,10 +14,6 @@
 	let menuOpen = $state(false);
 	let inGroup = $derived(data.groupId !== data.id);
 	let menu = $state<HTMLElement | null>(null);
-
-	$effect(() => {
-		data.groupActive = $ui.groupActive;
-	});
 
 	function toggleMenu() {
 		menuOpen = !menuOpen;
@@ -50,17 +45,6 @@
 			window.removeEventListener('popstate', popstateHandler);
 		};
 	});
-
-	function switchToGroup() {
-		menuOpen = false;
-		setGroupActive(true);
-	}
-
-	function switchToPersonal() {
-		console.log('Switching to Personal');
-		menuOpen = false;
-		setGroupActive(false);
-	}
 </script>
 
 <header>
@@ -94,20 +78,7 @@
 				<!-- <li><a onclick={() => (menuOpen = false)} href="/tasks">Task list</a></li> -->
 				<!-- <li><a onclick={() => (menuOpen = false)} href="/recipies">Recipies</a></li> -->
 				<button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button>
-				{#if inGroup}
-					{#if $ui.groupActive}
-						<li class="bottom">
-							<button class="link" onclick={switchToPersonal}>Switch to Personal</button>
-						</li>
-					{:else}
-						<li class="bottom">
-							<button class="link" onclick={switchToGroup}>Switch to Group</button>
-						</li>
-					{/if}
-					<li class=""><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
-				{:else}
-					<li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
-				{/if}
+				<li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
 			</ul>
 		</aside>
 	{/if}
@@ -168,21 +139,6 @@
 				}
 			}
 		}
-	}
-	button.link {
-		background: none;
-		border: none;
-		color: var(--textColor);
-		padding: 0;
-		cursor: pointer;
-		box-shadow: none;
-		display: block;
-		width: 100%;
-		font-size: 1.5rem;
-		padding: 10px;
-		text-align: center;
-		cursor: pointer;
-		font-weight: 600;
 	}
 
 	h1 {

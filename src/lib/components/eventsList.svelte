@@ -1,45 +1,12 @@
 <script lang="ts">
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
 	import { Query } from 'zero-svelte';
-	import { ui, setGroupActive, getGroupActive } from '$lib/state/ui.svelte';
 
 	let { data } = $props();
 	let z = data.z;
-	let groupId = data.groupId;
+	const groupId = data.groupId;
 
-	let groupActive = $derived(data.groupActive);
-
-	$effect(() => {
-		console.log('groupActive:', $ui.groupActive);
-	});
-
-	// groupId is now properly set to userId when no group membership exists
-	// so we don't need to check for '0' fallback anymore
-
-	let events;
-	if ($ui.groupActive) {
-		events = new Query(
-			z.current.query.events.where('assignedToId', data.groupId).orderBy('datetime', 'asc')
-		);
-	} else {
-		events = new Query(
-			z.current.query.events.where('assignedToId', data.id).orderBy('datetime', 'asc')
-		);
-	}
-
-	$effect(() => {
-		console.log('test');
-		if (groupActive) {
-			events = new Query(
-				z.current.query.events.where('assignedToId', data.groupId).orderBy('datetime', 'asc')
-			);
-		} else {
-			events = new Query(
-				z.current.query.events.where('assignedToId', data.id).orderBy('datetime', 'asc')
-			);
-		}
-	});
-
+	const events = z ? new Query(z.current.query.events.where('assignedToId', groupId)) : null;
 	function deleteItem(event: Event) {
 		const target = (event?.target as SVGElement)?.ownerSVGElement
 			?.parentElement as HTMLElement | null;
@@ -61,7 +28,7 @@
 		<ul>
 			{#each events.current as event}
 				<li>
-					{event.name} - {data.id}
+					{event.name}
 					<button data-id={event.id} onclick={deleteItem}><DeleteIcon /></button>
 				</li>
 			{/each}

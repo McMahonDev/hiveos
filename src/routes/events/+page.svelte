@@ -2,15 +2,10 @@
 	import { Query } from 'zero-svelte';
 	import { nanoid } from 'nanoid';
 	import EventsList from '$lib/components/eventsList.svelte';
-	import { ui, setGroupActive, getGroupActive } from '$lib/state/ui.svelte';
 
 	let { data } = $props();
 	let z = data.z;
 
-	// If you want to log groupActive changes, use a reactive statement:
-	$effect(() => {
-		console.log('groupActive:', $ui.groupActive);
-	});
 	// const events = z ? new Query(z.current.query.events.where('assignedToId', data.id)) : null;
 	const group = z ? new Query(z.current.query.userGroups.where('id', data.groupId)) : null;
 	let groupid = $derived((group && group.current[0]?.id) ?? data.groupId);
@@ -57,13 +52,11 @@
 	}
 
 	function assignedToId(): string {
-		if ($ui.groupActive) {
-			console.log('Using groupId:', data.groupId);
-			return data.groupId;
-		} else {
-			console.log('Using userId:', data.id);
+		// If groupId is '0' or null, assign to personal (data.id)
+		if (!groupid || groupid === '0') {
 			return data.id;
 		}
+		return groupid;
 	}
 </script>
 
