@@ -69,11 +69,15 @@
 			grid-template-rows: auto auto;
 			.events {
 				grid-column: 1 / 2;
-				grid-row: 1 / 3;
+				grid-row: 2 / 3;
 			}
 			.shoppingList {
 				grid-column: 2 / 3;
 				grid-row: 2 / 3;
+			}
+			h1 {
+				grid-column: 1 / -1;
+				grid-row: 1 / 2;
 			}
 		}
 		.card {

@@ -158,7 +158,7 @@
 		grid-template-rows: 1fr;
 		gap: 20px;
 		/* height: calc(100dvh - var(--headerHeight) - var(--footerHeight)); */
-		min-height: calc(100dvh - var(--headerHeight));
+		min-height: calc(100vh - var(--headerHeight));
 		@media screen and (max-width: 690px) {
 			grid-template-columns: 1fr;
 			grid-template-rows: auto 1fr;

@@ -48,7 +48,8 @@
 				{#each sortedEvents as event, i}
 					{#if i < 3}
 						<li>
-							{event.name}
+							{event.name} -
+							<span>{event.datetime}</span>
 						</li>
 					{/if}
 				{/each}

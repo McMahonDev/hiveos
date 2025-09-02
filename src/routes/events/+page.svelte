@@ -16,30 +16,30 @@
 		let date = formData.get('date') as string;
 		let time = formData.get('time') as string;
 
-		if (!date) {
-			date = '0000-00-00';
-		}
-		if (!time) {
-			time = '00:00';
-		}
-		const datetime = Math.floor(new Date(`${date}T${time}`).getTime() / 1000);
-		// if (groupid === '0') {
-		// 	groupid = data.id;
-		// }
+		let datetime;
 
-		if (name && date && z) {
-			z.current.mutate.events.insert({
-				id: nanoid(),
-				name,
-				datetime,
-				timezone: getTimeZoneAbbreviation(),
-				createdById: data.id,
-				assignedToId: assignedToId(),
-				createdAt: Date.now()
-			});
-
-			(event.target as HTMLFormElement).reset();
+		if (!date && !time) {
+			datetime = 0;
 		}
+		if (date && !time) {
+			datetime = Math.floor(new Date(`${date}T00:00`).getTime() / 1000);
+		}
+
+		if (date && time) {
+			datetime = Math.floor(new Date(`${date}T${time}`).getTime() / 1000);
+		}
+
+		z.current.mutate.events.insert({
+			id: nanoid(),
+			name,
+			datetime,
+			timezone: getTimeZoneAbbreviation(),
+			createdById: data.id,
+			assignedToId: assignedToId(),
+			createdAt: Date.now()
+		});
+
+		(event.target as HTMLFormElement).reset();
 	}
 
 	function getTimeZoneAbbreviation(): string {
