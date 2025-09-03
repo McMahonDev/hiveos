@@ -4,6 +4,8 @@
 
 	import EventsList from '$lib/components/eventsList.svelte';
 	import ShoppingList from '$lib/components/shoppingList.svelte';
+	import { isPast } from '$lib/utils/isPast';
+	import { isToday } from '$lib/utils/isToday';
 
 	let { data } = $props();
 	let shortlist: boolean = true;
@@ -20,6 +22,25 @@
 		eventNumber = events?.current.length ?? 0;
 		shoppingListCount = shoppingList?.current.length ?? 0;
 	});
+
+	function getEventsString(): string {
+		// calculate how many past due events, future events and events today
+		let pastDue = 0;
+		let future = 0;
+		let today = 0;
+
+		for (const event of events?.current ?? []) {
+			if (isPast(event.date, event.time)) {
+				pastDue++;
+			} else if (isToday(event.date, event.time)) {
+				today++;
+			} else {
+				future++;
+			}
+		}
+
+		return `You have ${future} upcoming events, ${today} happening today, and ${pastDue} past due events.`;
+	}
 </script>
 
 <div class="container">
@@ -30,9 +51,7 @@
 			<h2>Events</h2>
 			<NewTab />
 			<p>
-				{eventNumber === 0
-					? 'No upcoming events.'
-					: `You have ${eventNumber} upcoming event${eventNumber > 1 ? 's' : ''}.`}
+				{eventNumber === 0 ? 'No upcoming events.' : getEventsString()}
 			</p>
 		</div>
 

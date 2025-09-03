@@ -9,6 +9,7 @@
 	// const events = z ? new Query(z.current.query.events.where('assignedToId', data.id)) : null;
 	const group = z ? new Query(z.current.query.userGroups.where('id', data.groupId)) : null;
 	let groupid = $derived((group && group.current[0]?.id) ?? data.groupId);
+
 	function onsubmit(event: Event) {
 		event.preventDefault();
 		const formData = new FormData(event.target as HTMLFormElement);
@@ -16,23 +17,13 @@
 		let date = formData.get('date') as string;
 		let time = formData.get('time') as string;
 
-		let datetime;
-
-		if (!date && !time) {
-			datetime = 0;
-		}
-		if (date && !time) {
-			datetime = Math.floor(new Date(`${date}T00:00`).getTime() / 1000);
-		}
-
-		if (date && time) {
-			datetime = Math.floor(new Date(`${date}T${time}`).getTime() / 1000);
-		}
+		console.log({ date, time });
 
 		z.current.mutate.events.insert({
 			id: nanoid(),
 			name,
-			datetime,
+			date,
+			time,
 			timezone: getTimeZoneAbbreviation(),
 			createdById: data.id,
 			assignedToId: assignedToId(),

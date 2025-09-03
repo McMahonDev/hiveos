@@ -21,7 +21,8 @@ export const tasks = pgTable('tasks', {
 export const events = pgTable('events', {
 	id: text('id').primaryKey(),
 	name: text('name'),
-	datetime: integer('datetime'),
+	date: text('date'),
+	time: text('time'),
 	timezone: text('timezone'),
 	createdById: text('createdById'),
 	assignedToId: text('assignedToId'),
