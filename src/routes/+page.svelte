@@ -83,7 +83,7 @@
 		grid-template-rows: auto;
 		gap: 20px;
 
-		@media screen and (min-width: 691px) {
+		@media screen and (min-width: 740px) {
 			grid-template-columns: 1fr 1fr;
 			grid-template-rows: auto auto;
 			.events {

@@ -154,7 +154,7 @@
 
 	.main-layout {
 		display: grid;
-		grid-template-columns: 1fr 2fr;
+		grid-template-columns: auto 2fr;
 		grid-template-rows: 1fr;
 		gap: 20px;
 		/* height: calc(100dvh - var(--headerHeight) - var(--footerHeight)); */
@@ -162,6 +162,7 @@
 		@media screen and (max-width: 690px) {
 			grid-template-columns: 1fr;
 			grid-template-rows: auto 1fr;
+			--margin-left: var(--margin-right);
 		}
 	}
 
