@@ -11,3 +11,5 @@ pnpm zero-deploy-permissions -p '.\src\zero-schema.ts' || pnpm zero-deploy-permi
 pnpm drizzle-kit generate
 pnpm drizzle-kit migrate
 ```
+
+MAKE SURE TO MATCH ZERO SERVER VERSION TO VERSION IN ZERO-SVELTE PACKAGE!!!!!

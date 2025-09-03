@@ -4,12 +4,12 @@
 	import EventsList from '$lib/components/eventsList.svelte';
 
 	let { data } = $props();
-	// console.log(data);
 	let z = data.z;
 
 	// const events = z ? new Query(z.current.query.events.where('assignedToId', data.id)) : null;
 	const group = z ? new Query(z.current.query.userGroups.where('id', data.groupId)) : null;
 	let groupid = $derived((group && group.current[0]?.id) ?? data.groupId);
+
 	function onsubmit(event: Event) {
 		event.preventDefault();
 		const formData = new FormData(event.target as HTMLFormElement);
@@ -17,29 +17,19 @@
 		let date = formData.get('date') as string;
 		let time = formData.get('time') as string;
 
-		if (!date) {
-			date = new Date().toISOString().split('T')[0];
-		}
-		if (!time) {
-			time = '00:00';
-		}
-		const datetime = Math.floor(new Date(`${date}T${time}`).getTime() / 1000);
-		// if (groupid === '0') {
-		// 	groupid = data.id;
-		// }
 
-		if (name && date && z) {
-			z.current.mutate.events.insert({
-				id: nanoid(),
-				name,
-				datetime,
-				timezone: getTimeZoneAbbreviation(),
-				createdById: data.id,
-				assignedToId: groupid
-			});
+		z.current.mutate.events.insert({
+			id: nanoid(),
+			name,
+			date,
+			time,
+			timezone: getTimeZoneAbbreviation(),
+			createdById: data.id,
+			assignedToId: assignedToId(),
+			createdAt: Date.now()
+		});
 
-			(event.target as HTMLFormElement).reset();
-		}
+		(event.target as HTMLFormElement).reset();
 	}
 
 	function getTimeZoneAbbreviation(): string {
@@ -50,6 +40,14 @@
 		const parts = formatter.formatToParts(date);
 		const tzPart = parts.find((part) => part.type === 'timeZoneName');
 		return tzPart?.value ?? 'UTC'; // fallback just in case
+	}
+
+	function assignedToId(): string {
+		// If groupId is '0' or null, assign to personal (data.id)
+		if (!groupid || groupid === '0') {
+			return data.id;
+		}
+		return groupid;
 	}
 </script>
 

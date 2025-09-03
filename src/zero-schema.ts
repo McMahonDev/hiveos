@@ -86,10 +86,12 @@ const events = table('events')
 	.columns({
 		id: string(),
 		name: string(),
-		datetime: number(),
+		date: string(),
+		time: string(),
 		timezone: string(),
 		createdById: string(),
-		assignedToId: string()
+		assignedToId: string(),
+		createdAt: number()
 	})
 	.primaryKey('id');
 

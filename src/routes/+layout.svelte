@@ -5,50 +5,25 @@
 	import LogoutIcon from '$lib/static/icons/logoutIcon.svelte';
 	import MenuIcon from '$lib/static/icons/menuIcon.svelte';
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
-	import { user } from '$lib/state/user.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { goto } from '$app/navigation';
 
-	// $inspect('user from layout', user);
 	let { children, data } = $props();
-	// console.log('Layout data:', data);
-	user.auth = data?.auth;
-	user.isLoggedIn = data?.auth;
-	user.userID = data.id;
-	user.groupId = data.groupId;
-	user.email = data.user?.email || '';
 
-	// $inspect('user after layout', user);
-	// $inspect('user auth', user.auth);
-	let auth = $derived(user.auth);
+	let auth = $derived(data.auth);
 	let menuOpen = $state(false);
-	let menu: HTMLElement;
+	let inGroup = $derived(data.groupId !== data.id);
+	let menu = $state<HTMLElement | null>(null);
 
 	function toggleMenu() {
 		menuOpen = !menuOpen;
 	}
 
 	async function handleLogout() {
-		console.log('Starting logout process');
 		try {
-			// Sign out using Better Auth
-			console.log('Calling Better Auth signOut');
 			await authClient.signOut();
-
-			console.log('Clearing user state');
-			// Clear local user state
-			user.auth = false;
-			user.isLoggedIn = false;
-			user.email = '';
-			user.userID = '';
-			user.groupId = '';
-
 			menuOpen = false; // Close menu on logout
-
-			console.log('User state cleared, redirecting to login');
-			// Use client-side navigation without page refresh
 			await goto('/account/login', { replaceState: true, noScroll: true });
-			console.log('Navigation to login complete');
 		} catch (error) {
 			console.error('Logout failed:', error);
 		}
@@ -62,30 +37,18 @@
 		});
 
 		// Listen for SvelteKit navigation events
-		const unlisten = window.addEventListener('popstate', () => {
+		const popstateHandler = () => {
 			menuOpen = false;
-		});
+		};
+		window.addEventListener('popstate', popstateHandler);
 		return () => {
-			window.removeEventListener('popstate', unlisten);
+			window.removeEventListener('popstate', popstateHandler);
 		};
 	});
-
-	let notificationPermission = $state<NotificationPermission | undefined>(undefined);
-
-	function requestNotificationPermission() {
-		if ('Notification' in window) {
-			Notification.requestPermission().then((permission) => {
-				notificationPermission = permission;
-			});
-		}
-	}
-
-	// Example: show notification on content change
-	// Replace this with your actual content change logic
 </script>
 
 <header>
-	<h1>HiveOS</h1>
+	<h1><a href="/">HiveOS</a></h1>
 
 	<nav>
 		{#if auth}
@@ -115,17 +78,7 @@
 				<!-- <li><a onclick={() => (menuOpen = false)} href="/tasks">Task list</a></li> -->
 				<!-- <li><a onclick={() => (menuOpen = false)} href="/recipies">Recipies</a></li> -->
 				<button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button>
-				<!-- <li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li> -->
-				{#if notificationPermission !== 'granted'}
-					<button
-						onclick={requestNotificationPermission}
-						disabled={notificationPermission === 'granted'}
-					>
-						{notificationPermission === 'granted'
-							? 'Notifications Enabled'
-							: 'Enable Notifications'}
-					</button>
-				{/if}
+				<li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
 			</ul>
 		</aside>
 	{/if}
@@ -193,6 +146,10 @@
 		color: #000;
 		margin: 0;
 		padding: 0;
+		a {
+			text-decoration: none;
+			color: inherit;
+		}
 	}
 
 	.main-layout {
@@ -201,7 +158,7 @@
 		grid-template-rows: 1fr;
 		gap: 20px;
 		/* height: calc(100dvh - var(--headerHeight) - var(--footerHeight)); */
-		min-height: calc(100dvh - var(--headerHeight));
+		min-height: calc(100vh - var(--headerHeight));
 		@media screen and (max-width: 690px) {
 			grid-template-columns: 1fr;
 			grid-template-rows: auto 1fr;

@@ -21,10 +21,12 @@ export const tasks = pgTable('tasks', {
 export const events = pgTable('events', {
 	id: text('id').primaryKey(),
 	name: text('name'),
-	datetime: integer('datetime'),
+	date: text('date'),
+	time: text('time'),
 	timezone: text('timezone'),
 	createdById: text('createdById'),
-	assignedToId: text('assignedToId')
+	assignedToId: text('assignedToId'),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
 });
 
 export const shoppingList = pgTable('shoppingList', {
