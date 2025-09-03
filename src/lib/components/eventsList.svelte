@@ -13,6 +13,7 @@
 		? new Query(z.current.query.events.where('assignedToId', groupId).orderBy('createdAt', 'asc'))
 		: null;
 
+
 	let numberOfItems = $derived(events.current?.length ?? 0);
 
 	let sortedEvents = $derived(

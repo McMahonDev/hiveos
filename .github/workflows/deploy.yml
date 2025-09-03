@@ -1,0 +1,29 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.4.0
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Zero + Drizzle
+        run: |
+          pnpm zero-deploy-permissions -p './src/zero-schema.ts'
+          pnpm drizzle-kit generate
+          pnpm drizzle-kit migrate

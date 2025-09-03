@@ -17,7 +17,6 @@
 		let date = formData.get('date') as string;
 		let time = formData.get('time') as string;
 
-		console.log({ date, time });
 
 		z.current.mutate.events.insert({
 			id: nanoid(),

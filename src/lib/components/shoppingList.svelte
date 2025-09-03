@@ -1,6 +1,8 @@
 <script lang="ts">
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
+	// Assuming `Query` is the correct way to get a Zero query object in zero-svelte
 	import { Query } from 'zero-svelte';
+
 
 	let { data, shortlist = false } = $props();
 
@@ -21,6 +23,9 @@
 			return;
 		}
 		if (id) {
+			// This mutator call will trigger Zero's internal synchronization.
+			// If the deletion succeeds in your backend, Zero should automatically
+			// update the local query result that `shoppingList` is observing.
 			z.current.mutate.shoppingList.delete({ id });
 		}
 	}
