@@ -7,6 +7,7 @@
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { goto } from '$app/navigation';
+	import { invalidateAll } from '$app/navigation';
 
 	let { children, data } = $props();
 
@@ -23,6 +24,9 @@
 		try {
 			await authClient.signOut();
 			menuOpen = false; // Close menu on logout
+
+			await invalidateAll(); // This will re-run all load functions
+
 			await goto('/account/login', { replaceState: true, noScroll: true });
 		} catch (error) {
 			console.error('Logout failed:', error);
@@ -154,7 +158,7 @@
 
 	.main-layout {
 		display: grid;
-		grid-template-columns: 1fr 2fr;
+		grid-template-columns: auto 2fr;
 		grid-template-rows: 1fr;
 		gap: 20px;
 		/* height: calc(100dvh - var(--headerHeight) - var(--footerHeight)); */
@@ -162,6 +166,7 @@
 		@media screen and (max-width: 690px) {
 			grid-template-columns: 1fr;
 			grid-template-rows: auto 1fr;
+			--margin-left: var(--margin-right);
 		}
 	}
 

@@ -8,17 +8,19 @@
 	let z = data.z;
 	let groupId = data.groupId;
 
-	let modalOpen = $state(false);
+	let modal = $state(false);
 
 	function onsubmit(event: Event) {
 		event.preventDefault();
 		const formData = new FormData(event.target as HTMLFormElement);
 		const name = formData.get('name') as string;
+		const store = formData.get('store') as string;
 		const id = nanoid();
 		if (name) {
 			z.current.mutate.shoppingList.insert({
 				id,
 				name,
+				store,
 				status: false,
 				assignedToId: groupId,
 				createdById: data.id,
@@ -31,49 +33,37 @@
 
 <section class="shopping-list">
 	<h1>Shopping List</h1>
-	<ShoppingList {data} />
-	<div>
-		<button onclick={() => (modalOpen = true)}> Add Item </button>
+	<button class="add-event" class:modal-active={modal} onclick={() => (modal = true)}>
+		Add Item
+	</button>
+	<button class="close-modal" class:modal-active={modal} onclick={() => (modal = false)}>
+		Close
+	</button>
+
+	<div class="list-container">
+		<ShoppingList {data} />
 	</div>
 
-	{#if modalOpen}
-		<div class="modal" role="dialog" aria-modal="true" tabindex="-1">
-			<!-- Overlay for closing modal with click or keyboard -->
-			<div
-				class="modal-overlay"
-				role="button"
-				tabindex="0"
-				onclick={() => (modalOpen = false)}
-				onkeydown={(e) => {
-					if (e.key === 'Enter' || e.key === ' ') {
-						modalOpen = false;
-					}
-				}}
-				aria-label="Close modal"
-			></div>
-			<form {onsubmit}>
-				<label for="name"
-					>Item Name
-					<input type="text" id="name" name="name" />
-				</label>
-				<button type="submit">Add</button>
-				<button
-					type="button"
-					class="button close"
-					onclick={() => (modalOpen = false)}
-					aria-label="Close modal"
-				>
-					Close
-				</button>
-			</form>
-		</div>
-	{/if}
+	<div class={modal ? 'modal open' : 'modal closed'} role="dialog" aria-modal="true" tabindex="-1">
+		<h2>Add an item</h2>
+		<form {onsubmit}>
+			<label for="name"
+				>Item Name
+				<input type="text" id="name" name="name" />
+			</label>
+			<label for="store"
+				>Store
+				<input type="text" id="store" name="store" />
+			</label>
+			<button type="submit">Add</button>
+		</form>
+	</div>
 </section>
 
 <style>
 	.shopping-list {
 		display: grid;
-		grid-template-columns: 1fr;
+		grid-template-columns: 1fr auto;
 		gap: 20px;
 		@media screen and (min-width: 690px) {
 			grid-template-columns: 1fr 1fr;
@@ -84,6 +74,62 @@
 			@media screen and (min-width: 690px) {
 				grid-column: 2;
 			}
+		}
+
+		.modal {
+			grid-column: 1/-1;
+			grid-row: 2;
+			background: var(--level-2);
+			padding: 20px;
+			border-radius: 10px;
+			box-shadow: var(--level-3);
+			transition: all 0.3s ease-in-out;
+			&.closed {
+				max-height: 0;
+				overflow: hidden;
+				padding: 0 20px;
+				opacity: 0;
+				box-shadow: none;
+			}
+			&.open {
+				max-height: 500px;
+				opacity: 1;
+			}
+			@media screen and (min-width: 690px) {
+			}
+		}
+		h1 {
+			grid-column: 1;
+			grid-row: 1;
+		}
+
+		button.add-event {
+			display: block;
+			grid-column: 2;
+			grid-row: 1;
+			justify-self: end;
+			&:hover {
+				box-shadow: var(--level-2);
+			}
+			&.modal-active {
+				display: none;
+			}
+		}
+		button.close-modal {
+			display: none;
+			&.modal-active {
+				display: block;
+				grid-column: 2;
+				grid-row: 1;
+				justify-self: end;
+				&:hover {
+					box-shadow: var(--level-2);
+				}
+			}
+		}
+		.list-container {
+			grid-column: 1 / -1;
+			grid-row: 3;
 		}
 	}
 
@@ -105,42 +151,5 @@
 		padding: 5px;
 		border: 1px solid #ccc;
 		border-radius: 4px;
-	}
-
-	@media screen and (min-width: 690px) {
-		.modal {
-			position: fixed;
-			top: 0;
-			left: 0;
-			width: 100vw;
-			height: 100vh;
-			background-color: rgba(0, 0, 0, 0.5);
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: center;
-			z-index: 1000;
-		}
-		.modal-overlay {
-			position: absolute;
-			top: 0;
-			left: 0;
-			width: 100vw;
-			height: 100vh;
-			background: transparent;
-			z-index: 1001;
-		}
-		.modal form {
-			position: relative;
-			z-index: 1002;
-			background: white;
-			padding: 20px;
-			border-radius: 8px;
-			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-			width: 300px;
-			display: flex;
-			flex-direction: column;
-			gap: 10px;
-		}
 	}
 </style>

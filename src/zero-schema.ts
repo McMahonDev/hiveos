@@ -99,6 +99,7 @@ const shoppingList = table('shoppingList')
 	.columns({
 		id: string(),
 		name: string(),
+		store: string().optional(),
 		status: boolean(),
 		createdById: string(),
 		assignedToId: string(),

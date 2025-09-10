@@ -50,6 +50,13 @@
       "when": 1756833815586,
       "tag": "0006_odd_black_cat",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1757002619778,
+      "tag": "0007_curly_zemo",
+      "breakpoints": true
     }
   ]
 }

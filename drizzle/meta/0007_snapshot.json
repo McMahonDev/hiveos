@@ -1,6 +1,6 @@
 {
-  "id": "12d48a5e-de6e-4ff2-99a2-b1a2d148b32f",
-  "prevId": "40d24289-0144-463b-bae8-41a9e0a243cb",
+  "id": "b19bee44-8d89-45bb-96ba-e6c6e9973a7a",
+  "prevId": "3fc6b1ef-3895-4cec-813f-39592e391dfd",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -125,9 +125,15 @@
           "primaryKey": false,
           "notNull": false
         },
-        "datetime": {
-          "name": "datetime",
-          "type": "integer",
+        "date": {
+          "name": "date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time": {
+          "name": "time",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -146,6 +152,12 @@
         "assignedToId": {
           "name": "assignedToId",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false
         }
@@ -257,6 +269,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "store": {
+          "name": "store",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "status": {
           "name": "status",
           "type": "boolean",
@@ -272,6 +290,12 @@
         "assignedToId": {
           "name": "assignedToId",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false
         }
