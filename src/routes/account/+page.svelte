@@ -7,27 +7,19 @@
 
 	let groupId = data.groupId;
 	let userId = data.id;
-	console.log('Group ID:', groupId);
-	console.log('User ID:', userId);
 
-	let group = $state(new Query(z.current.query.userGroups.where('id', groupId)));
+	let group = new Query(z.current.query.userGroups.where('id', groupId));
 	// @ts-ignore
 	const user = new Query(z.current.query.user.where('id', userId));
 
 	const email = $derived(user.current[0]?.email ?? '');
-	const userGroupMembers = $state(
-		new Query(z.current.query.userGroupMembers.where('userGroupId', groupId))
-	);
+	let userGroupMembers = new Query(z.current.query.userGroupMembers.where('userGroupId', groupId));
 
-	let userGroupRequests = $state(
-		new Query(z.current.query.userGroupRequests.where('email', email))
-	);
+	// recreate the query whenever `email` changes to keep it in sync
 
-	$effect(() => {
-		group = new Query(z.current.query.userGroups.where('id', groupId));
-	});
+	let userGroupRequests = new Query(z.current.query.userGroupRequests.where('email', email));
 
-	let groupName = $derived(group.current[0]?.name ?? 'No group found');
+	// let groupName = $derived(group.current[0]?.name ?? 'No group found');
 	let showDeleteGroup = $derived(
 		group.current[0]?.name && group.current[0]?.createdById === userId ? true : false
 	);
@@ -100,6 +92,11 @@
 			z.current.mutate.userGroupRequests.delete({ id: requestId });
 		}
 	}
+
+	function getName(id) {
+		const name = new Query(z.current.query.user.where('id', id)).current[0]?.name;
+		return name ? name : id;
+	}
 </script>
 
 <div class="container">
@@ -108,7 +105,10 @@
 	<div class="details">
 		<p><strong>Name:</strong> {user?.current[0]?.name}</p>
 		<p><strong>Email:</strong> {user?.current[0]?.email}</p>
-		<p><strong>Group:</strong> {groupName}</p>
+		<p>
+			<strong>Group:</strong>{#if group.current[0]?.name}{group.current[0]?.name}{:else}No group
+				found{/if}
+		</p>
 		{#if !group.current[0]?.name}
 			<form onsubmit={createGroup}>
 				<input type="text" name="groupName" placeholder="Group Name" />
@@ -138,7 +138,7 @@
 
 					<ul>
 						{#each userGroupMembers.current as member}
-							<li>{member.userId}</li>
+							<li>{getName(member.userId)}</li>
 						{/each}
 					</ul>
 				</div>
