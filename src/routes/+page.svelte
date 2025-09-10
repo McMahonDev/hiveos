@@ -41,6 +41,27 @@
 
 		return `You have ${future} upcoming events, ${today} happening today, and ${pastDue} past due events.`;
 	}
+
+	function getShoppingListString(): string {
+		// lets break it down by stores
+		const itemsByStore = new Map<string, number>();
+		for (const item of shoppingList?.current ?? []) {
+			const store = item.store || 'Unknown';
+			itemsByStore.set(store, (itemsByStore.get(store) || 0) + 1);
+		}
+
+		// create a string from the map
+		let shoppingListCount = shoppingList?.current.length ?? 0;
+		if (shoppingListCount === 0) {
+			return 'No items in your shopping list.';
+		}
+
+		const itemsList = Array.from(itemsByStore.entries())
+			.map(([store, count]) => `${count} item${count > 1 ? 's' : ''} from ${store}`)
+			.join(', ');
+
+		return `You have ${shoppingListCount} item${shoppingListCount > 1 ? 's' : ''} in your shopping list: ${itemsList}.`;
+	}
 </script>
 
 <div class="container">
@@ -65,9 +86,7 @@
 			<h2>Shopping List</h2>
 			<NewTab />
 			<p>
-				{shoppingListCount === 0
-					? 'No items in your shopping list.'
-					: `You have ${shoppingListCount} item${shoppingListCount > 1 ? 's' : ''} in your shopping list.`}
+				{shoppingListCount === 0 ? 'No items in your shopping list.' : getShoppingListString()}
 			</p>
 		</div>
 		{#if shoppingListCount > 0}

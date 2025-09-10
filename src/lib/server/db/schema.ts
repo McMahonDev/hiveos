@@ -32,6 +32,7 @@ export const events = pgTable('events', {
 export const shoppingList = pgTable('shoppingList', {
 	id: text('id').primaryKey(),
 	name: text('name'),
+	store: text('store'),
 	status: boolean('status'),
 	createdById: text('createdById'),
 	assignedToId: text('assignedToId'),

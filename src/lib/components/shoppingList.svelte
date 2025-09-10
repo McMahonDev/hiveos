@@ -3,7 +3,6 @@
 	// Assuming `Query` is the correct way to get a Zero query object in zero-svelte
 	import { Query } from 'zero-svelte';
 
-
 	let { data, shortlist = false } = $props();
 
 	let z = data.z;
@@ -15,17 +14,12 @@
 
 	let numberOfItems = $derived(shoppingList.current?.length ?? 0);
 
-	function deleteItem(event: Event) {
-		const target = event.target as HTMLElement | null;
-		const id = target?.dataset?.id;
+	function deleteItem(id: string) {
 		if (!id) {
 			console.error('No ID provided for deletion.');
 			return;
 		}
 		if (id) {
-			// This mutator call will trigger Zero's internal synchronization.
-			// If the deletion succeeds in your backend, Zero should automatically
-			// update the local query result that `shoppingList` is observing.
 			z.current.mutate.shoppingList.delete({ id });
 		}
 	}
@@ -46,6 +40,7 @@
 					{#if i < 3}
 						<li>
 							{item.name}
+							{item.store ? ` - ${item.store}` : ''}
 						</li>
 					{/if}
 				{/each}
@@ -62,7 +57,8 @@
 				<li>
 					<input type="checkbox" value={item.id} checked={item.status} oninput={toggletask} />
 					{item.name}
-					<button data-id={item.id} onclick={deleteItem}>Delete</button>
+					{item.store ? ` - ${item.store}` : ''}
+					<button data-id={item.id} onclick={() => deleteItem(item.id)}>Delete</button>
 				</li>
 			{/each}
 		</ul>
