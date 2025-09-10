@@ -7,6 +7,7 @@
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { goto } from '$app/navigation';
+	import { invalidateAll } from '$app/navigation';
 
 	let { children, data } = $props();
 
@@ -23,6 +24,7 @@
 		try {
 			await authClient.signOut();
 			menuOpen = false; // Close menu on logout
+			await invalidateAll(); // This will re-run all load functions
 			await goto('/account/login', { replaceState: true, noScroll: true });
 		} catch (error) {
 			console.error('Logout failed:', error);
