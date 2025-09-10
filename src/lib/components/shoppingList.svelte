@@ -41,6 +41,7 @@
 						<li>
 							{item.name}
 							{item.store ? ` - ${item.store}` : ''}
+
 						</li>
 					{/if}
 				{/each}

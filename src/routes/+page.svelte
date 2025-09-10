@@ -62,6 +62,7 @@
 
 		return `You have ${shoppingListCount} item${shoppingListCount > 1 ? 's' : ''} in your shopping list: ${itemsList}.`;
 	}
+
 </script>
 
 <div class="container">
@@ -130,6 +131,18 @@
 				align-items: center;
 			}
 		}
+	}
+	h1 {
+		font-size: 1.25rem;
+		text-align: center;
+	}
+	/* h2 {
+		font-size: 1.2rem;
+		margin-bottom: 10px;
+	} */
+	a.card {
+		text-decoration: none;
+		color: inherit;
 	}
 	h1 {
 		font-size: 1.25rem;

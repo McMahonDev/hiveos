@@ -24,7 +24,9 @@
 		try {
 			await authClient.signOut();
 			menuOpen = false; // Close menu on logout
+
 			await invalidateAll(); // This will re-run all load functions
+
 			await goto('/account/login', { replaceState: true, noScroll: true });
 		} catch (error) {
 			console.error('Logout failed:', error);
