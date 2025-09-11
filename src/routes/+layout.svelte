@@ -19,7 +19,9 @@
 	let menu = $state<HTMLElement | null>(null);
 	let createListModalOpen = $state(false);
 
-	let customLists = new Query(z?.current.query.customLists.where('createdById', data.id));
+	let customLists = $derived(
+		z?.current ? new Query(z.current.query.customLists.where('createdById', data.id)) : null
+	);
 
 	function toggleMenu() {
 		menuOpen = !menuOpen;
