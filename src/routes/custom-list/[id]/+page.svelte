@@ -1,12 +1,23 @@
 <script lang="ts">
-	import ShoppingList from '$lib/components/shoppingList.svelte';
 	import { Query } from 'zero-svelte';
 	import { nanoid } from 'nanoid';
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 
-	let { data } = $props();
-	let z = data.z;
-	let groupId = data.groupId;
+	let { data } = $props(); // repo style (Svelte 5)
+	const listId = data.listId;
+	const z = data.z;
+	const id = data.id;
+	const groupId = data.groupId;
+
+	let customList = z
+		? new Query(z?.current.query.customLists.where('id', listId).where('createdById', id))
+		: null;
+
+	let customListItems = z
+		? new Query(
+				z?.current.query.customListItems.where('customListId', listId).orderBy('createdAt', 'asc')
+			)
+		: null;
 
 	let modal = $state(false);
 
@@ -14,15 +25,13 @@
 		event.preventDefault();
 		const formData = new FormData(event.target as HTMLFormElement);
 		const name = formData.get('name') as string;
-		const store = formData.get('store') as string;
 		const id = nanoid();
 		if (name) {
-			z?.current.mutate.shoppingList.insert({
+			z?.current.mutate.customListItems.insert({
 				id,
 				name,
-				store,
 				status: false,
-				assignedToId: groupId,
+				customListId: listId,
 				createdById: data.id,
 				createdAt: Date.now()
 			});
@@ -31,8 +40,8 @@
 	}
 </script>
 
-<section class="shopping-list">
-	<h1>Shopping List</h1>
+<section class="custom-list">
+	<h1>{customList?.current ? customList.current[0]?.name : 'Loading...'}</h1>
 	<button class="add-event" class:modal-active={modal} onclick={() => (modal = true)}>
 		Add Item
 	</button>
@@ -41,9 +50,16 @@
 	</button>
 
 	<div class="list-container">
-		<ShoppingList {data} />
+		{#if customListItems?.current}
+			{#each customListItems.current as item (item.id)}
+				<div class="list-item">
+					<p>{item.name}</p>
+				</div>
+			{/each}
+		{:else}
+			<p>Loading items...</p>
+		{/if}
 	</div>
-
 	<div class={modal ? 'modal open' : 'modal closed'} role="dialog" aria-modal="true" tabindex="-1">
 		<h2>Add an item</h2>
 		<form {onsubmit}>
@@ -51,17 +67,13 @@
 				>Item Name
 				<input type="text" id="name" name="name" />
 			</label>
-			<label for="store"
-				>Store
-				<input type="text" id="store" name="store" />
-			</label>
 			<button type="submit">Add</button>
 		</form>
 	</div>
 </section>
 
 <style>
-	.shopping-list {
+	.custom-list {
 		display: grid;
 		grid-template-columns: 1fr auto;
 		gap: 20px;

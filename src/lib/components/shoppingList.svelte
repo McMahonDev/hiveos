@@ -9,7 +9,7 @@
 	let groupId = data.groupId;
 
 	let shoppingList = new Query(
-		z.current.query.shoppingList.where('assignedToId', groupId).orderBy('createdAt', 'asc')
+		z?.current.query.shoppingList.where('assignedToId', groupId).orderBy('createdAt', 'asc')
 	);
 
 	let numberOfItems = $derived(shoppingList.current?.length ?? 0);
@@ -20,7 +20,7 @@
 			return;
 		}
 		if (id) {
-			z.current.mutate.shoppingList.delete({ id });
+			z?.current.mutate.shoppingList.delete({ id });
 		}
 	}
 
@@ -28,7 +28,7 @@
 		const checkbox = event.target as HTMLInputElement;
 		const id = checkbox.value;
 		const completed = checkbox.checked;
-		z.current.mutate.shoppingList.update({ id, status: completed });
+		z?.current.mutate.shoppingList.update({ id, status: completed });
 	}
 </script>
 
@@ -41,7 +41,6 @@
 						<li>
 							{item.name}
 							{item.store ? ` - ${item.store}` : ''}
-
 						</li>
 					{/if}
 				{/each}

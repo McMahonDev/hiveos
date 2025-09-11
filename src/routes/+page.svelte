@@ -11,9 +11,9 @@
 	let shortlist: boolean = true;
 
 	let z = data.z;
-	const events = z ? new Query(z.current.query.events.where('assignedToId', data.groupId)) : null;
+	const events = z ? new Query(z?.current.query.events.where('assignedToId', data.groupId)) : null;
 	const shoppingList = z
-		? new Query(z.current.query.shoppingList.where('assignedToId', data.groupId))
+		? new Query(z?.current.query.shoppingList.where('assignedToId', data.groupId))
 		: null;
 
 	let shoppingListCount = $state(0);
@@ -62,7 +62,6 @@
 
 		return `You have ${shoppingListCount} item${shoppingListCount > 1 ? 's' : ''} in your shopping list: ${itemsList}.`;
 	}
-
 </script>
 
 <div class="container">

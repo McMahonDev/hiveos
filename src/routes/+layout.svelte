@@ -8,13 +8,18 @@
 	import { authClient } from '$lib/auth/client';
 	import { goto } from '$app/navigation';
 	import { invalidateAll } from '$app/navigation';
+	import { Query } from 'zero-svelte';
+	import { nanoid } from 'nanoid';
 
 	let { children, data } = $props();
-
+	const z = data.z;
 	let auth = $derived(data.auth);
 	let menuOpen = $state(false);
 	let inGroup = $derived(data.groupId !== data.id);
 	let menu = $state<HTMLElement | null>(null);
+	let createListModalOpen = $state(false);
+
+	let customLists = new Query(z?.current.query.customLists.where('createdById', data.id));
 
 	function toggleMenu() {
 		menuOpen = !menuOpen;
@@ -49,6 +54,34 @@
 			window.removeEventListener('popstate', popstateHandler);
 		};
 	});
+
+	function openCreateList() {
+		menuOpen = false;
+		createListModalOpen = true;
+	}
+
+	function createList(e) {
+		e.preventDefault();
+		menuOpen = false;
+		createListModalOpen = false;
+		// get form data and create list logic here
+		const formData = new FormData(e.target);
+		const listName = formData.get('list-name');
+		console.log('Creating list:', listName);
+		z?.current?.mutate.customLists
+			.insert({
+				id: nanoid(),
+				name: listName as string,
+				createdById: data.id,
+				createdAt: Date.now()
+			})
+			.then(() => {
+				(e.target as HTMLFormElement).reset();
+			})
+			.catch((err) => {
+				console.error('insert failed', err);
+			});
+	}
 </script>
 
 <header>
@@ -76,15 +109,30 @@
 		<aside bind:this={menu} class:menuOpen>
 			<ul>
 				<li><a onclick={() => (menuOpen = false)} href="/">Dashboard</a></li>
-				<!-- <li><a onclick={() => (menuOpen = false)} href="/calendar">Calendar</a></li> -->
 				<li><a onclick={() => (menuOpen = false)} href="/events">Events</a></li>
 				<li><a onclick={() => (menuOpen = false)} href="/shopping-list">Shopping List</a></li>
-				<!-- <li><a onclick={() => (menuOpen = false)} href="/tasks">Task list</a></li> -->
-				<!-- <li><a onclick={() => (menuOpen = false)} href="/recipies">Recipies</a></li> -->
-				<button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button>
+				{#if customLists.current}
+					{#each customLists.current as list (list.id)}
+						<li>
+							<a onclick={() => (menuOpen = false)} href={`/custom-list/${list.id}`}>{list.name}</a>
+						</li>
+					{/each}
+				{/if}
+				<li><button onclick={() => openCreateList()}>Create List</button></li>
+				<li><button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button></li>
 				<li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
 			</ul>
 		</aside>
+		{#if createListModalOpen}
+			<div class="create-list-modal">
+				<form onsubmit={createList}>
+					<label for="list-name">List Name:</label>
+					<input type="text" id="list-name" name="list-name" required />
+					<button type="submit">Create</button>
+					<button type="button" onclick={() => (menuOpen = false)}>Cancel</button>
+				</form>
+			</div>
+		{/if}
 	{/if}
 
 	<main class:menuOpen>
@@ -254,6 +302,53 @@
 
 		@media screen and (max-width: 690px) {
 			display: block;
+		}
+	}
+
+	.create-list-modal {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		background-color: var(--background);
+		padding: 20px;
+		border-radius: 10px;
+		box-shadow: var(--level-3);
+		z-index: 1000;
+
+		form {
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+
+			label {
+				font-weight: bold;
+			}
+
+			input {
+				padding: 10px;
+				border: 1px solid #ccc;
+				border-radius: 5px;
+				font-size: 1rem;
+			}
+
+			button {
+				padding: 10px;
+				border: none;
+				border-radius: 5px;
+				cursor: pointer;
+				font-size: 1rem;
+
+				&:first-of-type {
+					background-color: var(--primary);
+					color: #000;
+				}
+
+				&:last-of-type {
+					background-color: #ccc;
+					color: #000;
+				}
+			}
 		}
 	}
 </style>
