@@ -9,7 +9,6 @@
 	let userId = data.id;
 
 	let group = new Query(z.current.query.userGroups.where('id', groupId));
-	// @ts-ignore
 	const user = new Query(z.current.query.user.where('id', userId));
 
 	const email = $derived(user.current[0]?.email ?? '');
@@ -93,7 +92,7 @@
 		}
 	}
 
-	function getName(id) {
+	function getName(id: string) {
 		const name = new Query(z.current.query.user.where('id', id)).current[0]?.name;
 		return name ? name : id;
 	}
@@ -135,7 +134,6 @@
 			<div>
 				<div>
 					<p>All members:</p>
-
 					<ul>
 						{#each userGroupMembers.current as member}
 							<li>{getName(member.userId)}</li>
