@@ -134,6 +134,28 @@ const userGroupRequests = table('userGroupRequests')
 	})
 	.primaryKey('id');
 
+const customLists = table('customLists')
+	.columns({
+		id: string(),
+		name: string(),
+		createdById: string(),
+		createdAt: number()
+	})
+	.primaryKey('id');
+
+const customListItems = table('customListItems')
+	.columns({
+		id: string(),
+		name: string(),
+		status: boolean(),
+		createdById: string(),
+		customListId: string(),
+		createdAt: number()
+	})
+	.primaryKey('id');
+
+// Relationships
+
 const taskRelationships = relationships(tasks, ({ one }) => ({
 	createdBy: one({
 		sourceField: ['createdById'],
@@ -211,6 +233,27 @@ const accountRelationships = relationships(account, ({ one }) => ({
 	})
 }));
 
+const customListRelationships = relationships(customLists, ({ one }) => ({
+	createdBy: one({
+		sourceField: ['createdById'],
+		destSchema: user,
+		destField: ['id']
+	})
+}));
+
+const customListItemRelationships = relationships(customListItems, ({ one }) => ({
+	createdBy: one({
+		sourceField: ['createdById'],
+		destSchema: user,
+		destField: ['id']
+	}),
+	customList: one({
+		sourceField: ['customListId'],
+		destSchema: customLists,
+		destField: ['id']
+	})
+}));
+
 export const schema = createSchema({
 	tables: [
 		user,
@@ -222,7 +265,9 @@ export const schema = createSchema({
 		shoppingList,
 		userGroups,
 		userGroupMembers,
-		userGroupRequests
+		userGroupRequests,
+		customLists,
+		customListItems
 	],
 	relationships: [
 		taskRelationships,
@@ -231,7 +276,9 @@ export const schema = createSchema({
 		userGroupRelationships,
 		userGroupRequestsRelationships,
 		sessionRelationships,
-		accountRelationships
+		accountRelationships,
+		customListRelationships,
+		customListItemRelationships
 	]
 });
 
@@ -246,6 +293,8 @@ export type ShoppingList = Row<typeof schema.tables.shoppingList>;
 export type UserGroup = Row<typeof schema.tables.userGroups>;
 export type UserGroupMember = Row<typeof schema.tables.userGroupMembers>;
 export type UserGroupRequest = Row<typeof schema.tables.userGroupRequests>;
+export type CustomList = Row<typeof schema.tables.customLists>;
+export type CustomListItem = Row<typeof schema.tables.customListItems>;
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	const allowIfIssueCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'tasks'>) =>
@@ -351,6 +400,28 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 			}
 		},
 		userGroupRequests: {
+			row: {
+				select: ANYONE_CAN,
+				insert: ANYONE_CAN,
+				update: {
+					preMutation: ANYONE_CAN,
+					postMutation: ANYONE_CAN
+				},
+				delete: ANYONE_CAN
+			}
+		},
+		customLists: {
+			row: {
+				select: ANYONE_CAN,
+				insert: ANYONE_CAN,
+				update: {
+					preMutation: ANYONE_CAN,
+					postMutation: ANYONE_CAN
+				},
+				delete: ANYONE_CAN
+			}
+		},
+		customListItems: {
 			row: {
 				select: ANYONE_CAN,
 				insert: ANYONE_CAN,

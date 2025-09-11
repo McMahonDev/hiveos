@@ -60,6 +60,22 @@ export const userGroupRequests = pgTable('userGroupRequests', {
 	groupName: text('groupName')
 });
 
+export const customLists = pgTable('customLists', {
+	id: text('id').primaryKey(),
+	name: text('name'),
+	createdById: text('createdById'),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
+});
+
+export const customListItems = pgTable('customListItems', {
+	id: text('id').primaryKey(),
+	name: text('name'),
+	status: boolean('status'),
+	createdById: text('createdById'),
+	customListId: text('customListId'),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
+});
+
 // --- Relationships ---
 // Users <-> Tasks
 export const usersRelations = relations(user, ({ many }) => ({
@@ -133,5 +149,22 @@ export const userGroupRequestsRelations = relations(userGroupRequests, ({ one })
 	userGroup: one(userGroups, {
 		fields: [userGroupRequests.userGroupId],
 		references: [userGroups.id]
+	})
+}));
+
+export const customListsRelations = relations(customLists, ({ one, many }) => ({
+	createdBy: one(user, {
+		fields: [customLists.createdById],
+		references: [user.id]
+	}),
+	items: many(customListItems, {
+		relationName: 'customListId'
+	})
+}));
+
+export const customListItemsRelations = relations(customListItems, ({ one }) => ({
+	customList: one(customLists, {
+		fields: [customListItems.customListId],
+		references: [customLists.id]
 	})
 }));
