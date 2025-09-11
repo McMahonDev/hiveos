@@ -297,53 +297,23 @@ export type CustomList = Row<typeof schema.tables.customLists>;
 export type CustomListItem = Row<typeof schema.tables.customListItems>;
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
-	const allowIfIssueCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'tasks'>) =>
-		cmp('id', authData.sub);
+	
+	const isEventsCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'events'>) =>
+		cmp('createdById', '=', authData.sub);
+	const isEventsAssignedTo = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'events'>) =>
+		cmp('assignedToId', '=', authData.sub);
+
+	const isShoppingListCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
+		cmp('createdById', '=', authData.sub);
+	const isShoppingListAssignedTo = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
+		cmp('assignedToId', '=', authData.sub);
+
+	const isUserGroupCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroups'>) =>
+		cmp('createdById', '=', authData.sub);
+	const isUserGroupMember = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>) =>
+		cmp('userId', '=', authData.sub);
+
 	return {
-		// Better Auth tables
-		user: {
-			row: {
-				select: ANYONE_CAN,
-				insert: ANYONE_CAN,
-				update: {
-					preMutation: ANYONE_CAN,
-					postMutation: ANYONE_CAN
-				}
-			}
-		},
-		session: {
-			row: {
-				select: ANYONE_CAN,
-				insert: ANYONE_CAN,
-				update: {
-					preMutation: ANYONE_CAN,
-					postMutation: ANYONE_CAN
-				},
-				delete: ANYONE_CAN
-			}
-		},
-		account: {
-			row: {
-				select: ANYONE_CAN,
-				insert: ANYONE_CAN,
-				update: {
-					preMutation: ANYONE_CAN,
-					postMutation: ANYONE_CAN
-				},
-				delete: ANYONE_CAN
-			}
-		},
-		verification: {
-			row: {
-				select: ANYONE_CAN,
-				insert: ANYONE_CAN,
-				update: {
-					preMutation: ANYONE_CAN,
-					postMutation: ANYONE_CAN
-				},
-				delete: ANYONE_CAN
-			}
-		},
 		// Application tables
 		tasks: {
 			row: {
@@ -357,40 +327,40 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 		},
 		events: {
 			row: {
-				select: ANYONE_CAN,
-				insert: ANYONE_CAN,
+				select: [isEventsCreator, isEventsAssignedTo],
+				insert: [isEventsCreator, isEventsAssignedTo],
 				update: {
-					preMutation: ANYONE_CAN,
-					postMutation: ANYONE_CAN
+					preMutation: [isEventsCreator, isEventsAssignedTo],
+					postMutation: [isEventsCreator, isEventsAssignedTo]
 				},
-				delete: ANYONE_CAN
+				delete: [isEventsCreator, isEventsAssignedTo]
 			}
 		},
 		shoppingList: {
 			row: {
-				select: ANYONE_CAN,
-				insert: ANYONE_CAN,
+				select: [isShoppingListCreator, isShoppingListAssignedTo],
+				insert: [isShoppingListCreator, isShoppingListAssignedTo],
 				update: {
-					preMutation: ANYONE_CAN,
-					postMutation: ANYONE_CAN
+					preMutation: [isShoppingListCreator, isShoppingListAssignedTo],
+					postMutation: [isShoppingListCreator, isShoppingListAssignedTo]
 				},
-				delete: ANYONE_CAN
+				delete: [isShoppingListCreator, isShoppingListAssignedTo]
 			}
 		},
 		userGroups: {
 			row: {
-				select: ANYONE_CAN,
+				select: [isUserGroupCreator],
 				insert: ANYONE_CAN,
 				update: {
 					preMutation: ANYONE_CAN,
 					postMutation: ANYONE_CAN
 				},
-				delete: ANYONE_CAN
+				delete: [isUserGroupCreator]
 			}
 		},
 		userGroupMembers: {
 			row: {
-				select: ANYONE_CAN,
+				select: [isUserGroupMember],
 				insert: ANYONE_CAN,
 				update: {
 					preMutation: ANYONE_CAN,

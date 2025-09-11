@@ -7,7 +7,7 @@ const url = import.meta.env?.VITE_CONNECTION_STRING;
 if (!url) throw new Error('CONNECTION_STRING is not set');
 
 export const load: LayoutLoad = async (event) => {
-	let { auth, id, groupId, name } = event.data;
+	let { auth, id, groupId, name, JWT } = event.data;
 	const authenticatedUser = auth && id && groupId ? { id, groupId } : null;
 	let z: Z<Schema> | undefined;
 
@@ -22,7 +22,8 @@ export const load: LayoutLoad = async (event) => {
 				userID: id,
 				server: url,
 				schema,
-				kvStore: 'idb'
+				kvStore: 'idb',
+				auth: JWT
 			} as const;
 		}
 		z = new Z<Schema>(get_z_options());
