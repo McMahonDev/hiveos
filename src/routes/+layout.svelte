@@ -19,9 +19,7 @@
 	let menu = $state<HTMLElement | null>(null);
 	let createListModalOpen = $state(false);
 
-	let customLists = $derived(
-		z?.current ? new Query(z.current.query.customLists.where('createdById', data.id)) : null
-	);
+	let customLists = $state<Query<any, any, any> | null>(null);
 
 	function toggleMenu() {
 		menuOpen = !menuOpen;
@@ -41,6 +39,12 @@
 	}
 
 	$effect(() => {
+		console.log('Auth state changed:', auth);
+
+		if (auth && z?.current) {
+			console.log('Setting up custom lists query for user:', data.id);
+			customLists = new Query(z.current.query.customLists.where('createdById', data.id));
+		}
 		window.addEventListener('resize', () => {
 			if (window.innerWidth > 690) {
 				menuOpen = false;
@@ -113,12 +117,16 @@
 				<li><a onclick={() => (menuOpen = false)} href="/">Dashboard</a></li>
 				<li><a onclick={() => (menuOpen = false)} href="/events">Events</a></li>
 				<li><a onclick={() => (menuOpen = false)} href="/shopping-list">Shopping List</a></li>
-				{#if customLists.current}
-					{#each customLists.current as list (list.id)}
-						<li>
-							<a onclick={() => (menuOpen = false)} href={`/custom-list/${list.id}`}>{list.name}</a>
-						</li>
-					{/each}
+				{#if customLists}
+					{#if customLists?.current}
+						{#each customLists?.current as list (list.id)}
+							<li>
+								<a onclick={() => (menuOpen = false)} href={`/custom-list/${list.id}`}
+									>{list.name}</a
+								>
+							</li>
+						{/each}
+					{/if}
 				{/if}
 				<li><button onclick={() => openCreateList()}>Create List</button></li>
 				<li><button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button></li>

@@ -50,7 +50,7 @@ export async function load({ request, url }) {
 				email: session.user.email,
 				name: session.user.name
 			},
-			JWT_SECRET,
+			JWT_SECRET as string,
 			{
 				expiresIn: '24h'
 			}
