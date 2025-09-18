@@ -8,7 +8,6 @@
 	let { data } = $props(); // repo style (Svelte 5)
 	const listId = $derived(data.listId);
 
-	$inspect(listId, 'listId');
 	const z = data.z;
 	const id = data.id;
 	const groupId = data.groupId;

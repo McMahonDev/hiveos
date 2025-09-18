@@ -27,7 +27,6 @@
 		event.preventDefault();
 		const form = event.target as HTMLFormElement;
 		const name = form.groupName.value;
-		console.log(name);
 		if (name) {
 			const id = nanoid();
 			z?.current.mutate.userGroups.insert({
@@ -69,7 +68,6 @@
 	function acceptRequest(event: Event) {
 		event.preventDefault();
 		const requestId = event?.target?.closest('li').dataset.id;
-		console.log(requestId);
 		if (requestId) {
 			const request = userGroupRequests.current.find((r) => r.id === requestId);
 			if (request) {

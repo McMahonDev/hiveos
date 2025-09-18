@@ -39,10 +39,7 @@
 	}
 
 	$effect(() => {
-		console.log('Auth state changed:', auth);
-
 		if (auth && z?.current) {
-			console.log('Setting up custom lists query for user:', data.id);
 			customLists = new Query(z.current.query.customLists.where('createdById', data.id));
 		}
 		window.addEventListener('resize', () => {
@@ -73,16 +70,17 @@
 		// get form data and create list logic here
 		const formData = new FormData(e.target);
 		const listName = formData.get('list-name');
-		console.log('Creating list:', listName);
+		const id = nanoid();
 		z?.current?.mutate.customLists
 			.insert({
-				id: nanoid(),
+				id,
 				name: listName as string,
 				createdById: data.id,
 				createdAt: Date.now()
 			})
 			.then(() => {
 				(e.target as HTMLFormElement).reset();
+				goto(`/custom-list/${id}`);
 			})
 			.catch((err) => {
 				console.error('insert failed', err);
