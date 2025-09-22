@@ -11,6 +11,7 @@
 	import { Query } from 'zero-svelte';
 	import { nanoid } from 'nanoid';
 
+
 	let { children, data } = $props();
 	const z = data.z;
 	let auth = $derived(data.auth);
