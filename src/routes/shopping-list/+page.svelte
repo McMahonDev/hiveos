@@ -17,7 +17,7 @@
 		const store = formData.get('store') as string;
 		const id = nanoid();
 		if (name) {
-			z.current.mutate.shoppingList.insert({
+			z?.current.mutate.shoppingList.insert({
 				id,
 				name,
 				store,

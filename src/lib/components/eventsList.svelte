@@ -9,10 +9,9 @@
 	const groupId = data.groupId;
 
 	// Query events (ordered by createdAt for a deterministic replica order).
-	const events = z
-		? new Query(z.current.query.events.where('assignedToId', groupId).orderBy('createdAt', 'asc'))
-		: null;
-
+	const events = new Query(
+		z?.current.query.events.where('assignedToId', groupId).orderBy('createdAt', 'asc')
+	);
 
 	let numberOfItems = $derived(events.current?.length ?? 0);
 
@@ -132,7 +131,7 @@
 			return;
 		}
 		if (id) {
-			z.current.mutate.events.delete({ id });
+			z?.current.mutate.events.delete({ id });
 		}
 	}
 </script>

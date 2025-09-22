@@ -4,20 +4,26 @@ import { auth } from '$lib/auth/auth';
 import { db } from '$lib/server/db/index';
 import { userGroupMembers, user } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+dotenv.config();
 
-export async function load({ request, url, cookies }) {
+const JWT_SECRET = process.env.ZERO_AUTH_SECRET;
+if (!JWT_SECRET) {
+	throw new Error('ZERO_AUTH_SECRET environment variable is not set');
+}
+
+export async function load({ request, url }) {
 	let isAuthenticated: boolean;
 	let userId: string;
 	let groupId: string;
 	let name: string = '';
-
+	let JWT: string | undefined = undefined;
 
 	// Use Better Auth to get the session
 	const session = await auth.api.getSession({
 		headers: request.headers
 	});
-
-	
 
 	if (!session) {
 		isAuthenticated = false;
@@ -27,10 +33,21 @@ export async function load({ request, url, cookies }) {
 			throw redirect(302, '/account/login');
 		}
 	} else {
-
 		isAuthenticated = true;
 		userId = session.user.id;
-		
+		JWT = jwt.sign(
+			{
+				sub: session.user.id, // This is what Zero uses for authData.sub
+				userId: session.user.id,
+				email: session.user.email,
+				name: session.user.name
+			},
+			JWT_SECRET as string,
+			{
+				expiresIn: '24h'
+			}
+		);
+
 		// Query the user's group membership to get groupId
 		try {
 			const userGroupMembership = await db
@@ -38,21 +55,17 @@ export async function load({ request, url, cookies }) {
 				.from(userGroupMembers)
 				.where(eq(userGroupMembers.userId, session.user.id))
 				.limit(1);
-			
+
 			// If user is in a group, use that groupId, otherwise use userId as groupId
 			groupId = userGroupMembership[0]?.userGroupId || session.user.id;
 
-			const userData = await db
-				.select()
-				.from(user)
-				.where(eq(user.id, session.user.id))
-				.limit(1);
+			const userData = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
 
 			if (userData[0]) {
 				name = userData[0].name;
 			} else {
 				// If no user data is found, fall back to session user
-				console.log("No user data found, falling back to session user");
+				console.log('No user data found, falling back to session user');
 			}
 		} catch (error) {
 			console.error('Error fetching user group membership:', error);
@@ -60,11 +73,12 @@ export async function load({ request, url, cookies }) {
 			groupId = session.user.id;
 		}
 	}
-	
-	return { 
-		auth: isAuthenticated, 
-		id: userId, 
+
+	return {
+		auth: isAuthenticated,
+		id: userId,
 		groupId,
-		name
+		name,
+		JWT
 	};
 }

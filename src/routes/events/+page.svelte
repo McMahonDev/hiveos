@@ -10,8 +10,8 @@
 
 	let modal = $state(false);
 
-	// const events = z ? new Query(z.current.query.events.where('assignedToId', data.id)) : null;
-	const group = z ? new Query(z.current.query.userGroups.where('id', data.groupId)) : null;
+	// const events = z ? new Query(z?.current.query.events.where('assignedToId', data.id)) : null;
+	const group = z ? new Query(z?.current.query.userGroups.where('id', data.groupId)) : null;
 	let groupid = $derived((group && group.current[0]?.id) ?? data.groupId);
 
 	function onsubmit(event: Event) {
@@ -21,7 +21,7 @@
 		let date = formData.get('date') as string;
 		let time = formData.get('time') as string;
 
-		z.current.mutate.events.insert({
+		z?.current.mutate.events.insert({
 			id: nanoid(),
 			name,
 			date,

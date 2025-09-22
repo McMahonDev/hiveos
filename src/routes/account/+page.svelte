@@ -7,27 +7,18 @@
 
 	let groupId = data.groupId;
 	let userId = data.id;
-	console.log('Group ID:', groupId);
-	console.log('User ID:', userId);
 
-	let group = $state(new Query(z.current.query.userGroups.where('id', groupId)));
-	// @ts-ignore
-	const user = new Query(z.current.query.user.where('id', userId));
+	let group = new Query(z?.current.query.userGroups.where('id', groupId));
+	const user = new Query(z?.current.query.user.where('id', userId));
 
 	const email = $derived(user.current[0]?.email ?? '');
-	const userGroupMembers = $state(
-		new Query(z.current.query.userGroupMembers.where('userGroupId', groupId))
-	);
+	let userGroupMembers = new Query(z?.current.query.userGroupMembers.where('userGroupId', groupId));
 
-	let userGroupRequests = $state(
-		new Query(z.current.query.userGroupRequests.where('email', email))
-	);
+	// recreate the query whenever `email` changes to keep it in sync
 
-	$effect(() => {
-		group = new Query(z.current.query.userGroups.where('id', groupId));
-	});
+	let userGroupRequests = new Query(z?.current.query.userGroupRequests.where('email', email));
 
-	let groupName = $derived(group.current[0]?.name ?? 'No group found');
+	// let groupName = $derived(group.current[0]?.name ?? 'No group found');
 	let showDeleteGroup = $derived(
 		group.current[0]?.name && group.current[0]?.createdById === userId ? true : false
 	);
@@ -36,15 +27,14 @@
 		event.preventDefault();
 		const form = event.target as HTMLFormElement;
 		const name = form.groupName.value;
-		console.log(name);
 		if (name) {
 			const id = nanoid();
-			z.current.mutate.userGroups.insert({
+			z?.current.mutate.userGroups.insert({
 				id,
 				name: name,
 				createdById: userId
 			});
-			z.current.mutate.userGroupMembers.insert({
+			z?.current.mutate.userGroupMembers.insert({
 				id: nanoid(),
 				userId: userId,
 				userGroupId: id
@@ -55,8 +45,8 @@
 	function deleteGroup(event: Event) {
 		event.preventDefault();
 		if (group.current[0]?.id) {
-			z.current.mutate.userGroups.delete({ id: group.current[0]?.id });
-			z.current.mutate.userGroupMembers.delete({ id: userGroupMembers.current[0]?.id });
+			z?.current.mutate.userGroups.delete({ id: group.current[0]?.id });
+			z?.current.mutate.userGroupMembers.delete({ id: userGroupMembers.current[0]?.id });
 		}
 	}
 	function inviteMember(event: Event) {
@@ -65,7 +55,7 @@
 		const email = form.email.value;
 		if (email) {
 			const id = nanoid();
-			z.current.mutate.userGroupRequests.insert({
+			z?.current.mutate.userGroupRequests.insert({
 				id,
 				email: email,
 				userGroupId: group.current[0]?.id,
@@ -78,16 +68,15 @@
 	function acceptRequest(event: Event) {
 		event.preventDefault();
 		const requestId = event?.target?.closest('li').dataset.id;
-		console.log(requestId);
 		if (requestId) {
 			const request = userGroupRequests.current.find((r) => r.id === requestId);
 			if (request) {
-				z.current.mutate.userGroupMembers.upsert({
+				z?.current.mutate.userGroupMembers.upsert({
 					id: nanoid(),
 					userId: userId,
 					userGroupId: request.userGroupId
 				});
-				z.current.mutate.userGroupRequests.delete({
+				z?.current.mutate.userGroupRequests.delete({
 					id: requestId
 				});
 			}
@@ -97,8 +86,13 @@
 		event.preventDefault();
 		const requestId = event?.target?.closest('li').dataset.id;
 		if (requestId) {
-			z.current.mutate.userGroupRequests.delete({ id: requestId });
+			z?.current.mutate.userGroupRequests.delete({ id: requestId });
 		}
+	}
+
+	function getName(id: string) {
+		const name = new Query(z?.current.query.user.where('id', id)).current[0]?.name;
+		return name ? name : id;
 	}
 </script>
 
@@ -108,7 +102,10 @@
 	<div class="details">
 		<p><strong>Name:</strong> {user?.current[0]?.name}</p>
 		<p><strong>Email:</strong> {user?.current[0]?.email}</p>
-		<p><strong>Group:</strong> {groupName}</p>
+		<p>
+			<strong>Group:</strong>{#if group.current[0]?.name}{group.current[0]?.name}{:else}No group
+				found{/if}
+		</p>
 		{#if !group.current[0]?.name}
 			<form onsubmit={createGroup}>
 				<input type="text" name="groupName" placeholder="Group Name" />
@@ -135,10 +132,9 @@
 			<div>
 				<div>
 					<p>All members:</p>
-
 					<ul>
 						{#each userGroupMembers.current as member}
-							<li>{member.userId}</li>
+							<li>{getName(member.userId)}</li>
 						{/each}
 					</ul>
 				</div>
