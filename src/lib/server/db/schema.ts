@@ -47,7 +47,8 @@ export const userGroups = pgTable('userGroups', {
 export const userGroupMembers = pgTable('userGroupMembers', {
 	id: text('id').primaryKey(),
 	userId: text('userId'),
-	userGroupId: text('userGroupId')
+	userGroupId: text('userGroupId'),
+	userGroupCreatorId: text('userGroupCreatorId')
 });
 
 // --- UserGroupRequests Table ---
