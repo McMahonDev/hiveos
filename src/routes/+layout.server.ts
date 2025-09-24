@@ -29,7 +29,7 @@ export async function load({ request, url }) {
 		isAuthenticated = false;
 		userId = '';
 		groupId = '0';
-		if (url.pathname !== '/account/login' && url.pathname !== '/account/register') {
+		if (url.pathname !== '/account/login' && url.pathname !== '/account/register' && url.pathname !== '/account/forgot-password' && !url.pathname.includes('/reset-password')) {
 			throw redirect(302, '/account/login');
 		}
 	} else {
