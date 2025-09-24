@@ -297,6 +297,8 @@ export type CustomList = Row<typeof schema.tables.customLists>;
 export type CustomListItem = Row<typeof schema.tables.customListItems>;
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
+	const isUser = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'user'>) =>
+		cmp('id', '=', authData.sub);
 	
 	const isEventsCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'events'>) =>
 		cmp('createdById', '=', authData.sub);
@@ -315,14 +317,15 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 
 	return {
 		// Application tables
-		tasks: {
+		user: {
 			row: {
 				select: ANYONE_CAN,
 				insert: ANYONE_CAN,
 				update: {
 					preMutation: ANYONE_CAN,
 					postMutation: ANYONE_CAN
-				}
+				},
+				delete: ANYONE_CAN
 			}
 		},
 		events: {

@@ -24,7 +24,6 @@
 			? new Query(z.current.query.customLists.where('createdById', data.id))
 			: undefined
 	);
-	$inspect(customLists?.current);
 
 	function toggleMenu() {
 		menuOpen = !menuOpen;

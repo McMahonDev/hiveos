@@ -7,16 +7,26 @@
 
 	let groupId = data.groupId;
 	let userId = data.id;
+	console.log('groupId', groupId);
+	console.log('userId', userId);
 
-	let group = new Query(z?.current.query.userGroups.where('id', groupId));
-	const user = new Query(z?.current.query.user.where('id', userId));
+	let group = z?.current?.query?.userGroups
+		? new Query(z.current.query.userGroups.where('id', groupId))
+		: null;
+	const user = z?.current?.query?.user ? new Query(z.current.query.user.where('id', userId)) : null;
 
-	const email = $derived(user.current[0]?.email ?? '');
-	let userGroupMembers = new Query(z?.current.query.userGroupMembers.where('userGroupId', groupId));
+	$inspect(user?.current, 'user');
+
+	const email = $derived(user?.current?.[0]?.email ?? '');
+	let userGroupMembers = z?.current?.query?.userGroupMembers
+		? new Query(z.current.query.userGroupMembers.where('userGroupId', groupId))
+		: null;
 
 	// recreate the query whenever `email` changes to keep it in sync
 
-	let userGroupRequests = new Query(z?.current.query.userGroupRequests.where('email', email));
+	let userGroupRequests = z?.current?.query?.userGroupRequests
+		? new Query(z.current.query.userGroupRequests.where('email', email))
+		: null;
 
 	// let groupName = $derived(group.current[0]?.name ?? 'No group found');
 	let showDeleteGroup = $derived(
