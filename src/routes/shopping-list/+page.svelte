@@ -6,7 +6,8 @@
 
 	let { data } = $props();
 	let z = data.z;
-	let groupId = data.groupId;
+	const group = z ? new Query(z?.current.query.userGroups.where('id', data.groupId)) : null;
+	let groupid = $derived((group && group.current[0]?.id) ?? data.groupId);
 
 	let modal = $state(false);
 
@@ -22,7 +23,7 @@
 				name,
 				store,
 				status: false,
-				assignedToId: groupId,
+				assignedToId: groupid,
 				createdById: data.id,
 				createdAt: Date.now()
 			});

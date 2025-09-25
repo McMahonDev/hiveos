@@ -316,8 +316,11 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 
 	const isShoppingListCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
 		cmp('createdById', '=', authData.sub);
-	const isShoppingListAssignedTo = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
-		cmp('assignedToId', '=', authData.sub);
+	const isShoppingListAssignedTo = (authData: AuthData, { or, cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
+		or(
+			cmp('createdById', '=', authData.sub),
+			authData.groupId ? cmp('assignedToId', '=', authData.groupId) : cmp('id', '=', '__never__')
+		);
 
 	const isUserGroupCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroups'>) =>
 		cmp('createdById', '=', authData.sub);
