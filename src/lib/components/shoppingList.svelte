@@ -7,9 +7,13 @@
 
 	let z = data.z;
 	let groupId = data.groupId;
+	const group = z ? new Query(z?.current.query.userGroups.where('id', data.groupId)) : null;
+	let groupid = $derived((group && group.current[0]?.id) ?? data.groupId);
 
-	let shoppingList = new Query(
-		z?.current.query.shoppingList.where('assignedToId', groupId).orderBy('createdAt', 'asc')
+	let shoppingList = $derived(
+		new Query(
+			z?.current.query.shoppingList.where('assignedToId', groupid).orderBy('createdAt', 'asc')
+		)
 	);
 
 	let numberOfItems = $derived(shoppingList.current?.length ?? 0);

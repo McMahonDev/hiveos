@@ -1,38 +1,47 @@
 <script lang="ts">
 	import { nanoid } from 'nanoid';
 	import { Query } from 'zero-svelte';
+	import { invalidateAll } from '$app/navigation';
 
 	const { data } = $props();
 	const z = data.z;
+	let userId = $derived(data.id);
 
-	let groupId = data.groupId;
-	let userId = data.id;
-	console.log('groupId', groupId);
-	console.log('userId', userId);
+	let userGroupMembers = $derived(
+		z && z.current ? new Query(z.current.query.userGroupMembers.where('userId', userId)) : null
+	);
+	let groupId = $derived(userGroupMembers?.current?.[0]?.userGroupId ?? '');
+	let group = $derived(
+		z && z.current ? new Query(z.current.query.userGroups.where('id', groupId)) : null
+	);
+	const user = $derived(
+		z && z.current ? new Query(z.current.query.user.where('id', userId)) : null
+	);
+	let allGroupMembers = $derived(
+		z && z.current
+			? new Query(
+					z.current.query.userGroupMembers.where('userGroupId', group?.current[0]?.id ?? '')
+				)
+			: null
+	);
+	const userEmail = $derived(user?.current?.[0]?.email ?? '');
 
-	let group = z?.current?.query?.userGroups
-		? new Query(z.current.query.userGroups.where('id', groupId))
-		: null;
-	const user = z?.current?.query?.user ? new Query(z.current.query.user.where('id', userId)) : null;
-
-	$inspect(user?.current, 'user');
-
-	const email = $derived(user?.current?.[0]?.email ?? '');
-	let userGroupMembers = z?.current?.query?.userGroupMembers
-		? new Query(z.current.query.userGroupMembers.where('userGroupId', groupId))
-		: null;
-
-	// recreate the query whenever `email` changes to keep it in sync
-
-	let userGroupRequests = z?.current?.query?.userGroupRequests
-		? new Query(z.current.query.userGroupRequests.where('email', email))
-		: null;
-
-	// let groupName = $derived(group.current[0]?.name ?? 'No group found');
-	let showDeleteGroup = $derived(
-		group.current[0]?.name && group.current[0]?.createdById === userId ? true : false
+	const userGroupRequests = $derived(
+		z?.current?.query?.userGroupRequests
+			? new Query(z.current.query.userGroupRequests.where('email', userEmail))
+			: null
 	);
 
+	let showDeleteGroup = $derived(
+		group?.current[0]?.name && group.current[0]?.createdById === userId ? true : false
+	);
+
+	let allShoppingList = $derived(
+		z && z.current ? new Query(z.current.query.shoppingList.where('assignedToId', userId)) : null
+	);
+	let allEvents = $derived(
+		z && z.current ? new Query(z.current.query.events.where('assignedToId', userId)) : null
+	);
 	function createGroup(event: Event) {
 		event.preventDefault();
 		const form = event.target as HTMLFormElement;
@@ -47,16 +56,38 @@
 			z?.current.mutate.userGroupMembers.insert({
 				id: nanoid(),
 				userId: userId,
-				userGroupId: id
+				userGroupId: id,
+				userGroupCreatorId: userId
 			});
 			groupId = id;
+
+			form.reset();
+
+			// update all data to new group
+
+			allEvents?.current.forEach((event) => {
+				z?.current.mutate.events.update({
+					id: event.id,
+					assignedToId: groupId
+				});
+			});
+
+			allShoppingList?.current.forEach((item) => {
+				z?.current.mutate.shoppingList.update({
+					id: item.id,
+					assignedToId: groupId
+				});
+			});
 		}
 	}
 	function deleteGroup(event: Event) {
 		event.preventDefault();
-		if (group.current[0]?.id) {
+		if (group?.current[0]?.id) {
 			z?.current.mutate.userGroups.delete({ id: group.current[0]?.id });
-			z?.current.mutate.userGroupMembers.delete({ id: userGroupMembers.current[0]?.id });
+			const memberId = userGroupMembers?.current[0]?.id;
+			if (memberId) {
+				z?.current.mutate.userGroupMembers.delete({ id: memberId });
+			}
 		}
 	}
 	function inviteMember(event: Event) {
@@ -70,27 +101,48 @@
 				email: email,
 				userGroupId: group.current[0]?.id,
 				status: false,
-				sentByEmail: email,
+				sentByEmail: userEmail,
 				groupName: group.current[0]?.name
 			});
 		}
+		form.reset();
 	}
 	function acceptRequest(event: Event) {
 		event.preventDefault();
 		const requestId = event?.target?.closest('li').dataset.id;
-		if (requestId) {
+		if (requestId && userGroupRequests && userGroupRequests.current) {
 			const request = userGroupRequests.current.find((r) => r.id === requestId);
 			if (request) {
-				z?.current.mutate.userGroupMembers.upsert({
+				z?.current.mutate.userGroupMembers.insert({
 					id: nanoid(),
 					userId: userId,
-					userGroupId: request.userGroupId
+					userGroupId: request.userGroupId,
+					userGroupCreatorId: group?.current?.[0]?.createdById ?? ''
 				});
-				z?.current.mutate.userGroupRequests.delete({
-					id: requestId
+				// delete all other records in usergroupmembers that have the same userID, there can only be one
+				const otherMemberships =
+					userGroupMembers?.current?.filter(
+						(m) => m.userId === userId && m.userGroupId !== request.userGroupId
+					) ?? [];
+				otherMemberships.forEach((membership) => {
+					z?.current.mutate.userGroupMembers.delete({ id: membership.id });
+				});
+				let requestIds: Array<string> = [];
+				userGroupRequests.current.forEach((r) => {
+					if (r.email === request.email) {
+						requestIds.push(r.id);
+					}
+				});
+
+				requestIds.forEach((id) => {
+					console.log('Deleting request id:', id);
+					z?.current.mutate.userGroupRequests.delete({
+						id
+					});
 				});
 			}
 		}
+		invalidateAll();
 	}
 	function rejectRequest(event: Event) {
 		event.preventDefault();
@@ -101,8 +153,11 @@
 	}
 
 	function getName(id: string) {
-		const name = new Query(z?.current.query.user.where('id', id)).current[0]?.name;
-		return name ? name : id;
+		if (z && z.current) {
+			const name = new Query(z.current.query.user.where('id', id)).current[0]?.name;
+			return name ? name : id;
+		}
+		return id;
 	}
 </script>
 
@@ -143,7 +198,7 @@
 				<div>
 					<p>All members:</p>
 					<ul>
-						{#each userGroupMembers.current as member}
+						{#each allGroupMembers.current as member}
 							<li>{getName(member.userId)}</li>
 						{/each}
 					</ul>
