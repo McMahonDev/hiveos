@@ -14,6 +14,7 @@ import {
 type AuthData = {
 	// The logged-in user.
 	sub: string;
+	groupId: string | null;
 };
 
 // Better Auth tables
@@ -119,7 +120,8 @@ const userGroupMembers = table('userGroupMembers')
 	.columns({
 		id: string(),
 		userId: string(),
-		userGroupId: string()
+		userGroupId: string(),
+		userGroupCreatorId: string()
 	})
 	.primaryKey('id');
 
@@ -297,43 +299,59 @@ export type CustomList = Row<typeof schema.tables.customLists>;
 export type CustomListItem = Row<typeof schema.tables.customListItems>;
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
+	const isUser = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'user'>) =>
+		cmp('id', '=', authData.sub);
 	
 	const isEventsCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'events'>) =>
 		cmp('createdById', '=', authData.sub);
 	const isEventsAssignedTo = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'events'>) =>
-		cmp('assignedToId', '=', authData.sub);
+		cmp('assignedToId', '=', authData.groupId ?? '__never__');
+
+	// Explicit OR: allow if user created the event OR the event is assigned to the user's group
+	const canViewOrMutateEvents = (authData: AuthData, { or, cmp }: ExpressionBuilder<Schema, 'events'>) =>
+		or(
+			cmp('createdById', '=', authData.sub),
+			authData.groupId ? cmp('assignedToId', '=', authData.groupId) : cmp('id', '=', '__never__')
+		);
 
 	const isShoppingListCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
 		cmp('createdById', '=', authData.sub);
-	const isShoppingListAssignedTo = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
-		cmp('assignedToId', '=', authData.sub);
+	const isShoppingListAssignedTo = (authData: AuthData, { or, cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
+		or(
+			cmp('createdById', '=', authData.sub),
+			authData.groupId ? cmp('assignedToId', '=', authData.groupId) : cmp('id', '=', '__never__')
+		);
 
 	const isUserGroupCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroups'>) =>
 		cmp('createdById', '=', authData.sub);
 	const isUserGroupMember = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>) =>
 		cmp('userId', '=', authData.sub);
 
+	const canViewUserGroupMembers = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>) =>
+		cmp('userGroupCreatorId', '=', authData.sub);
+
 	return {
 		// Application tables
-		tasks: {
+		user: {
 			row: {
 				select: ANYONE_CAN,
 				insert: ANYONE_CAN,
 				update: {
 					preMutation: ANYONE_CAN,
 					postMutation: ANYONE_CAN
-				}
+				},
+				delete: ANYONE_CAN
 			}
 		},
 		events: {
 			row: {
-				select: [isEventsCreator, isEventsAssignedTo],
-				insert: [isEventsCreator, isEventsAssignedTo],
+				select: [canViewOrMutateEvents],
+				insert: [canViewOrMutateEvents],
 				update: {
-					preMutation: [isEventsCreator, isEventsAssignedTo],
-					postMutation: [isEventsCreator, isEventsAssignedTo]
+					preMutation: [canViewOrMutateEvents],
+					postMutation: [canViewOrMutateEvents]
 				},
-				delete: [isEventsCreator, isEventsAssignedTo]
+				delete: [canViewOrMutateEvents]
 			}
 		},
 		shoppingList: {
@@ -349,7 +367,7 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 		},
 		userGroups: {
 			row: {
-				select: [isUserGroupCreator],
+				select: ANYONE_CAN,
 				insert: ANYONE_CAN,
 				update: {
 					preMutation: ANYONE_CAN,
@@ -360,13 +378,13 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 		},
 		userGroupMembers: {
 			row: {
-				select: [isUserGroupMember],
-				insert: ANYONE_CAN,
+				select: ANYONE_CAN,
+				insert: [canViewUserGroupMembers, isUserGroupMember],
 				update: {
-					preMutation: ANYONE_CAN,
-					postMutation: ANYONE_CAN
+					preMutation: [canViewUserGroupMembers, isUserGroupMember],
+					postMutation: [canViewUserGroupMembers, isUserGroupMember]
 				},
-				delete: ANYONE_CAN
+				delete: [canViewUserGroupMembers]
 			}
 		},
 		userGroupRequests: {

@@ -7,11 +7,14 @@
 	let { data, shortlist = false } = $props();
 	let z = data.z;
 	const groupId = data.groupId;
+	$inspect(groupId);
 
 	// Query events (ordered by createdAt for a deterministic replica order).
 	const events = new Query(
 		z?.current.query.events.where('assignedToId', groupId).orderBy('createdAt', 'asc')
 	);
+
+	$inspect(events.current);
 
 	let numberOfItems = $derived(events.current?.length ?? 0);
 

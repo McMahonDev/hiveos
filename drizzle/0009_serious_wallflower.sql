@@ -1,0 +1,1 @@
+ALTER TABLE "userGroupMembers" ADD COLUMN "userGroupCreatorId" text;
