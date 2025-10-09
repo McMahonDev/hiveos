@@ -12,20 +12,14 @@
 	import { nanoid } from 'nanoid';
 
 	let { children, data } = $props();
-	const z = data.z;
+	let z = $derived(data.z);
 	let auth = $derived(data.auth);
 	let menuOpen = $state(false);
 	let inGroup = $derived(data.groupId !== data.id);
 	let menu = $state<HTMLElement | null>(null);
 	let createListModalOpen = $state(false);
 
-	// Use $state so that assignments update the template reliably
-	// Query<TSchema, TTable, TReturn> requires generics; use any to keep this file simple
-	let customLists = $state<Query<any, any, any> | undefined>(
-		z && z.current
-			? new Query(z.current.query.customLists.where('createdById', data.id))
-			: undefined
-	);
+	let customLists = $state<Query<any, any, any> | undefined>(undefined);
 
 	function toggleMenu() {
 		menuOpen = !menuOpen;
@@ -47,8 +41,11 @@
 	$effect(() => {
 		// set or clear the Query instance when auth / z.current changes
 		if (auth && z?.current) {
+			// console.log('Setting customLists query for user', data.id);
 			customLists = new Query(z.current.query.customLists.where('createdById', data.id));
 		} else {
+			// console.log(auth, z);
+			// console.log('Clearing customLists query');
 			customLists = undefined;
 		}
 
