@@ -19,7 +19,9 @@
 	let menu = $state<HTMLElement | null>(null);
 	let createListModalOpen = $state(false);
 
-	let customLists = $derived(
+	// Use $state so that assignments update the template reliably
+	// Query<TSchema, TTable, TReturn> requires generics; use any to keep this file simple
+	let customLists = $state<Query<any, any, any> | undefined>(
 		z && z.current
 			? new Query(z.current.query.customLists.where('createdById', data.id))
 			: undefined
@@ -43,21 +45,29 @@
 	}
 
 	$effect(() => {
+		// set or clear the Query instance when auth / z.current changes
 		if (auth && z?.current) {
 			customLists = new Query(z.current.query.customLists.where('createdById', data.id));
+		} else {
+			customLists = undefined;
 		}
-		window.addEventListener('resize', () => {
+
+		// named handlers so they can be removed on cleanup
+		function resizeHandler() {
 			if (window.innerWidth > 690) {
 				menuOpen = false;
 			}
-		});
+		}
 
-		// Listen for SvelteKit navigation events
-		const popstateHandler = () => {
+		function popstateHandler() {
 			menuOpen = false;
-		};
+		}
+
+		window.addEventListener('resize', resizeHandler);
 		window.addEventListener('popstate', popstateHandler);
+
 		return () => {
+			window.removeEventListener('resize', resizeHandler);
 			window.removeEventListener('popstate', popstateHandler);
 		};
 	});
@@ -67,12 +77,12 @@
 		createListModalOpen = true;
 	}
 
-	function createList(e) {
+	function createList(e: Event) {
 		e.preventDefault();
 		menuOpen = false;
 		createListModalOpen = false;
 		// get form data and create list logic here
-		const formData = new FormData(e.target);
+		const formData = new FormData(e.target as HTMLFormElement);
 		const listName = formData.get('list-name');
 		const id = nanoid();
 		z?.current?.mutate.customLists
@@ -141,7 +151,7 @@
 					<label for="list-name">List Name:</label>
 					<input type="text" id="list-name" name="list-name" required />
 					<button type="submit">Create</button>
-					<button type="button" onclick={() => (menuOpen = false)}>Cancel</button>
+					<button type="button" onclick={() => (createListModalOpen = false)}>Cancel</button>
 				</form>
 			</div>
 		{/if}

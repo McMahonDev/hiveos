@@ -74,13 +74,13 @@ export async function load({ request, url }) {
 			);
 
 			// DEBUG: Log signed JWT and decoded payload so we can verify Zero receives groupId
-			try {
-				const decoded = jwt.decode(JWT);
-				console.log('DEBUG JWT payload for user', session.user.id, ':', decoded);
-				console.log('DEBUG JWT token (truncated):', JWT?.slice(0, 100));
-			} catch (e) {
-				console.error('DEBUG: Error decoding JWT for inspection', e);
-			}
+			// try {
+			// 	const decoded = jwt.decode(JWT);
+			// 	console.log('DEBUG JWT payload for user', session.user.id, ':', decoded);
+			// 	console.log('DEBUG JWT token (truncated):', JWT?.slice(0, 100));
+			// } catch (e) {
+			// 	console.error('DEBUG: Error decoding JWT for inspection', e);
+			// }
 
 			// DEBUG: Query the DB for events assigned to this groupId so we can confirm rows exist
 			try {
