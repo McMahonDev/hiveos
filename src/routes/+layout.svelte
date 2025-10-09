@@ -12,18 +12,14 @@
 	import { nanoid } from 'nanoid';
 
 	let { children, data } = $props();
-	const z = data.z;
+	let z = $derived(data.z);
 	let auth = $derived(data.auth);
 	let menuOpen = $state(false);
 	let inGroup = $derived(data.groupId !== data.id);
 	let menu = $state<HTMLElement | null>(null);
 	let createListModalOpen = $state(false);
 
-	let customLists = $derived(
-		z && z.current
-			? new Query(z.current.query.customLists.where('createdById', data.id))
-			: undefined
-	);
+	let customLists = $state<Query<any, any, any> | undefined>(undefined);
 
 	function toggleMenu() {
 		menuOpen = !menuOpen;
@@ -43,21 +39,32 @@
 	}
 
 	$effect(() => {
+		// set or clear the Query instance when auth / z.current changes
 		if (auth && z?.current) {
+			// console.log('Setting customLists query for user', data.id);
 			customLists = new Query(z.current.query.customLists.where('createdById', data.id));
+		} else {
+			// console.log(auth, z);
+			// console.log('Clearing customLists query');
+			customLists = undefined;
 		}
-		window.addEventListener('resize', () => {
+
+		// named handlers so they can be removed on cleanup
+		function resizeHandler() {
 			if (window.innerWidth > 690) {
 				menuOpen = false;
 			}
-		});
+		}
 
-		// Listen for SvelteKit navigation events
-		const popstateHandler = () => {
+		function popstateHandler() {
 			menuOpen = false;
-		};
+		}
+
+		window.addEventListener('resize', resizeHandler);
 		window.addEventListener('popstate', popstateHandler);
+
 		return () => {
+			window.removeEventListener('resize', resizeHandler);
 			window.removeEventListener('popstate', popstateHandler);
 		};
 	});
@@ -67,12 +74,12 @@
 		createListModalOpen = true;
 	}
 
-	function createList(e) {
+	function createList(e: Event) {
 		e.preventDefault();
 		menuOpen = false;
 		createListModalOpen = false;
 		// get form data and create list logic here
-		const formData = new FormData(e.target);
+		const formData = new FormData(e.target as HTMLFormElement);
 		const listName = formData.get('list-name');
 		const id = nanoid();
 		z?.current?.mutate.customLists
@@ -141,7 +148,7 @@
 					<label for="list-name">List Name:</label>
 					<input type="text" id="list-name" name="list-name" required />
 					<button type="submit">Create</button>
-					<button type="button" onclick={() => (menuOpen = false)}>Cancel</button>
+					<button type="button" onclick={() => (createListModalOpen = false)}>Cancel</button>
 				</form>
 			</div>
 		{/if}

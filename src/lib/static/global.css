@@ -404,7 +404,7 @@ button.small {
 @media (min-width: 576px) {
 	:root {
 		--container-width: 525px;
-		--margin-right: calc((100vw - var(--container-width)) / 2);
+		--margin-right: calc(((100vw - var(--container-width)) / 2) - 50px);
 		--margin-left: max(calc(((100vw - var(--container-width)) / 2) - 200px), 0);
 	}
 }
