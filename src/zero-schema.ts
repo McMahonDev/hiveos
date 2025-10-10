@@ -97,7 +97,8 @@ const events = table('events')
 		allDay: boolean().optional(),
 		createdById: string(),
 		assignedToId: string(),
-		createdAt: number()
+		createdAt: number(),
+		viewMode: string() // 'personal', 'shared', or custom category ID
 	})
 	.primaryKey('id');
 
@@ -109,7 +110,8 @@ const shoppingList = table('shoppingList')
 		status: boolean(),
 		createdById: string(),
 		assignedToId: string(),
-		createdAt: number() // Added missing createdAt column
+		createdAt: number(), // Added missing createdAt column
+		viewMode: string() // 'personal', 'shared', or custom category ID
 	})
 	.primaryKey('id');
 
@@ -146,7 +148,8 @@ const customLists = table('customLists')
 		id: string(),
 		name: string(),
 		createdById: string(),
-		createdAt: number()
+		createdAt: number(),
+		viewMode: string() // 'personal', 'shared', or custom category ID
 	})
 	.primaryKey('id');
 
@@ -157,6 +160,16 @@ const customListItems = table('customListItems')
 		status: boolean(),
 		createdById: string(),
 		customListId: string(),
+		createdAt: number(),
+		viewMode: string() // 'personal', 'shared', or custom category ID
+	})
+	.primaryKey('id');
+
+const viewModeCategories = table('viewModeCategories')
+	.columns({
+		id: string(),
+		name: string(),
+		userId: string(),
 		createdAt: number()
 	})
 	.primaryKey('id');
@@ -261,6 +274,14 @@ const customListItemRelationships = relationships(customListItems, ({ one }) => 
 	})
 }));
 
+const viewModeCategoriesRelationships = relationships(viewModeCategories, ({ one }) => ({
+	user: one({
+		sourceField: ['userId'],
+		destSchema: user,
+		destField: ['id']
+	})
+}));
+
 export const schema = createSchema({
 	tables: [
 		user,
@@ -274,7 +295,8 @@ export const schema = createSchema({
 		userGroupMembers,
 		userGroupRequests,
 		customLists,
-		customListItems
+		customListItems,
+		viewModeCategories
 	],
 	relationships: [
 		taskRelationships,
@@ -285,7 +307,8 @@ export const schema = createSchema({
 		sessionRelationships,
 		accountRelationships,
 		customListRelationships,
-		customListItemRelationships
+		customListItemRelationships,
+		viewModeCategoriesRelationships
 	]
 });
 
@@ -302,6 +325,7 @@ export type UserGroupMember = Row<typeof schema.tables.userGroupMembers>;
 export type UserGroupRequest = Row<typeof schema.tables.userGroupRequests>;
 export type CustomList = Row<typeof schema.tables.customLists>;
 export type CustomListItem = Row<typeof schema.tables.customListItems>;
+export type ViewModeCategory = Row<typeof schema.tables.viewModeCategories>;
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	const isUser = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'user'>) =>
@@ -415,6 +439,17 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 			}
 		},
 		customListItems: {
+			row: {
+				select: ANYONE_CAN,
+				insert: ANYONE_CAN,
+				update: {
+					preMutation: ANYONE_CAN,
+					postMutation: ANYONE_CAN
+				},
+				delete: ANYONE_CAN
+			}
+		},
+		viewModeCategories: {
 			row: {
 				select: ANYONE_CAN,
 				insert: ANYONE_CAN,

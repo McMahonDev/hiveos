@@ -4,6 +4,7 @@
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
 	import { goto } from '$app/navigation';
+	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 
 	let { data } = $props(); // repo style (Svelte 5)
 	const listId = $derived(data.listId);
@@ -16,13 +17,21 @@
 		z ? new Query(z?.current.query.customLists.where('id', listId).where('createdById', id)) : null
 	);
 
-	let customListItems = $derived(
-		z
-			? new Query(
-					z.current.query.customListItems.where('customListId', listId).orderBy('createdAt', 'asc')
-				)
-			: null
-	);
+	// Filter custom list items by viewMode
+	let customListItems = $state<Query<any, any, any> | null>(null);
+
+	$effect(() => {
+		if (z?.current) {
+			customListItems = new Query(
+				z.current.query.customListItems
+					.where('customListId', listId)
+					.where('viewMode', viewModeState.currentMode)
+					.orderBy('createdAt', 'asc')
+			);
+		} else {
+			customListItems = null;
+		}
+	});
 
 	let modal = $state(false);
 
@@ -38,7 +47,8 @@
 				status: false,
 				customListId: listId,
 				createdById: data.id,
-				createdAt: Date.now()
+				createdAt: Date.now(),
+				viewMode: viewModeState.currentMode
 			});
 			(event.target as HTMLFormElement).reset();
 		}
@@ -53,8 +63,8 @@
 			confirm('Are you sure you want to delete this list? This will also delete all items in it.')
 		) {
 			// Delete all items first
-			if (customListItems?.current) {
-				customListItems.current.forEach((item) => {
+			if (customListItems?.current && Array.isArray(customListItems.current)) {
+				customListItems.current.forEach((item: any) => {
 					z?.current.mutate.customListItems.delete({ id: item.id });
 				});
 			}
@@ -126,39 +136,40 @@
 		</form>
 	</div>
 	<div class="list-container">
-		{#if customListItems?.current}
-			{#each customListItems.current as item (item.id)}
-				<div class="list-item">
-					{#if editingItemId === item.id}
-						<div class="item-content editing">
-							<input
-								type="text"
-								class="edit-input"
-								bind:value={editName}
-								placeholder="Item name"
-								onkeydown={(e) => handleKeydown(e, item.id)}
-								autofocus
-							/>
-						</div>
-						<div class="edit-actions">
-							<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
-								Save
-							</button>
-							<button class="cancel-item" onclick={cancelEdit} title="Cancel"> Cancel </button>
-						</div>
-					{:else}
-						<p>{item.name}</p>
-						<div class="item-actions">
-							<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item">
-								Edit
-							</button>
-							<button class="delete-item" onclick={() => deleteItem(item.id)} title="Delete Item">
-								<DeleteIcon />
-							</button>
-						</div>
-					{/if}
-				</div>
-			{/each}
+		{#if customListItems?.current && Array.isArray(customListItems.current)}
+			<div class="list-items">
+				{#each customListItems.current as item (item.id)}
+					<div class="list-item">
+						{#if editingItemId === item.id}
+							<div class="item-content editing">
+								<input
+									type="text"
+									class="edit-input"
+									bind:value={editName}
+									placeholder="Item name"
+									onkeydown={(e) => handleKeydown(e, item.id)}
+								/>
+							</div>
+							<div class="edit-actions">
+								<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
+									Save
+								</button>
+								<button class="cancel-item" onclick={cancelEdit} title="Cancel"> Cancel </button>
+							</div>
+						{:else}
+							<p>{item.name}</p>
+							<div class="item-actions">
+								<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item">
+									Edit
+								</button>
+								<button class="delete-item" onclick={() => deleteItem(item.id)} title="Delete Item">
+									<DeleteIcon />
+								</button>
+							</div>
+						{/if}
+					</div>
+				{/each}
+			</div>
 		{:else}
 			<p>Loading items...</p>
 		{/if}

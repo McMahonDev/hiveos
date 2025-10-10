@@ -4,6 +4,7 @@
 	import EventsList from '$lib/components/eventsList.svelte';
 	import AddIcon from '$lib/static/icons/addIcon.svelte';
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
+	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 
 	let { data } = $props();
 	let z = data.z;
@@ -55,7 +56,8 @@
 			allDay: allDay,
 			createdById: data.id,
 			assignedToId: assignedToId(),
-			createdAt: Date.now()
+			createdAt: Date.now(),
+			viewMode: viewModeState.currentMode
 		});
 
 		(event.target as HTMLFormElement).reset();
@@ -73,11 +75,13 @@
 	}
 
 	function assignedToId(): string {
-		// If groupId is '0' or null, assign to personal (data.id)
-		if (!groupid || groupid === '0') {
+		// In personal mode, always assign to user's own ID
+		// In shared mode, assign to groupId
+		if (viewModeState.currentMode === 'personal') {
 			return data.id;
 		}
-		return groupid;
+		// For shared or custom modes, use groupId
+		return groupid || data.id;
 	}
 </script>
 

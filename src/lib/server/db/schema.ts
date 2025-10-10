@@ -31,7 +31,8 @@ export const events = pgTable('events', {
 	allDay: boolean('allDay'),
 	createdById: text('createdById'),
 	assignedToId: text('assignedToId'),
-	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date()),
+	viewMode: text('viewMode')
 });
 
 export const shoppingList = pgTable('shoppingList', {
@@ -41,7 +42,8 @@ export const shoppingList = pgTable('shoppingList', {
 	status: boolean('status'),
 	createdById: text('createdById'),
 	assignedToId: text('assignedToId'),
-	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date()),
+	viewMode: text('viewMode')
 });
 
 export const userGroups = pgTable('userGroups', {
@@ -70,7 +72,8 @@ export const customLists = pgTable('customLists', {
 	id: text('id').primaryKey(),
 	name: text('name'),
 	createdById: text('createdById'),
-	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date()),
+	viewMode: text('viewMode')
 });
 
 export const customListItems = pgTable('customListItems', {
@@ -79,6 +82,14 @@ export const customListItems = pgTable('customListItems', {
 	status: boolean('status'),
 	createdById: text('createdById'),
 	customListId: text('customListId'),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date()),
+	viewMode: text('viewMode')
+});
+
+export const viewModeCategories = pgTable('viewModeCategories', {
+	id: text('id').primaryKey(),
+	name: text('name'),
+	userId: text('userId'),
 	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
 });
 
@@ -172,5 +183,12 @@ export const customListItemsRelations = relations(customListItems, ({ one }) => 
 	customList: one(customLists, {
 		fields: [customListItems.customListId],
 		references: [customLists.id]
+	})
+}));
+
+export const viewModeCategoriesRelations = relations(viewModeCategories, ({ one }) => ({
+	user: one(user, {
+		fields: [viewModeCategories.userId],
+		references: [user.id]
 	})
 }));

@@ -2,21 +2,35 @@
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
 	// Assuming `Query` is the correct way to get a Zero query object in zero-svelte
 	import { Query } from 'zero-svelte';
+	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 
 	let { data, shortlist = false } = $props();
 
 	let z = data.z;
 	let groupId = data.groupId;
 	const group = z ? new Query(z?.current.query.userGroups.where('id', data.groupId)) : null;
-	let groupid = $derived((group && group.current[0]?.id) ?? data.groupId);
-
-	let shoppingList = $derived(
-		new Query(
-			z?.current.query.shoppingList.where('assignedToId', groupid).orderBy('createdAt', 'asc')
-		)
+	let groupid = $derived(
+		(group && Array.isArray(group.current) && group.current[0]?.id) ?? data.groupId
 	);
 
-	let numberOfItems = $derived(shoppingList.current?.length ?? 0);
+	let shoppingList = $state<Query<any, any, any>>();
+
+	$effect(() => {
+		if (z?.current) {
+			// In personal mode, only show items assigned to the user
+			// In shared/other modes, show items assigned to the group
+			const assignedId = viewModeState.currentMode === 'personal' ? data.id : groupid;
+
+			shoppingList = new Query(
+				z.current.query.shoppingList
+					.where('assignedToId', assignedId)
+					.where('viewMode', viewModeState.currentMode)
+					.orderBy('createdAt', 'asc')
+			);
+		}
+	});
+
+	let numberOfItems = $derived(shoppingList?.current?.length ?? 0);
 	let editingItemId = $state<string | null>(null);
 	let editName = $state('');
 	let editStore = $state('');
@@ -73,7 +87,7 @@
 
 <div>
 	{#if shortlist}
-		{#if Array.isArray(shoppingList.current)}
+		{#if shoppingList && Array.isArray(shoppingList.current)}
 			<ul class="shortlist">
 				{#each shoppingList.current as item, i}
 					{#if i < 3}
@@ -88,11 +102,11 @@
 				{/if}
 			</ul>
 		{/if}
-	{:else if Array.isArray(shoppingList.current) && shoppingList.current.length === 0}
+	{:else if shoppingList && Array.isArray(shoppingList.current) && shoppingList.current.length === 0}
 		<p>No items in the shopping list.</p>
 	{:else}
 		<div class="list-container">
-			{#each Array.isArray(shoppingList.current) ? shoppingList.current : [] as item (item.id)}
+			{#each shoppingList && Array.isArray(shoppingList.current) ? shoppingList.current : [] as item (item.id)}
 				<div class="list-item">
 					<input type="checkbox" value={item.id} checked={item.status} oninput={toggletask} />
 

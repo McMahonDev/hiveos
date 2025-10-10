@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Query } from 'zero-svelte';
+	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 
 	let { data } = $props();
 	let z = data.z;
@@ -39,9 +40,24 @@
 	});
 
 	// Query all events for today
-	const events = z
-		? new Query(z.current.query.events.where('assignedToId', groupId).orderBy('createdAt', 'asc'))
-		: null;
+	let events = $state<Query<any, any, any> | null>(null);
+
+	$effect(() => {
+		if (z?.current) {
+			// In personal mode, only show items assigned to the user
+			// In shared/other modes, show items assigned to the group
+			const assignedId = viewModeState.currentMode === 'personal' ? data.id : groupId;
+
+			events = new Query(
+				z.current.query.events
+					.where('assignedToId', assignedId)
+					.where('viewMode', viewModeState.currentMode)
+					.orderBy('createdAt', 'asc')
+			);
+		} else {
+			events = null;
+		}
+	});
 
 	// Filter all-day events for today
 	let allDayEvents = $derived(() => {
@@ -342,6 +358,10 @@
 			const { nanoid } = await import('nanoid');
 			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+			// In personal mode, assign to user's own ID
+			// In shared mode, assign to groupId
+			const assignedTo = viewModeState.currentMode === 'personal' ? data.id : groupId;
+
 			await z.current.mutate.events.insert({
 				id: nanoid(),
 				name: createForm.name,
@@ -354,8 +374,9 @@
 				description: createForm.description || null,
 				allDay: createForm.allDay,
 				createdById: data.id,
-				assignedToId: groupId,
-				createdAt: Date.now()
+				assignedToId: assignedTo,
+				createdAt: Date.now(),
+				viewMode: viewModeState.currentMode
 			});
 
 			closeCreateModal();

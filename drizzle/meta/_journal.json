@@ -78,6 +78,13 @@
       "when": 1760112056246,
       "tag": "0010_tough_molecule_man",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1760125890707,
+      "tag": "0011_third_king_cobra",
+      "breakpoints": true
     }
   ]
 }

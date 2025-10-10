@@ -3,6 +3,7 @@
 	import { Query } from 'zero-svelte';
 	import { isPast } from '$lib/utils/isPast';
 	import { isToday } from '$lib/utils/isToday';
+	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 
 	let { data, shortlist = false } = $props();
 	let z = data.z;
@@ -10,13 +11,27 @@
 	$inspect(groupId);
 
 	// Query events (ordered by createdAt for a deterministic replica order).
-	const events = new Query(
-		z?.current.query.events.where('assignedToId', groupId).orderBy('createdAt', 'asc')
-	);
+	// Filter by viewMode
+	let events = $state<Query<any, any, any>>();
 
-	$inspect(events.current);
+	$effect(() => {
+		if (z?.current) {
+			// In personal mode, only show items assigned to the user
+			// In shared/other modes, show items assigned to the group
+			const assignedId = viewModeState.currentMode === 'personal' ? data.id : groupId;
 
-	let numberOfItems = $derived(events.current?.length ?? 0);
+			events = new Query(
+				z.current.query.events
+					.where('assignedToId', assignedId)
+					.where('viewMode', viewModeState.currentMode)
+					.orderBy('createdAt', 'asc')
+			);
+		}
+	});
+
+	$inspect(events?.current);
+
+	let numberOfItems = $derived(events?.current?.length ?? 0);
 
 	let sortedEvents = $derived(
 		Array.isArray(events?.current)
