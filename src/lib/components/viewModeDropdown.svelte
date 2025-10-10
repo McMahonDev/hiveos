@@ -16,6 +16,9 @@
 	let isOpen = $state(false);
 	let showAddModal = $state(false);
 	let newCategoryName = $state('');
+	let showDeleteModal = $state(false);
+	let categoryToDelete = $state<{ id: string; name: string } | null>(null);
+	let deleteMigrationChoice = $state<'personal' | 'delete'>('personal');
 
 	// Query custom categories
 	let customCategories = $state<Query<any, any, any> | undefined>(undefined);
@@ -101,6 +104,118 @@
 		}
 	}
 
+	function openDeleteModal(categoryId: string, categoryName: string, e: MouseEvent) {
+		e.stopPropagation();
+		categoryToDelete = { id: categoryId, name: categoryName };
+		showDeleteModal = true;
+		isOpen = false;
+	}
+
+	function closeDeleteModal() {
+		showDeleteModal = false;
+		categoryToDelete = null;
+		deleteMigrationChoice = 'personal';
+	}
+
+	async function deleteCategory() {
+		if (!categoryToDelete || !z?.current) return;
+
+		try {
+			const categoryId = categoryToDelete.id;
+			const zInstance = z.current;
+
+			if (deleteMigrationChoice === 'personal') {
+				// Migrate all items to personal mode using direct queries
+				// We'll use the Zero query API directly without creating Query objects
+
+				// Get and update all events
+				const events = await zInstance.query.events.where('viewMode', categoryId).run();
+				for (const event of events) {
+					await zInstance.mutate.events.update({
+						id: event.id,
+						viewMode: 'personal',
+						assignedToId: data.id
+					});
+				}
+
+				// Get and update all shopping list items
+				const shoppingItems = await zInstance.query.shoppingList
+					.where('viewMode', categoryId)
+					.run();
+				for (const item of shoppingItems) {
+					await zInstance.mutate.shoppingList.update({
+						id: item.id,
+						viewMode: 'personal',
+						assignedToId: data.id
+					});
+				}
+
+				// Get and update all custom lists
+				const customLists = await zInstance.query.customLists.where('viewMode', categoryId).run();
+				for (const list of customLists) {
+					await zInstance.mutate.customLists.update({
+						id: list.id,
+						viewMode: 'personal'
+					});
+				}
+
+				// Get and update all custom list items
+				const customListItems = await zInstance.query.customListItems
+					.where('viewMode', categoryId)
+					.run();
+				for (const item of customListItems) {
+					await zInstance.mutate.customListItems.update({
+						id: item.id,
+						viewMode: 'personal'
+					});
+				}
+			} else {
+				// Delete all items
+
+				// Get and delete all events
+				const events = await zInstance.query.events.where('viewMode', categoryId).run();
+				for (const event of events) {
+					await zInstance.mutate.events.delete({ id: event.id });
+				}
+
+				// Get and delete all shopping list items
+				const shoppingItems = await zInstance.query.shoppingList
+					.where('viewMode', categoryId)
+					.run();
+				for (const item of shoppingItems) {
+					await zInstance.mutate.shoppingList.delete({ id: item.id });
+				}
+
+				// Get and delete all custom list items first
+				const customListItems = await zInstance.query.customListItems
+					.where('viewMode', categoryId)
+					.run();
+				for (const item of customListItems) {
+					await zInstance.mutate.customListItems.delete({ id: item.id });
+				}
+
+				// Then get and delete all custom lists
+				const customLists = await zInstance.query.customLists.where('viewMode', categoryId).run();
+				for (const list of customLists) {
+					await zInstance.mutate.customLists.delete({ id: list.id });
+				}
+			}
+
+			// Finally, delete the category itself
+			await zInstance.mutate.viewModeCategories.delete({ id: categoryId });
+
+			// If user was in this view mode, switch to personal
+			if (viewModeState.currentMode === categoryId) {
+				setViewMode('personal');
+			}
+
+			closeDeleteModal();
+		} catch (err) {
+			console.error('Failed to delete category:', err);
+			alert('Failed to delete category. Please try again.');
+		}
+	}
+
 	function handleClickOutside(e: MouseEvent) {
 		const target = e.target as HTMLElement;
 		if (!target.closest('.view-mode-dropdown')) {
@@ -162,14 +277,24 @@
 
 				{#if customCategories?.current && Array.isArray(customCategories.current)}
 					{#each customCategories.current as category (category.id)}
-						<button
-							class="dropdown-item"
-							class:active={viewModeState.currentMode === category.id}
-							onclick={() => selectMode(category.id)}
-							type="button"
-						>
-							{category.name}
-						</button>
+						<div class="dropdown-item-wrapper">
+							<button
+								class="dropdown-item"
+								class:active={viewModeState.currentMode === category.id}
+								onclick={() => selectMode(category.id)}
+								type="button"
+							>
+								{category.name}
+							</button>
+							<button
+								class="delete-category-btn"
+								onclick={(e) => openDeleteModal(category.id, category.name, e)}
+								type="button"
+								title="Delete category"
+							>
+								×
+							</button>
+						</div>
 					{/each}
 				{/if}
 
@@ -199,6 +324,61 @@
 				<div class="modal-buttons">
 					<button onclick={addNewCategory} disabled={!newCategoryName.trim()}>Create</button>
 					<button onclick={closeAddModal} class="cancel">Cancel</button>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if showDeleteModal && categoryToDelete}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-overlay" onclick={closeDeleteModal}>
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="modal-content delete-modal" onclick={(e) => e.stopPropagation()}>
+				<h3>Delete "{categoryToDelete.name}" Category</h3>
+				<p class="warning-text">What would you like to do with all items in this category?</p>
+
+				<div class="migration-options">
+					<label class="radio-option">
+						<input
+							type="radio"
+							name="migration"
+							value="personal"
+							checked={deleteMigrationChoice === 'personal'}
+							onchange={() => (deleteMigrationChoice = 'personal')}
+						/>
+						<div class="option-content">
+							<strong>Move to Personal</strong>
+							<span
+								>All events, shopping items, and custom lists will be moved to your personal view</span
+							>
+						</div>
+					</label>
+
+					<label class="radio-option">
+						<input
+							type="radio"
+							name="migration"
+							value="delete"
+							checked={deleteMigrationChoice === 'delete'}
+							onchange={() => (deleteMigrationChoice = 'delete')}
+						/>
+						<div class="option-content">
+							<strong>Delete Everything</strong>
+							<span class="danger">All items in this category will be permanently deleted</span>
+						</div>
+					</label>
+				</div>
+
+				<div class="modal-buttons">
+					<button
+						onclick={deleteCategory}
+						class={deleteMigrationChoice === 'delete' ? 'danger' : ''}
+					>
+						{deleteMigrationChoice === 'delete' ? 'Delete All' : 'Move & Delete Category'}
+					</button>
+					<button onclick={closeDeleteModal} class="cancel">Cancel</button>
 				</div>
 			</div>
 		</div>
@@ -301,7 +481,7 @@
 		background: white;
 		border-radius: 12px;
 		padding: 24px;
-		max-width: 400px;
+		max-width: 500px;
 		width: 90%;
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 	}
@@ -363,6 +543,124 @@
 
 	.modal-buttons button.cancel:hover {
 		background-color: #d0d0d0;
+	}
+
+	.modal-buttons button.danger {
+		background-color: #dc3545;
+		color: white;
+	}
+
+	.modal-buttons button.danger:hover {
+		background-color: #c82333;
+	}
+
+	.dropdown-item-wrapper {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		position: relative;
+	}
+
+	.dropdown-item-wrapper .dropdown-item {
+		flex: 1;
+		padding-right: 4px;
+	}
+
+	.delete-category-btn {
+		background: rgba(0, 0, 0, 0.05);
+		border: none;
+		color: #999;
+		font-size: 1.4rem;
+		line-height: 1;
+		cursor: pointer;
+		padding: 4px 8px;
+		border-radius: 4px;
+		transition: all 0.2s ease;
+		flex-shrink: 0;
+		min-width: 28px;
+		height: 28px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.delete-category-btn:hover {
+		background-color: #fee;
+		color: #dc3545;
+	}
+
+	.delete-modal {
+		max-width: 600px;
+		width: 95%;
+	}
+
+	.warning-text {
+		margin: 0 0 20px 0;
+		color: #666;
+		font-size: 0.95rem;
+	}
+
+	.migration-options {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		margin-bottom: 20px;
+	}
+
+	.radio-option {
+		display: flex;
+		align-items: flex-start;
+		gap: 12px;
+		padding: 16px;
+		border: 2px solid #ddd;
+		border-radius: 8px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		background-color: white;
+		width: 100%;
+	}
+
+	.radio-option:hover {
+		border-color: var(--primary);
+		background-color: #fffef5;
+	}
+
+	.radio-option:has(input[type='radio']:checked) {
+		border-color: var(--primary);
+		background-color: #fffef5;
+		box-shadow: 0 0 0 1px var(--primary);
+	}
+
+	.radio-option input[type='radio'] {
+		margin-top: 3px;
+		cursor: pointer;
+		width: 18px;
+		height: 18px;
+		flex-shrink: 0;
+	}
+
+	.option-content {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		flex: 1;
+	}
+
+	.option-content strong {
+		color: #333;
+		font-size: 1.05rem;
+		font-weight: 600;
+	}
+
+	.option-content span {
+		color: #666;
+		font-size: 0.9rem;
+		line-height: 1.4;
+	}
+
+	.option-content span.danger {
+		color: #dc3545;
+		font-weight: 600;
 	}
 
 	@media screen and (max-width: 690px) {
