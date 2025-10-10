@@ -46,7 +46,7 @@
 		// lets break it down by stores
 		const itemsByStore = new Map<string, number>();
 		for (const item of shoppingList?.current ?? []) {
-			const store = item.store || 'Unknown';
+			const store = item.store || 'any store';
 			itemsByStore.set(store, (itemsByStore.get(store) || 0) + 1);
 		}
 
@@ -57,7 +57,7 @@
 		}
 
 		const itemsList = Array.from(itemsByStore.entries())
-			.map(([store, count]) => `${count} item${count > 1 ? 's' : ''} from ${store}`)
+			.map(([store, count]) => `${count} item${count > 1 ? 's' : ''} to get from ${store}`)
 			.join(', ');
 
 		return `You have ${shoppingListCount} item${shoppingListCount > 1 ? 's' : ''} in your shopping list: ${itemsList}.`;

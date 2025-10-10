@@ -41,11 +41,8 @@
 	$effect(() => {
 		// set or clear the Query instance when auth / z.current changes
 		if (auth && z?.current) {
-			// console.log('Setting customLists query for user', data.id);
 			customLists = new Query(z.current.query.customLists.where('createdById', data.id));
 		} else {
-			// console.log(auth, z);
-			// console.log('Clearing customLists query');
 			customLists = undefined;
 		}
 
