@@ -174,6 +174,19 @@
 
 	function saveEdit(id: string) {
 		if (editName.trim()) {
+			// Validate end time is after start time (for same day events)
+			if (!editAllDay && editTime && editEndTime && (!editEndDate || editEndDate === editDate)) {
+				const [startHour, startMin] = editTime.split(':').map(Number);
+				const [endHour, endMin] = editEndTime.split(':').map(Number);
+				const startMinutes = startHour * 60 + startMin;
+				const endMinutes = endHour * 60 + endMin;
+
+				if (endMinutes <= startMinutes) {
+					alert('End time must be after start time');
+					return;
+				}
+			}
+
 			z?.current.mutate.events.update({
 				id,
 				name: editName.trim(),
@@ -183,7 +196,7 @@
 				endTime: editAllDay ? '' : editEndTime.trim() || undefined,
 				location: editLocation.trim() || undefined,
 				description: editDescription.trim() || undefined,
-				allDay: editAllDay || undefined
+				allDay: editAllDay
 			});
 		}
 		cancelEdit();
@@ -237,7 +250,7 @@
 								onkeydown={(e) => handleKeydown(e, event.id)}
 								autofocus
 							/>
-							
+
 							<label class="checkbox-label">
 								<input type="checkbox" bind:checked={editAllDay} />
 								All-day event
@@ -300,7 +313,7 @@
 					{:else}
 						<div class="event-info">
 							<span class="event-name">{event.name}</span>
-							
+
 							{#if event.allDay}
 								<span class="event-badge">All Day</span>
 							{/if}

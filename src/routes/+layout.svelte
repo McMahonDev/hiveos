@@ -121,6 +121,7 @@
 		<aside bind:this={menu} class:menuOpen>
 			<ul>
 				<li><a onclick={() => (menuOpen = false)} href="/">Dashboard</a></li>
+				<li><a onclick={() => (menuOpen = false)} href="/my-day">My Day</a></li>
 				<li><a onclick={() => (menuOpen = false)} href="/events">Events</a></li>
 				<li><a onclick={() => (menuOpen = false)} href="/shopping-list">Shopping List</a></li>
 				{#if customLists}

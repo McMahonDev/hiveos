@@ -9,6 +9,7 @@
 	let z = data.z;
 
 	let modal = $state(false);
+	let allDayChecked = $state(false);
 
 	// const events = z ? new Query(z?.current.query.events.where('assignedToId', data.id)) : null;
 	const group = z ? new Query(z?.current.query.userGroups.where('id', data.groupId)) : null;
@@ -26,7 +27,20 @@
 		let endTime = formData.get('endTime') as string;
 		let location = formData.get('location') as string;
 		let description = formData.get('description') as string;
-		let allDay = formData.get('allDay') === 'on';
+		let allDay = allDayChecked;
+
+		// Validate end time is after start time (for same day events)
+		if (!allDay && time && endTime && (!endDate || endDate === date)) {
+			const [startHour, startMin] = time.split(':').map(Number);
+			const [endHour, endMin] = endTime.split(':').map(Number);
+			const startMinutes = startHour * 60 + startMin;
+			const endMinutes = endHour * 60 + endMin;
+
+			if (endMinutes <= startMinutes) {
+				alert('End time must be after start time');
+				return;
+			}
+		}
 
 		z?.current.mutate.events.insert({
 			id: nanoid(),
@@ -38,13 +52,14 @@
 			timezone: getTimeZoneAbbreviation(),
 			location: location || undefined,
 			description: description || undefined,
-			allDay: allDay || undefined,
+			allDay: allDay,
 			createdById: data.id,
 			assignedToId: assignedToId(),
 			createdAt: Date.now()
 		});
 
 		(event.target as HTMLFormElement).reset();
+		allDayChecked = false;
 	}
 
 	function getTimeZoneAbbreviation(): string {
@@ -86,9 +101,9 @@
 				>Event Name
 				<input type="text" id="name" name="name" required />
 			</label>
-			
+
 			<label class="checkbox-label">
-				<input type="checkbox" name="allDay" id="allDay" />
+				<input type="checkbox" bind:checked={allDayChecked} id="allDay" />
 				All-day event
 			</label>
 
@@ -98,32 +113,46 @@
 						>Start Date
 						<input type="date" id="date" name="date" required />
 					</label>
-					<label for="time"
-						>Start Time
-						<input type="time" name="time" id="time" />
-					</label>
+					{#if !allDayChecked}
+						<label for="time"
+							>Start Time
+							<input type="time" name="time" id="time" />
+						</label>
+					{/if}
 				</div>
-				
+
 				<div class="date-time-row">
 					<label for="endDate"
 						>End Date
 						<input type="date" id="endDate" name="endDate" />
 					</label>
-					<label for="endTime"
-						>End Time
-						<input type="time" name="endTime" id="endTime" />
-					</label>
+					{#if !allDayChecked}
+						<label for="endTime"
+							>End Time
+							<input type="time" name="endTime" id="endTime" />
+						</label>
+					{/if}
 				</div>
 			</div>
 
 			<label for="location"
 				>Location (optional)
-				<input type="text" id="location" name="location" placeholder="Venue, address, or meeting link" />
+				<input
+					type="text"
+					id="location"
+					name="location"
+					placeholder="Venue, address, or meeting link"
+				/>
 			</label>
 
 			<label for="description"
 				>Description (optional)
-				<textarea id="description" name="description" rows="3" placeholder="Event details, agenda, notes..."></textarea>
+				<textarea
+					id="description"
+					name="description"
+					rows="3"
+					placeholder="Event details, agenda, notes..."
+				></textarea>
 			</label>
 
 			<button type="submit">Add Event</button>
