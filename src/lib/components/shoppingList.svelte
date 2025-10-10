@@ -95,7 +95,7 @@
 			{#each Array.isArray(shoppingList.current) ? shoppingList.current : [] as item (item.id)}
 				<div class="list-item">
 					<input type="checkbox" value={item.id} checked={item.status} oninput={toggletask} />
-					
+
 					{#if editingItemId === item.id}
 						<div class="item-content editing">
 							<input
@@ -118,9 +118,7 @@
 							<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
 								Save
 							</button>
-							<button class="cancel-item" onclick={cancelEdit} title="Cancel">
-								Cancel
-							</button>
+							<button class="cancel-item" onclick={cancelEdit} title="Cancel"> Cancel </button>
 						</div>
 					{:else}
 						<div class="item-content">
@@ -133,7 +131,12 @@
 							<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item">
 								Edit
 							</button>
-							<button class="delete-item" data-id={item.id} onclick={() => deleteItem(item.id)} title="Delete Item">
+							<button
+								class="delete-item"
+								data-id={item.id}
+								onclick={() => deleteItem(item.id)}
+								title="Delete Item"
+							>
 								<DeleteIcon />
 							</button>
 						</div>

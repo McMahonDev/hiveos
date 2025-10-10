@@ -234,9 +234,7 @@
 							<button class="save-btn" onclick={() => saveEdit(event.id)} title="Save">
 								Save
 							</button>
-							<button class="cancel-btn" onclick={cancelEdit} title="Cancel">
-								Cancel
-							</button>
+							<button class="cancel-btn" onclick={cancelEdit} title="Cancel"> Cancel </button>
 						</div>
 					{:else}
 						<span class="event-name">{event.name}</span>
@@ -247,9 +245,7 @@
 							{/if}
 						{/if}
 						<div class="item-actions">
-							<button class="edit-btn" onclick={() => startEdit(event)} title="Edit">
-								Edit
-							</button>
+							<button class="edit-btn" onclick={() => startEdit(event)} title="Edit"> Edit </button>
 							<button class="delete-btn" onclick={() => deleteItem(event.id)} title="Delete">
 								<DeleteIcon />
 							</button>

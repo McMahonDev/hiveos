@@ -144,9 +144,7 @@
 							<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
 								Save
 							</button>
-							<button class="cancel-item" onclick={cancelEdit} title="Cancel">
-								Cancel
-							</button>
+							<button class="cancel-item" onclick={cancelEdit} title="Cancel"> Cancel </button>
 						</div>
 					{:else}
 						<p>{item.name}</p>
