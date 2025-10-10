@@ -66,6 +66,38 @@
 			goto('/');
 		}
 	}
+
+	let editingItemId = $state<string | null>(null);
+	let editName = $state('');
+
+	function startEdit(item: any) {
+		editingItemId = item.id;
+		editName = item.name;
+	}
+
+	function cancelEdit() {
+		editingItemId = null;
+		editName = '';
+	}
+
+	function saveEdit(id: string) {
+		if (editName.trim()) {
+			z?.current.mutate.customListItems.update({
+				id,
+				name: editName.trim()
+			});
+		}
+		cancelEdit();
+	}
+
+	function handleKeydown(event: KeyboardEvent, id: string) {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			saveEdit(id);
+		} else if (event.key === 'Escape') {
+			cancelEdit();
+		}
+	}
 </script>
 
 <section class="custom-list">
@@ -97,10 +129,36 @@
 		{#if customListItems?.current}
 			{#each customListItems.current as item (item.id)}
 				<div class="list-item">
-					<p>{item.name}</p>
-					<button class="delete-item" onclick={() => deleteItem(item.id)} title="Delete Item">
-						<DeleteIcon />
-					</button>
+					{#if editingItemId === item.id}
+						<div class="item-content editing">
+							<input
+								type="text"
+								class="edit-input"
+								bind:value={editName}
+								placeholder="Item name"
+								onkeydown={(e) => handleKeydown(e, item.id)}
+								autofocus
+							/>
+						</div>
+						<div class="edit-actions">
+							<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
+								Save
+							</button>
+							<button class="cancel-item" onclick={cancelEdit} title="Cancel">
+								Cancel
+							</button>
+						</div>
+					{:else}
+						<p>{item.name}</p>
+						<div class="item-actions">
+							<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item">
+								Edit
+							</button>
+							<button class="delete-item" onclick={() => deleteItem(item.id)} title="Delete Item">
+								<DeleteIcon />
+							</button>
+						</div>
+					{/if}
 				</div>
 			{/each}
 		{:else}
@@ -220,6 +278,109 @@
 				margin: 0;
 				flex: 1;
 				font-weight: 500;
+			}
+
+			.item-content {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+
+				&.editing {
+					gap: 8px;
+				}
+
+				.edit-input {
+					padding: 8px;
+					border: 1px solid #ccc;
+					border-radius: 4px;
+					font-size: 1rem;
+					font-weight: 500;
+					width: 100%;
+
+					&:focus {
+						outline: none;
+						border-color: #007bff;
+						box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+					}
+				}
+			}
+
+			.item-actions {
+				display: flex;
+				gap: 8px;
+				align-items: center;
+				flex-shrink: 0;
+			}
+
+			.edit-actions {
+				display: flex;
+				gap: 8px;
+				align-items: center;
+				flex-shrink: 0;
+			}
+
+			.edit-item {
+				background: #007bff;
+				color: white;
+				border: none;
+				padding: 6px 12px;
+				border-radius: 4px;
+				cursor: pointer;
+				font-size: 0.875rem;
+				transition: all 0.2s ease;
+				white-space: nowrap;
+
+				&:hover {
+					background: #0056b3;
+					transform: scale(1.05);
+				}
+
+				&:active {
+					transform: scale(0.95);
+				}
+			}
+
+			.save-item {
+				background: #28a745;
+				color: white;
+				border: none;
+				padding: 6px 12px;
+				border-radius: 4px;
+				cursor: pointer;
+				font-size: 0.875rem;
+				transition: all 0.2s ease;
+				white-space: nowrap;
+
+				&:hover {
+					background: #218838;
+					transform: scale(1.05);
+				}
+
+				&:active {
+					transform: scale(0.95);
+				}
+			}
+
+			.cancel-item {
+				background: #6c757d;
+				color: white;
+				border: none;
+				padding: 6px 12px;
+				border-radius: 4px;
+				cursor: pointer;
+				font-size: 0.875rem;
+				transition: all 0.2s ease;
+				white-space: nowrap;
+
+				&:hover {
+					background: #5a6268;
+					transform: scale(1.05);
+				}
+
+				&:active {
+					transform: scale(0.95);
+				}
 			}
 
 			.delete-item {

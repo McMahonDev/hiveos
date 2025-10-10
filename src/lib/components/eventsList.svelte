@@ -137,6 +137,46 @@
 			z?.current.mutate.events.delete({ id });
 		}
 	}
+
+	let editingItemId = $state<string | null>(null);
+	let editName = $state('');
+	let editDate = $state('');
+	let editTime = $state('');
+
+	function startEdit(event: any) {
+		editingItemId = event.id;
+		editName = event.name;
+		editDate = event.date || '';
+		editTime = event.time || '';
+	}
+
+	function cancelEdit() {
+		editingItemId = null;
+		editName = '';
+		editDate = '';
+		editTime = '';
+	}
+
+	function saveEdit(id: string) {
+		if (editName.trim()) {
+			z?.current.mutate.events.update({
+				id,
+				name: editName.trim(),
+				date: editDate.trim(),
+				time: editTime.trim()
+			});
+		}
+		cancelEdit();
+	}
+
+	function handleKeydown(event: KeyboardEvent, id: string) {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			saveEdit(id);
+		} else if (event.key === 'Escape') {
+			cancelEdit();
+		}
+	}
 </script>
 
 <div>
@@ -166,15 +206,55 @@
 	{:else if Array.isArray(sortedEvents)}
 		<ul class="longList">
 			{#each sortedEvents as event}
-				<li class={getDateClass(event.date, event.time)}>
-					<span class="event-name">{event.name}</span>
-					{#if event.date}
-						<span class="event-date">{formatDate(event.date)}</span>
-						{#if event.time}
-							<span class="event-time">{formatTime(event.time, event.timezone)}</span>
+				<li class={editingItemId === event.id ? '' : getDateClass(event.date, event.time)}>
+					{#if editingItemId === event.id}
+						<div class="edit-content">
+							<input
+								type="text"
+								class="edit-input"
+								bind:value={editName}
+								placeholder="Event name"
+								onkeydown={(e) => handleKeydown(e, event.id)}
+								autofocus
+							/>
+							<input
+								type="date"
+								class="edit-input"
+								bind:value={editDate}
+								onkeydown={(e) => handleKeydown(e, event.id)}
+							/>
+							<input
+								type="time"
+								class="edit-input"
+								bind:value={editTime}
+								onkeydown={(e) => handleKeydown(e, event.id)}
+							/>
+						</div>
+						<div class="edit-actions">
+							<button class="save-btn" onclick={() => saveEdit(event.id)} title="Save">
+								Save
+							</button>
+							<button class="cancel-btn" onclick={cancelEdit} title="Cancel">
+								Cancel
+							</button>
+						</div>
+					{:else}
+						<span class="event-name">{event.name}</span>
+						{#if event.date}
+							<span class="event-date">{formatDate(event.date)}</span>
+							{#if event.time}
+								<span class="event-time">{formatTime(event.time, event.timezone)}</span>
+							{/if}
 						{/if}
+						<div class="item-actions">
+							<button class="edit-btn" onclick={() => startEdit(event)} title="Edit">
+								Edit
+							</button>
+							<button class="delete-btn" onclick={() => deleteItem(event.id)} title="Delete">
+								<DeleteIcon />
+							</button>
+						</div>
 					{/if}
-					<button onclick={() => deleteItem(event.id)}><DeleteIcon /></button>
 				</li>
 			{/each}
 		</ul>
@@ -203,6 +283,13 @@
 		border-radius: 10px;
 		padding: 10px;
 		margin-bottom: 15px;
+		transition: all 0.2s ease;
+
+		&:hover {
+			box-shadow: var(--level-3);
+			transform: translateY(-1px);
+		}
+
 		.event-name {
 			font-weight: 800;
 			grid-column: 1;
@@ -220,6 +307,134 @@
 			grid-column: 1;
 			grid-row: 3;
 		}
+
+		.edit-content {
+			grid-column: 1;
+			grid-row: 1 / 4;
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+
+			.edit-input {
+				padding: 8px;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+				font-size: 1rem;
+				width: 100%;
+
+				&:focus {
+					outline: none;
+					border-color: #007bff;
+					box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+				}
+			}
+		}
+
+		.item-actions {
+			grid-column: 2;
+			grid-row: 1;
+			justify-self: end;
+			display: flex;
+			gap: 8px;
+			align-items: center;
+		}
+
+		.edit-actions {
+			grid-column: 2;
+			grid-row: 1;
+			justify-self: end;
+			display: flex;
+			gap: 8px;
+			align-items: flex-start;
+		}
+
+		.edit-btn {
+			background: #007bff;
+			color: white;
+			border: none;
+			padding: 6px 12px;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 0.875rem;
+			transition: all 0.2s ease;
+			white-space: nowrap;
+
+			&:hover {
+				background: #0056b3;
+				transform: scale(1.05);
+			}
+
+			&:active {
+				transform: scale(0.95);
+			}
+		}
+
+		.save-btn {
+			background: #28a745;
+			color: white;
+			border: none;
+			padding: 6px 12px;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 0.875rem;
+			transition: all 0.2s ease;
+			white-space: nowrap;
+
+			&:hover {
+				background: #218838;
+				transform: scale(1.05);
+			}
+
+			&:active {
+				transform: scale(0.95);
+			}
+		}
+
+		.cancel-btn {
+			background: #6c757d;
+			color: white;
+			border: none;
+			padding: 6px 12px;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 0.875rem;
+			transition: all 0.2s ease;
+			white-space: nowrap;
+
+			&:hover {
+				background: #5a6268;
+				transform: scale(1.05);
+			}
+
+			&:active {
+				transform: scale(0.95);
+			}
+		}
+
+		.delete-btn {
+			background: #dc3545;
+			color: white;
+			border: none;
+			padding: 6px 8px;
+			border-radius: 4px;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: all 0.2s ease;
+			min-width: 32px;
+			height: 32px;
+
+			&:hover {
+				background: #c82333;
+				transform: scale(1.1);
+			}
+
+			&:active {
+				transform: scale(0.9);
+			}
+		}
+
 		button {
 			grid-column: 2;
 			justify-self: end;
