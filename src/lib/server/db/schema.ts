@@ -23,7 +23,12 @@ export const events = pgTable('events', {
 	name: text('name'),
 	date: text('date'),
 	time: text('time'),
+	endDate: text('endDate'),
+	endTime: text('endTime'),
 	timezone: text('timezone'),
+	location: text('location'),
+	description: text('description'),
+	allDay: boolean('allDay'),
 	createdById: text('createdById'),
 	assignedToId: text('assignedToId'),
 	createdAt: timestamp('createdAt').$defaultFn(() => new Date())

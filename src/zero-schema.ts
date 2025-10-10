@@ -89,7 +89,12 @@ const events = table('events')
 		name: string(),
 		date: string(),
 		time: string(),
+		endDate: string().optional(),
+		endTime: string().optional(),
 		timezone: string(),
+		location: string().optional(),
+		description: string().optional(),
+		allDay: boolean().optional(),
 		createdById: string(),
 		assignedToId: string(),
 		createdAt: number()
