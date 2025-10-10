@@ -5,11 +5,13 @@
 	import LogoutIcon from '$lib/static/icons/logoutIcon.svelte';
 	import MenuIcon from '$lib/static/icons/menuIcon.svelte';
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
+	import ViewModeDropdown from '$lib/components/viewModeDropdown.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { goto } from '$app/navigation';
 	import { invalidateAll } from '$app/navigation';
 	import { Query } from 'zero-svelte';
 	import { nanoid } from 'nanoid';
+	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 
 	let { children, data } = $props();
 	let z = $derived(data.z);
@@ -41,7 +43,12 @@
 	$effect(() => {
 		// set or clear the Query instance when auth / z.current changes
 		if (auth && z?.current) {
-			customLists = new Query(z.current.query.customLists.where('createdById', data.id));
+			// Filter custom lists by current view mode
+			const viewMode = viewModeState.currentMode;
+			customLists = new Query(
+				z.current.query.customLists.where('createdById', data.id).where('viewMode', viewMode)
+			);
+
 		} else {
 			customLists = undefined;
 		}
@@ -84,7 +91,8 @@
 				id,
 				name: listName as string,
 				createdById: data.id,
-				createdAt: Date.now()
+				createdAt: Date.now(),
+				viewMode: viewModeState.currentMode
 			})
 			.then(() => {
 				(e.target as HTMLFormElement).reset();
@@ -101,6 +109,7 @@
 
 	<nav>
 		{#if auth}
+			<ViewModeDropdown {data} />
 			<button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button>
 			<button onclick={toggleMenu} class="menu-button" aria-label="Open menu">
 				{#if menuOpen}
@@ -121,11 +130,12 @@
 		<aside bind:this={menu} class:menuOpen>
 			<ul>
 				<li><a onclick={() => (menuOpen = false)} href="/">Dashboard</a></li>
+				<li><a onclick={() => (menuOpen = false)} href="/my-day">My Day</a></li>
 				<li><a onclick={() => (menuOpen = false)} href="/events">Events</a></li>
 				<li><a onclick={() => (menuOpen = false)} href="/shopping-list">Shopping List</a></li>
 				{#if customLists}
-					{#if customLists?.current}
-						{#each customLists?.current as list (list.id)}
+					{#if customLists?.current && Array.isArray(customLists.current)}
+						{#each customLists.current as list (list.id)}
 							<li>
 								<a onclick={() => (menuOpen = false)} href={`/custom-list/${list.id}`}
 									>{list.name}</a

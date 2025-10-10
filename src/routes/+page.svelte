@@ -6,21 +6,48 @@
 	import ShoppingList from '$lib/components/shoppingList.svelte';
 	import { isPast } from '$lib/utils/isPast';
 	import { isToday } from '$lib/utils/isToday';
+	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 
 	let { data } = $props();
 	let shortlist: boolean = true;
 
 	let z = data.z;
-	const events = z ? new Query(z?.current.query.events.where('assignedToId', data.groupId)) : null;
-	const shoppingList = z
-		? new Query(z?.current.query.shoppingList.where('assignedToId', data.groupId))
-		: null;
+
+	// Query events and shopping list filtered by current view mode
+	let events = $state<Query<any, any, any> | null>(null);
+	let shoppingList = $state<Query<any, any, any> | null>(null);
+
+	$effect(() => {
+		if (z?.current) {
+			// In personal mode, only show items assigned to the user
+			// In shared/other modes, show items assigned to the group
+			const assignedId = viewModeState.currentMode === 'personal' ? data.id : data.groupId;
+
+			events = new Query(
+				z.current.query.events
+					.where('assignedToId', assignedId)
+					.where('viewMode', viewModeState.currentMode)
+			);
+
+			shoppingList = new Query(
+				z.current.query.shoppingList
+					.where('assignedToId', assignedId)
+					.where('viewMode', viewModeState.currentMode)
+			);
+		} else {
+			events = null;
+			shoppingList = null;
+		}
+	});
 
 	let shoppingListCount = $state(0);
 	let eventNumber = $state(0);
 	$effect(() => {
-		eventNumber = events?.current.length ?? 0;
-		shoppingListCount = shoppingList?.current.length ?? 0;
+		eventNumber = events?.current && Array.isArray(events.current) ? events.current.length : 0;
+		shoppingListCount =
+			shoppingList?.current && Array.isArray(shoppingList.current)
+				? shoppingList.current.length
+				: 0;
 	});
 
 	function getEventsString(): string {
@@ -29,7 +56,8 @@
 		let future = 0;
 		let today = 0;
 
-		for (const event of events?.current ?? []) {
+		const eventsList = events?.current && Array.isArray(events.current) ? events.current : [];
+		for (const event of eventsList) {
 			if (isPast(event.date, event.time)) {
 				pastDue++;
 			} else if (isToday(event.date, event.time)) {
@@ -45,13 +73,16 @@
 	function getShoppingListString(): string {
 		// lets break it down by stores
 		const itemsByStore = new Map<string, number>();
-		for (const item of shoppingList?.current ?? []) {
+		const shopList =
+			shoppingList?.current && Array.isArray(shoppingList.current) ? shoppingList.current : [];
+
+		for (const item of shopList) {
 			const store = item.store || 'any store';
 			itemsByStore.set(store, (itemsByStore.get(store) || 0) + 1);
 		}
 
 		// create a string from the map
-		let shoppingListCount = shoppingList?.current.length ?? 0;
+		let shoppingListCount = shopList.length;
 		if (shoppingListCount === 0) {
 			return 'No items in your shopping list.';
 		}

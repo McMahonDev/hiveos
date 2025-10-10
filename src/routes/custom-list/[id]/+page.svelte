@@ -4,6 +4,7 @@
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
 	import { goto } from '$app/navigation';
+	import { viewModeState, setViewMode } from '$lib/state/viewMode.svelte.ts';
 
 	let { data } = $props(); // repo style (Svelte 5)
 	const listId = $derived(data.listId);
@@ -16,13 +17,76 @@
 		z ? new Query(z?.current.query.customLists.where('id', listId).where('createdById', id)) : null
 	);
 
-	let customListItems = $derived(
-		z
-			? new Query(
-					z.current.query.customListItems.where('customListId', listId).orderBy('createdAt', 'asc')
-				)
-			: null
-	);
+	let hasInitialized = $state(false);
+	let initialViewMode = $state<string | null>(null);
+
+	// On initial load/bookmark access: auto-switch to the list's view mode if needed
+	$effect(() => {
+		if (customList?.current?.[0] && !hasInitialized) {
+			const listViewMode = customList.current[0].viewMode;
+			initialViewMode = listViewMode;
+
+			// If the list's viewMode doesn't match current mode, try to switch to it
+			if (listViewMode !== viewModeState.currentMode) {
+				if (listViewMode === 'personal' || listViewMode === 'shared') {
+					// Always have access to personal/shared modes
+					setViewMode(listViewMode);
+					hasInitialized = true;
+				} else {
+					// It's a custom category - check if user has access
+					const categoryQuery = z?.current.query.viewModeCategories
+						.where('userId', id)
+						.where('id', listViewMode);
+
+					if (categoryQuery) {
+						const categoryList = new Query(categoryQuery);
+						if (categoryList.current && categoryList.current.length > 0) {
+							// User has access to this category, switch to it
+							setViewMode(listViewMode);
+							hasInitialized = true;
+						} else if (categoryList.current !== null) {
+							// Query resolved but user doesn't have access, navigate home
+							goto('/');
+							hasInitialized = true;
+						}
+					}
+				}
+			} else {
+				// Already in correct view mode
+				hasInitialized = true;
+			}
+		}
+	});
+
+	// If user manually switches view mode while on this page, navigate home
+	$effect(() => {
+		const currentMode = viewModeState.currentMode;
+		if (hasInitialized && initialViewMode !== null && currentMode !== initialViewMode) {
+			console.log(
+				'View mode changed, navigating home. Initial:',
+				initialViewMode,
+				'Current:',
+				currentMode
+			);
+			goto('/');
+		}
+	});
+
+	// Filter custom list items by viewMode
+	let customListItems = $state<Query<any, any, any> | null>(null);
+
+	$effect(() => {
+		if (z?.current) {
+			customListItems = new Query(
+				z.current.query.customListItems
+					.where('customListId', listId)
+					.where('viewMode', viewModeState.currentMode)
+					.orderBy('createdAt', 'asc')
+			);
+		} else {
+			customListItems = null;
+		}
+	});
 
 	let modal = $state(false);
 
@@ -38,7 +102,8 @@
 				status: false,
 				customListId: listId,
 				createdById: data.id,
-				createdAt: Date.now()
+				createdAt: Date.now(),
+				viewMode: viewModeState.currentMode
 			});
 			(event.target as HTMLFormElement).reset();
 		}
@@ -53,8 +118,8 @@
 			confirm('Are you sure you want to delete this list? This will also delete all items in it.')
 		) {
 			// Delete all items first
-			if (customListItems?.current) {
-				customListItems.current.forEach((item) => {
+			if (customListItems?.current && Array.isArray(customListItems.current)) {
+				customListItems.current.forEach((item: any) => {
 					z?.current.mutate.customListItems.delete({ id: item.id });
 				});
 			}
@@ -64,6 +129,38 @@
 
 			// Navigate back to home or lists page
 			goto('/');
+		}
+	}
+
+	let editingItemId = $state<string | null>(null);
+	let editName = $state('');
+
+	function startEdit(item: any) {
+		editingItemId = item.id;
+		editName = item.name;
+	}
+
+	function cancelEdit() {
+		editingItemId = null;
+		editName = '';
+	}
+
+	function saveEdit(id: string) {
+		if (editName.trim()) {
+			z?.current.mutate.customListItems.update({
+				id,
+				name: editName.trim()
+			});
+		}
+		cancelEdit();
+	}
+
+	function handleKeydown(event: KeyboardEvent, id: string) {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			saveEdit(id);
+		} else if (event.key === 'Escape') {
+			cancelEdit();
 		}
 	}
 </script>
@@ -94,15 +191,40 @@
 		</form>
 	</div>
 	<div class="list-container">
-		{#if customListItems?.current}
-			{#each customListItems.current as item (item.id)}
-				<div class="list-item">
-					<p>{item.name}</p>
-					<button class="delete-item" onclick={() => deleteItem(item.id)} title="Delete Item">
-						<DeleteIcon />
-					</button>
-				</div>
-			{/each}
+		{#if customListItems?.current && Array.isArray(customListItems.current)}
+			<div class="list-items">
+				{#each customListItems.current as item (item.id)}
+					<div class="list-item">
+						{#if editingItemId === item.id}
+							<div class="item-content editing">
+								<input
+									type="text"
+									class="edit-input"
+									bind:value={editName}
+									placeholder="Item name"
+									onkeydown={(e) => handleKeydown(e, item.id)}
+								/>
+							</div>
+							<div class="edit-actions">
+								<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
+									Save
+								</button>
+								<button class="cancel-item" onclick={cancelEdit} title="Cancel"> Cancel </button>
+							</div>
+						{:else}
+							<p>{item.name}</p>
+							<div class="item-actions">
+								<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item">
+									Edit
+								</button>
+								<button class="delete-item" onclick={() => deleteItem(item.id)} title="Delete Item">
+									<DeleteIcon />
+								</button>
+							</div>
+						{/if}
+					</div>
+				{/each}
+			</div>
 		{:else}
 			<p>Loading items...</p>
 		{/if}
@@ -220,6 +342,109 @@
 				margin: 0;
 				flex: 1;
 				font-weight: 500;
+			}
+
+			.item-content {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+
+				&.editing {
+					gap: 8px;
+				}
+
+				.edit-input {
+					padding: 8px;
+					border: 1px solid #ccc;
+					border-radius: 4px;
+					font-size: 1rem;
+					font-weight: 500;
+					width: 100%;
+
+					&:focus {
+						outline: none;
+						border-color: #007bff;
+						box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+					}
+				}
+			}
+
+			.item-actions {
+				display: flex;
+				gap: 8px;
+				align-items: center;
+				flex-shrink: 0;
+			}
+
+			.edit-actions {
+				display: flex;
+				gap: 8px;
+				align-items: center;
+				flex-shrink: 0;
+			}
+
+			.edit-item {
+				background: #007bff;
+				color: white;
+				border: none;
+				padding: 6px 12px;
+				border-radius: 4px;
+				cursor: pointer;
+				font-size: 0.875rem;
+				transition: all 0.2s ease;
+				white-space: nowrap;
+
+				&:hover {
+					background: #0056b3;
+					transform: scale(1.05);
+				}
+
+				&:active {
+					transform: scale(0.95);
+				}
+			}
+
+			.save-item {
+				background: #28a745;
+				color: white;
+				border: none;
+				padding: 6px 12px;
+				border-radius: 4px;
+				cursor: pointer;
+				font-size: 0.875rem;
+				transition: all 0.2s ease;
+				white-space: nowrap;
+
+				&:hover {
+					background: #218838;
+					transform: scale(1.05);
+				}
+
+				&:active {
+					transform: scale(0.95);
+				}
+			}
+
+			.cancel-item {
+				background: #6c757d;
+				color: white;
+				border: none;
+				padding: 6px 12px;
+				border-radius: 4px;
+				cursor: pointer;
+				font-size: 0.875rem;
+				transition: all 0.2s ease;
+				white-space: nowrap;
+
+				&:hover {
+					background: #5a6268;
+					transform: scale(1.05);
+				}
+
+				&:active {
+					transform: scale(0.95);
+				}
 			}
 
 			.delete-item {

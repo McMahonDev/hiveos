@@ -3,6 +3,7 @@
 	import { Query } from 'zero-svelte';
 	import { nanoid } from 'nanoid';
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
+	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 
 	let { data } = $props();
 	let z = data.z;
@@ -18,14 +19,19 @@
 		const store = formData.get('store') as string;
 		const id = nanoid();
 		if (name) {
+			// In personal mode, assign to user's own ID
+			// In shared mode, assign to groupId
+			const assignedTo = viewModeState.currentMode === 'personal' ? data.id : groupid || data.id;
+
 			z?.current.mutate.shoppingList.insert({
 				id,
 				name,
 				store,
 				status: false,
-				assignedToId: groupid,
+				assignedToId: assignedTo,
 				createdById: data.id,
-				createdAt: Date.now()
+				createdAt: Date.now(),
+				viewMode: viewModeState.currentMode
 			});
 			(event.target as HTMLFormElement).reset();
 		}

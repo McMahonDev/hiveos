@@ -3,6 +3,7 @@
 	import { Query } from 'zero-svelte';
 	import { isPast } from '$lib/utils/isPast';
 	import { isToday } from '$lib/utils/isToday';
+	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 
 	let { data, shortlist = false } = $props();
 	let z = data.z;
@@ -10,13 +11,27 @@
 	$inspect(groupId);
 
 	// Query events (ordered by createdAt for a deterministic replica order).
-	const events = new Query(
-		z?.current.query.events.where('assignedToId', groupId).orderBy('createdAt', 'asc')
-	);
+	// Filter by viewMode
+	let events = $state<Query<any, any, any>>();
 
-	$inspect(events.current);
+	$effect(() => {
+		if (z?.current) {
+			// In personal mode, only show items assigned to the user
+			// In shared/other modes, show items assigned to the group
+			const assignedId = viewModeState.currentMode === 'personal' ? data.id : groupId;
 
-	let numberOfItems = $derived(events.current?.length ?? 0);
+			events = new Query(
+				z.current.query.events
+					.where('assignedToId', assignedId)
+					.where('viewMode', viewModeState.currentMode)
+					.orderBy('createdAt', 'asc')
+			);
+		}
+	});
+
+	$inspect(events?.current);
+
+	let numberOfItems = $derived(events?.current?.length ?? 0);
 
 	let sortedEvents = $derived(
 		Array.isArray(events?.current)
@@ -137,6 +152,79 @@
 			z?.current.mutate.events.delete({ id });
 		}
 	}
+
+	let editingItemId = $state<string | null>(null);
+	let editName = $state('');
+	let editDate = $state('');
+	let editTime = $state('');
+	let editEndDate = $state('');
+	let editEndTime = $state('');
+	let editLocation = $state('');
+	let editDescription = $state('');
+	let editAllDay = $state(false);
+
+	function startEdit(event: any) {
+		editingItemId = event.id;
+		editName = event.name;
+		editDate = event.date || '';
+		editTime = event.time || '';
+		editEndDate = event.endDate || '';
+		editEndTime = event.endTime || '';
+		editLocation = event.location || '';
+		editDescription = event.description || '';
+		editAllDay = event.allDay || false;
+	}
+
+	function cancelEdit() {
+		editingItemId = null;
+		editName = '';
+		editDate = '';
+		editTime = '';
+		editEndDate = '';
+		editEndTime = '';
+		editLocation = '';
+		editDescription = '';
+		editAllDay = false;
+	}
+
+	function saveEdit(id: string) {
+		if (editName.trim()) {
+			// Validate end time is after start time (for same day events)
+			if (!editAllDay && editTime && editEndTime && (!editEndDate || editEndDate === editDate)) {
+				const [startHour, startMin] = editTime.split(':').map(Number);
+				const [endHour, endMin] = editEndTime.split(':').map(Number);
+				const startMinutes = startHour * 60 + startMin;
+				const endMinutes = endHour * 60 + endMin;
+
+				if (endMinutes <= startMinutes) {
+					alert('End time must be after start time');
+					return;
+				}
+			}
+
+			z?.current.mutate.events.update({
+				id,
+				name: editName.trim(),
+				date: editDate.trim(),
+				time: editAllDay ? '' : editTime.trim(),
+				endDate: editEndDate.trim() || undefined,
+				endTime: editAllDay ? '' : editEndTime.trim() || undefined,
+				location: editLocation.trim() || undefined,
+				description: editDescription.trim() || undefined,
+				allDay: editAllDay
+			});
+		}
+		cancelEdit();
+	}
+
+	function handleKeydown(event: KeyboardEvent, id: string) {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			saveEdit(id);
+		} else if (event.key === 'Escape') {
+			cancelEdit();
+		}
+	}
 </script>
 
 <div>
@@ -166,15 +254,121 @@
 	{:else if Array.isArray(sortedEvents)}
 		<ul class="longList">
 			{#each sortedEvents as event}
-				<li class={getDateClass(event.date, event.time)}>
-					<span class="event-name">{event.name}</span>
-					{#if event.date}
-						<span class="event-date">{formatDate(event.date)}</span>
-						{#if event.time}
-							<span class="event-time">{formatTime(event.time, event.timezone)}</span>
-						{/if}
+				<li class={editingItemId === event.id ? 'editing' : getDateClass(event.date, event.time)}>
+					{#if editingItemId === event.id}
+						<div class="edit-content">
+							<input
+								type="text"
+								class="edit-input"
+								bind:value={editName}
+								placeholder="Event name"
+								onkeydown={(e) => handleKeydown(e, event.id)}
+								autofocus
+							/>
+
+							<label class="checkbox-label">
+								<input type="checkbox" bind:checked={editAllDay} />
+								All-day event
+							</label>
+
+							<div class="date-time-inputs">
+								<input
+									type="date"
+									class="edit-input"
+									bind:value={editDate}
+									placeholder="Start date"
+								/>
+								{#if !editAllDay}
+									<input
+										type="time"
+										class="edit-input"
+										bind:value={editTime}
+										placeholder="Start time"
+									/>
+								{/if}
+							</div>
+
+							<div class="date-time-inputs">
+								<input
+									type="date"
+									class="edit-input"
+									bind:value={editEndDate}
+									placeholder="End date (optional)"
+								/>
+								{#if !editAllDay}
+									<input
+										type="time"
+										class="edit-input"
+										bind:value={editEndTime}
+										placeholder="End time (optional)"
+									/>
+								{/if}
+							</div>
+
+							<input
+								type="text"
+								class="edit-input"
+								bind:value={editLocation}
+								placeholder="Location (optional)"
+							/>
+
+							<textarea
+								class="edit-input"
+								bind:value={editDescription}
+								placeholder="Description (optional)"
+								rows="2"
+							></textarea>
+						</div>
+						<div class="edit-actions">
+							<button class="save-btn" onclick={() => saveEdit(event.id)} title="Save">
+								Save
+							</button>
+							<button class="cancel-btn" onclick={cancelEdit} title="Cancel"> Cancel </button>
+						</div>
+					{:else}
+						<div class="event-info">
+							<span class="event-name">{event.name}</span>
+
+							{#if event.allDay}
+								<span class="event-badge">All Day</span>
+							{/if}
+
+							<div class="event-datetime">
+								{#if event.date}
+									<span class="event-date">
+										📅 {formatDate(event.date)}
+										{#if !event.allDay && event.time}
+											<span class="event-time">at {formatTime(event.time, event.timezone)}</span>
+										{/if}
+									</span>
+								{/if}
+
+								{#if event.endDate || event.endTime}
+									<span class="event-end">
+										→ {event.endDate ? formatDate(event.endDate) : ''}
+										{#if !event.allDay && event.endTime}
+											<span class="event-time">at {formatTime(event.endTime, event.timezone)}</span>
+										{/if}
+									</span>
+								{/if}
+							</div>
+
+							{#if event.location}
+								<span class="event-location">📍 {event.location}</span>
+							{/if}
+
+							{#if event.description}
+								<span class="event-description">{event.description}</span>
+							{/if}
+						</div>
+
+						<div class="item-actions">
+							<button class="edit-btn" onclick={() => startEdit(event)} title="Edit"> Edit </button>
+							<button class="delete-btn" onclick={() => deleteItem(event.id)} title="Delete">
+								<DeleteIcon />
+							</button>
+						</div>
 					{/if}
-					<button onclick={() => deleteItem(event.id)}><DeleteIcon /></button>
 				</li>
 			{/each}
 		</ul>
@@ -199,27 +393,275 @@
 	.longList li {
 		display: grid;
 		grid-template-columns: 1fr auto;
+		background: var(--level-2);
 		box-shadow: var(--level-1);
-		border-radius: 10px;
-		padding: 10px;
+		border-radius: 8px;
+		border-left: 4px solid transparent;
+		padding: 15px;
 		margin-bottom: 15px;
+		transition: all 0.2s ease;
+
+		&:hover {
+			box-shadow: var(--level-3);
+			transform: translateY(-1px);
+		}
+
+		&.editing {
+			padding: 20px;
+		}
+
+		.event-info {
+			grid-column: 1;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+		}
+
 		.event-name {
-			font-weight: 800;
-			grid-column: 1;
-			grid-row: 1;
+			font-weight: 700;
 			font-family: var(--headerFont);
-			font-size: 1.1em;
+			font-size: 1.25em;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			line-height: 1.3;
+			color: var(--text-color, #222);
 		}
+
+		.event-badge {
+			display: inline-block;
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: white;
+			padding: 4px 10px;
+			border-radius: 14px;
+			font-size: 0.65em;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		}
+
+		.event-datetime {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+			font-size: 0.95em;
+			padding: 8px 0;
+		}
+
 		.event-date {
-			color: var(--color-secondary);
-			grid-column: 1;
-			grid-row: 2;
+			color: var(--text-color, #333);
+			font-weight: 600;
+			display: flex;
+			align-items: center;
+			gap: 8px;
 		}
+
+		.event-end {
+			color: var(--text-color, #333);
+			font-weight: 600;
+			margin-left: 24px;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
 		.event-time {
-			color: var(--color-tertiary);
-			grid-column: 1;
-			grid-row: 3;
+			color: var(--color-tertiary, #666);
+			font-weight: 500;
+			margin-left: 0;
 		}
+
+		.event-location {
+			color: var(--text-color, #444);
+			font-size: 0.9em;
+			font-weight: 500;
+			background: rgba(0, 123, 255, 0.08);
+			padding: 6px 10px;
+			border-radius: 6px;
+			display: inline-block;
+			align-self: flex-start;
+		}
+
+		.event-description {
+			color: var(--text-color, #555);
+			font-size: 0.9em;
+			line-height: 1.5;
+			padding: 10px;
+			background: rgba(0, 0, 0, 0.03);
+			border-radius: 6px;
+			border-left: 3px solid rgba(0, 123, 255, 0.3);
+		}
+
+		.edit-content {
+			grid-column: 1;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+
+			.edit-input {
+				padding: 8px;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+				font-size: 1rem;
+				width: 100%;
+				font-family: inherit;
+
+				&:focus {
+					outline: none;
+					border-color: #007bff;
+					box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+				}
+			}
+
+			textarea.edit-input {
+				resize: vertical;
+				min-height: 60px;
+			}
+
+			.checkbox-label {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				cursor: pointer;
+				font-size: 0.95rem;
+
+				input[type='checkbox'] {
+					width: 18px;
+					height: 18px;
+					cursor: pointer;
+				}
+			}
+
+			.date-time-inputs {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 10px;
+
+				@media screen and (max-width: 690px) {
+					grid-template-columns: 1fr;
+				}
+			}
+		}
+
+		.item-actions {
+			grid-column: 2;
+			grid-row: 1;
+			justify-self: end;
+			align-self: start;
+			display: flex;
+			gap: 8px;
+			align-items: center;
+		}
+
+		.edit-actions {
+			grid-column: 2;
+			grid-row: 1;
+			justify-self: end;
+			align-self: start;
+			display: flex;
+			gap: 8px;
+			align-items: flex-start;
+		}
+
+		.edit-btn {
+			background: #007bff;
+			color: white;
+			border: none;
+			padding: 8px 14px;
+			border-radius: 6px;
+			cursor: pointer;
+			font-size: 0.875rem;
+			font-weight: 600;
+			transition: all 0.2s ease;
+			white-space: nowrap;
+			box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+
+			&:hover {
+				background: #0056b3;
+				transform: translateY(-1px);
+				box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+			}
+
+			&:active {
+				transform: translateY(0);
+			}
+		}
+
+		.save-btn {
+			background: #28a745;
+			color: white;
+			border: none;
+			padding: 8px 14px;
+			border-radius: 6px;
+			cursor: pointer;
+			font-size: 0.875rem;
+			font-weight: 600;
+			transition: all 0.2s ease;
+			white-space: nowrap;
+			box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+
+			&:hover {
+				background: #218838;
+				transform: translateY(-1px);
+				box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+			}
+
+			&:active {
+				transform: translateY(0);
+			}
+		}
+
+		.cancel-btn {
+			background: #6c757d;
+			color: white;
+			border: none;
+			padding: 8px 14px;
+			border-radius: 6px;
+			cursor: pointer;
+			font-size: 0.875rem;
+			font-weight: 600;
+			transition: all 0.2s ease;
+			white-space: nowrap;
+			box-shadow: 0 2px 4px rgba(108, 117, 125, 0.2);
+
+			&:hover {
+				background: #5a6268;
+				transform: translateY(-1px);
+				box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+			}
+
+			&:active {
+				transform: translateY(0);
+			}
+		}
+
+		.delete-btn {
+			background: #dc3545;
+			color: white;
+			border: none;
+			padding: 8px;
+			border-radius: 6px;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: all 0.2s ease;
+			min-width: 36px;
+			height: 36px;
+			box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+
+			&:hover {
+				background: #c82333;
+				transform: translateY(-1px);
+				box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+			}
+
+			&:active {
+				transform: translateY(0);
+			}
+		}
+
 		button {
 			grid-column: 2;
 			justify-self: end;
@@ -251,19 +693,36 @@
 	}
 	.longList {
 		.today {
-			background-color: var(--color-primary, #007acc);
-			color: white;
-			font-weight: bold;
-			border-radius: 5px;
-			padding: 5px;
+			background-color: var(--level-2);
+			border-left: 4px solid var(--color-primary, #007acc);
+			box-shadow: 0 0 0 1px var(--color-primary, #007acc);
+
+			.event-name {
+				color: var(--color-primary, #007acc);
+			}
+
+			&::before {
+				content: '● ';
+				color: var(--color-primary, #007acc);
+				font-size: 1.2em;
+				margin-right: 5px;
+			}
 		}
 
 		.past {
-			background-color: #dc3545;
-			color: white;
-			font-weight: bold;
-			border-radius: 5px;
-			padding: 5px;
+			background-color: var(--level-2);
+			opacity: 0.7;
+			border-left: 4px solid #dc3545;
+
+			.event-name {
+				color: #dc3545;
+				text-decoration: line-through;
+			}
+		}
+
+		.editing {
+			border-left: 4px solid #28a745;
+			background-color: var(--level-2);
 		}
 	}
 </style>
