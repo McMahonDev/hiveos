@@ -4,7 +4,7 @@
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
 	import { goto } from '$app/navigation';
-	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
+	import { viewModeState, setViewMode } from '$lib/state/viewMode.svelte.ts';
 
 	let { data } = $props(); // repo style (Svelte 5)
 	const listId = $derived(data.listId);
@@ -16,6 +16,61 @@
 	let customList = $derived(
 		z ? new Query(z?.current.query.customLists.where('id', listId).where('createdById', id)) : null
 	);
+
+	let hasInitialized = $state(false);
+	let initialViewMode = $state<string | null>(null);
+
+	// On initial load/bookmark access: auto-switch to the list's view mode if needed
+	$effect(() => {
+		if (customList?.current?.[0] && !hasInitialized) {
+			const listViewMode = customList.current[0].viewMode;
+			initialViewMode = listViewMode;
+
+			// If the list's viewMode doesn't match current mode, try to switch to it
+			if (listViewMode !== viewModeState.currentMode) {
+				if (listViewMode === 'personal' || listViewMode === 'shared') {
+					// Always have access to personal/shared modes
+					setViewMode(listViewMode);
+					hasInitialized = true;
+				} else {
+					// It's a custom category - check if user has access
+					const categoryQuery = z?.current.query.viewModeCategories
+						.where('userId', id)
+						.where('id', listViewMode);
+
+					if (categoryQuery) {
+						const categoryList = new Query(categoryQuery);
+						if (categoryList.current && categoryList.current.length > 0) {
+							// User has access to this category, switch to it
+							setViewMode(listViewMode);
+							hasInitialized = true;
+						} else if (categoryList.current !== null) {
+							// Query resolved but user doesn't have access, navigate home
+							goto('/');
+							hasInitialized = true;
+						}
+					}
+				}
+			} else {
+				// Already in correct view mode
+				hasInitialized = true;
+			}
+		}
+	});
+
+	// If user manually switches view mode while on this page, navigate home
+	$effect(() => {
+		const currentMode = viewModeState.currentMode;
+		if (hasInitialized && initialViewMode !== null && currentMode !== initialViewMode) {
+			console.log(
+				'View mode changed, navigating home. Initial:',
+				initialViewMode,
+				'Current:',
+				currentMode
+			);
+			goto('/');
+		}
+	});
 
 	// Filter custom list items by viewMode
 	let customListItems = $state<Query<any, any, any> | null>(null);

@@ -336,19 +336,21 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	const isEventsAssignedTo = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'events'>) =>
 		cmp('assignedToId', '=', authData.groupId ?? '__never__');
 
-	// Explicit OR: allow if user created the event OR the event is assigned to the user's group
+	// Explicit OR: allow if user created the event OR the event is assigned to the user (personal) OR assigned to their group (shared)
 	const canViewOrMutateEvents = (authData: AuthData, { or, cmp }: ExpressionBuilder<Schema, 'events'>) =>
 		or(
 			cmp('createdById', '=', authData.sub),
-			authData.groupId ? cmp('assignedToId', '=', authData.groupId) : cmp('id', '=', '__never__')
+			cmp('assignedToId', '=', authData.sub), // Personal mode items
+			authData.groupId ? cmp('assignedToId', '=', authData.groupId) : cmp('id', '=', '__never__') // Shared mode items
 		);
 
 	const isShoppingListCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
 		cmp('createdById', '=', authData.sub);
-	const isShoppingListAssignedTo = (authData: AuthData, { or, cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
+	const canViewOrMutateShoppingList = (authData: AuthData, { or, cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
 		or(
 			cmp('createdById', '=', authData.sub),
-			authData.groupId ? cmp('assignedToId', '=', authData.groupId) : cmp('id', '=', '__never__')
+			cmp('assignedToId', '=', authData.sub), // Personal mode items
+			authData.groupId ? cmp('assignedToId', '=', authData.groupId) : cmp('id', '=', '__never__') // Shared mode items
 		);
 
 	const isUserGroupCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroups'>) =>
@@ -358,6 +360,18 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 
 	const canViewUserGroupMembers = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>) =>
 		cmp('userGroupCreatorId', '=', authData.sub);
+
+	// Custom lists permissions - user must be creator OR assigned to it
+	const isCustomListCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'customLists'>) =>
+		cmp('createdById', '=', authData.sub);
+
+	// Custom list items - must have access to parent list
+	const isCustomListItemCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'customListItems'>) =>
+		cmp('createdById', '=', authData.sub);
+
+	// ViewModeCategories - user must be the owner
+	const isViewModeCategoryOwner = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'viewModeCategories'>) =>
+		cmp('userId', '=', authData.sub);
 
 	return {
 		// Application tables
@@ -385,13 +399,13 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 		},
 		shoppingList: {
 			row: {
-				select: [isShoppingListCreator, isShoppingListAssignedTo],
-				insert: [isShoppingListCreator, isShoppingListAssignedTo],
+				select: [canViewOrMutateShoppingList],
+				insert: [canViewOrMutateShoppingList],
 				update: {
-					preMutation: [isShoppingListCreator, isShoppingListAssignedTo],
-					postMutation: [isShoppingListCreator, isShoppingListAssignedTo]
+					preMutation: [canViewOrMutateShoppingList],
+					postMutation: [canViewOrMutateShoppingList]
 				},
-				delete: [isShoppingListCreator, isShoppingListAssignedTo]
+				delete: [canViewOrMutateShoppingList]
 			}
 		},
 		userGroups: {
@@ -429,35 +443,35 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 		},
 		customLists: {
 			row: {
-				select: ANYONE_CAN,
-				insert: ANYONE_CAN,
+				select: [isCustomListCreator],
+				insert: [isCustomListCreator],
 				update: {
-					preMutation: ANYONE_CAN,
-					postMutation: ANYONE_CAN
+					preMutation: [isCustomListCreator],
+					postMutation: [isCustomListCreator]
 				},
-				delete: ANYONE_CAN
+				delete: [isCustomListCreator]
 			}
 		},
 		customListItems: {
 			row: {
-				select: ANYONE_CAN,
-				insert: ANYONE_CAN,
+				select: [isCustomListItemCreator],
+				insert: [isCustomListItemCreator],
 				update: {
-					preMutation: ANYONE_CAN,
-					postMutation: ANYONE_CAN
+					preMutation: [isCustomListItemCreator],
+					postMutation: [isCustomListItemCreator]
 				},
-				delete: ANYONE_CAN
+				delete: [isCustomListItemCreator]
 			}
 		},
 		viewModeCategories: {
 			row: {
-				select: ANYONE_CAN,
-				insert: ANYONE_CAN,
+				select: [isViewModeCategoryOwner],
+				insert: [isViewModeCategoryOwner],
 				update: {
-					preMutation: ANYONE_CAN,
-					postMutation: ANYONE_CAN
+					preMutation: [isViewModeCategoryOwner],
+					postMutation: [isViewModeCategoryOwner]
 				},
-				delete: ANYONE_CAN
+				delete: [isViewModeCategoryOwner]
 			}
 		}
 	};
