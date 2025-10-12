@@ -12,7 +12,7 @@
 	import { Query } from 'zero-svelte';
 	import { nanoid } from 'nanoid';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
-	import { viewPreferencesState } from '$lib/utils/viewPreferences';
+	import { viewPreferencesState } from '$lib/utils/viewPreferences.svelte';
 
 	let { children, data } = $props();
 	let z = $derived(data.z);
@@ -150,8 +150,10 @@
 				{/if}
 				<li><button onclick={() => openCreateList()}>Create List</button></li>
 				<li><button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button></li>
-				<li class="bottom"><a onclick={() => (menuOpen = false)} href="/settings">Settings</a></li>
-				<li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
+				<li class="push-bottom">
+					<a onclick={() => (menuOpen = false)} href="/settings">Settings</a>
+				</li>
+				<li class=""><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
 			</ul>
 		</aside>
 		{#if createListModalOpen}
@@ -283,7 +285,7 @@
 			height: 100%;
 
 			li {
-				&.bottom {
+				&.push-bottom {
 					margin-top: auto;
 				}
 				@media screen and (max-width: 690px) {

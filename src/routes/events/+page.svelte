@@ -5,7 +5,7 @@
 	import AddIcon from '$lib/static/icons/addIcon.svelte';
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
-	import { viewPreferencesState } from '$lib/utils/viewPreferences';
+	import { viewPreferencesState } from '$lib/utils/viewPreferences.svelte';
 	import { goto } from '$app/navigation';
 
 	let { data } = $props();

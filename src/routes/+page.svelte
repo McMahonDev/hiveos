@@ -7,7 +7,7 @@
 	import { isPast } from '$lib/utils/isPast';
 	import { isToday } from '$lib/utils/isToday';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
-	import { viewPreferencesState } from '$lib/utils/viewPreferences';
+	import { viewPreferencesState } from '$lib/utils/viewPreferences.svelte';
 
 	let { data } = $props();
 	let shortlist: boolean = true;
