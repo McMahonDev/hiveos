@@ -1,8 +1,17 @@
 <script lang="ts">
 	import { Query } from 'zero-svelte';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
+	import { viewPreferencesState } from '$lib/utils/viewPreferences';
+	import { goto } from '$app/navigation';
 
 	let { data } = $props();
+
+	// Redirect if events are disabled for current view (My Day depends on Events)
+	$effect(() => {
+		if (!viewPreferencesState.shouldShowList(viewModeState.currentMode, 'events')) {
+			goto('/');
+		}
+	});
 	let z = data.z;
 	const groupId = data.groupId;
 

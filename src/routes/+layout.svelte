@@ -12,6 +12,7 @@
 	import { Query } from 'zero-svelte';
 	import { nanoid } from 'nanoid';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
+	import { viewPreferencesState } from '$lib/utils/viewPreferences';
 
 	let { children, data } = $props();
 	let z = $derived(data.z);
@@ -129,9 +130,13 @@
 		<aside bind:this={menu} class:menuOpen>
 			<ul>
 				<li><a onclick={() => (menuOpen = false)} href="/">Dashboard</a></li>
-				<li><a onclick={() => (menuOpen = false)} href="/my-day">My Day</a></li>
-				<li><a onclick={() => (menuOpen = false)} href="/events">Events</a></li>
-				<li><a onclick={() => (menuOpen = false)} href="/shopping-list">Shopping List</a></li>
+				{#if viewPreferencesState.shouldShowList(viewModeState.currentMode, 'events')}
+					<li><a onclick={() => (menuOpen = false)} href="/my-day">My Day</a></li>
+					<li><a onclick={() => (menuOpen = false)} href="/events">Events</a></li>
+				{/if}
+				{#if viewPreferencesState.shouldShowList(viewModeState.currentMode, 'shoppingList')}
+					<li><a onclick={() => (menuOpen = false)} href="/shopping-list">Shopping List</a></li>
+				{/if}
 				{#if customLists}
 					{#if customLists?.current && Array.isArray(customLists.current)}
 						{#each customLists.current as list (list.id)}
@@ -145,6 +150,7 @@
 				{/if}
 				<li><button onclick={() => openCreateList()}>Create List</button></li>
 				<li><button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button></li>
+				<li class="bottom"><a onclick={() => (menuOpen = false)} href="/settings">Settings</a></li>
 				<li class="bottom"><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
 			</ul>
 		</aside>

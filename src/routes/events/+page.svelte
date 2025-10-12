@@ -5,8 +5,17 @@
 	import AddIcon from '$lib/static/icons/addIcon.svelte';
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
+	import { viewPreferencesState } from '$lib/utils/viewPreferences';
+	import { goto } from '$app/navigation';
 
 	let { data } = $props();
+
+	// Redirect if events are disabled for current view
+	$effect(() => {
+		if (!viewPreferencesState.shouldShowList(viewModeState.currentMode, 'events')) {
+			goto('/');
+		}
+	});
 	let z = data.z;
 
 	let modal = $state(false);

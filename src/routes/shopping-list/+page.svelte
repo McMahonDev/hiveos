@@ -4,8 +4,17 @@
 	import { nanoid } from 'nanoid';
 	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
+	import { viewPreferencesState } from '$lib/utils/viewPreferences';
+	import { goto } from '$app/navigation';
 
 	let { data } = $props();
+
+	// Redirect if shopping list is disabled for current view
+	$effect(() => {
+		if (!viewPreferencesState.shouldShowList(viewModeState.currentMode, 'shoppingList')) {
+			goto('/');
+		}
+	});
 	let z = data.z;
 	const group = z ? new Query(z?.current.query.userGroups.where('id', data.groupId)) : null;
 	let groupid = $derived((group && group.current[0]?.id) ?? data.groupId);
