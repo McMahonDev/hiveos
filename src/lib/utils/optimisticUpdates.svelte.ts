@@ -1,6 +1,6 @@
 /**
  * Optimistic Updates Manager
- * 
+ *
  * Manages optimistic UI updates for offline changes.
  * Tracks pending items that should be shown in the UI before they sync.
  */
@@ -135,7 +135,7 @@ class OptimisticUpdatesManager {
 	 * Get all optimistic items for a specific table
 	 */
 	getItemsForTable(table: OptimisticItem['table']): OptimisticItem[] {
-		return Array.from(this.items.values()).filter(item => item.table === table);
+		return Array.from(this.items.values()).filter((item) => item.table === table);
 	}
 
 	/**
@@ -161,7 +161,7 @@ class OptimisticUpdatesManager {
 
 		// Apply optimistic updates
 		for (const optimistic of optimisticItems) {
-			const existingIndex = result.findIndex(item => item.id === optimistic.id);
+			const existingIndex = result.findIndex((item) => item.id === optimistic.id);
 
 			if (optimistic.operation === 'insert') {
 				// Add new items if not already present

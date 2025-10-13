@@ -16,13 +16,21 @@
 		<span class="status-icon">📡</span>
 		<span class="status-text">You're offline</span>
 		{#if offlineQueue.hasPendingMutations}
-			<span class="pending-count">{offlineQueue.pendingCount} pending change{offlineQueue.pendingCount === 1 ? '' : 's'}</span>
+			<span class="pending-count"
+				>{offlineQueue.pendingCount} pending change{offlineQueue.pendingCount === 1
+					? ''
+					: 's'}</span
+			>
 		{/if}
 	</div>
 {:else if offlineQueue.hasPendingMutations}
 	<div class="syncing-banner">
 		<span class="status-icon">🔄</span>
-		<span class="status-text">Syncing {offlineQueue.pendingCount} change{offlineQueue.pendingCount === 1 ? '' : 's'}...</span>
+		<span class="status-text"
+			>Syncing {offlineQueue.pendingCount} change{offlineQueue.pendingCount === 1
+				? ''
+				: 's'}...</span
+		>
 	</div>
 {/if}
 

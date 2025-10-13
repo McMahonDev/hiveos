@@ -41,8 +41,13 @@
 		// Merge real data with optimistic updates
 		const realItems = shoppingList.current;
 		const mergedItems = optimisticUpdates.mergeWithRealData('shoppingList', realItems);
-		console.log('Shopping list - Real items:', realItems.length, 'Merged items:', mergedItems.length);
-		
+		console.log(
+			'Shopping list - Real items:',
+			realItems.length,
+			'Merged items:',
+			mergedItems.length
+		);
+
 		const items = [...mergedItems];
 
 		// Create a map of store -> items
@@ -86,7 +91,7 @@
 			console.error('No ID provided for deletion.');
 			return;
 		}
-		
+
 		if (offlineQueue.isOnline && z?.current) {
 			z.current.mutate.shoppingList.delete({ id });
 		} else {
@@ -102,7 +107,7 @@
 		const checkbox = event.target as HTMLInputElement;
 		const id = checkbox.value;
 		const completed = checkbox.checked;
-		
+
 		if (offlineQueue.isOnline && z?.current) {
 			z.current.mutate.shoppingList.update({ id, status: completed });
 		} else {
@@ -133,7 +138,7 @@
 				name: editName.trim(),
 				store: editStore.trim()
 			};
-			
+
 			if (offlineQueue.isOnline && z?.current) {
 				z.current.mutate.shoppingList.update(updateData);
 			} else {
@@ -181,9 +186,10 @@
 			{#each groupedByStore as group (group.store)}
 				<div class="store-group">
 					<h3 class="store-header">{group.store}</h3>
-			{#each group.items as item (item.id)}
-				<div class="list-item" class:pending={optimisticUpdates.hasPendingChanges(item.id)}>
-					<input type="checkbox" value={item.id} checked={item.status} oninput={toggletask} />							{#if editingItemId === item.id}
+					{#each group.items as item (item.id)}
+						<div class="list-item" class:pending={optimisticUpdates.hasPendingChanges(item.id)}>
+							<input type="checkbox" value={item.id} checked={item.status} oninput={toggletask} />
+							{#if editingItemId === item.id}
 								<div class="item-content editing">
 									<input
 										type="text"

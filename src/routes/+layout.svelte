@@ -50,7 +50,6 @@
 			customLists = new Query(
 				z.current.query.customLists.where('createdById', data.id).where('viewMode', viewMode)
 			);
-
 		} else {
 			customLists = undefined;
 		}

@@ -158,7 +158,7 @@
 			console.error('No ID provided for deletion.');
 			return;
 		}
-		
+
 		if (offlineQueue.isOnline && z?.current) {
 			z.current.mutate.events.delete({ id });
 		} else {
@@ -281,7 +281,7 @@
 	{:else if Array.isArray(sortedEvents)}
 		<ul class="longList">
 			{#each sortedEvents as event}
-				<li 
+				<li
 					class={editingItemId === event.id ? 'editing' : getDateClass(event.date, event.time)}
 					class:pending={optimisticUpdates.hasPendingChanges(event.id)}
 				>

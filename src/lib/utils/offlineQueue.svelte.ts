@@ -1,6 +1,6 @@
 /**
  * Offline Queue Manager
- * 
+ *
  * Manages a queue of mutations that should be executed when online.
  * Stores mutations in localStorage and retries them when connectivity is restored.
  */
@@ -124,25 +124,25 @@ class OfflineQueueManager {
 			try {
 				// Execute the mutation
 				await this.executeMutation(z, mutation);
-				
+
 				// Remove from queue on success
-				this.queue = this.queue.filter(m => m.id !== mutation.id);
-				
+				this.queue = this.queue.filter((m) => m.id !== mutation.id);
+
 				// Remove optimistic update (real data now available)
 				optimisticUpdates.removeItem(mutation.data.id);
 			} catch (error) {
 				console.error('Failed to execute mutation:', error);
-				
+
 				// Increment retry count
 				mutation.retries++;
-				
+
 				// Keep in queue if under max retries
 				if (mutation.retries < MAX_RETRIES) {
 					failedMutations.push(mutation);
 				} else {
 					console.error('Max retries reached for mutation:', mutation);
 					// Remove from queue after max retries
-					this.queue = this.queue.filter(m => m.id !== mutation.id);
+					this.queue = this.queue.filter((m) => m.id !== mutation.id);
 				}
 			}
 		}
