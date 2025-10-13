@@ -3,6 +3,8 @@
 	// Assuming `Query` is the correct way to get a Zero query object in zero-svelte
 	import { Query } from 'zero-svelte';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
+	import { offlineQueue } from '$lib/utils/offlineQueue.svelte';
+	import { optimisticUpdates } from '$lib/utils/optimisticUpdates.svelte';
 
 	let { data, shortlist = false } = $props();
 
@@ -36,7 +38,12 @@
 			return [];
 		}
 
-		const items = [...shoppingList.current];
+		// Merge real data with optimistic updates
+		const realItems = shoppingList.current;
+		const mergedItems = optimisticUpdates.mergeWithRealData('shoppingList', realItems);
+		console.log('Shopping list - Real items:', realItems.length, 'Merged items:', mergedItems.length);
+		
+		const items = [...mergedItems];
 
 		// Create a map of store -> items
 		const storeMap = new Map<string, any[]>();
@@ -79,8 +86,15 @@
 			console.error('No ID provided for deletion.');
 			return;
 		}
-		if (id) {
-			z?.current.mutate.shoppingList.delete({ id });
+		
+		if (offlineQueue.isOnline && z?.current) {
+			z.current.mutate.shoppingList.delete({ id });
+		} else {
+			offlineQueue.enqueue({
+				type: 'delete',
+				table: 'shoppingList',
+				data: { id }
+			});
 		}
 	}
 
@@ -88,7 +102,16 @@
 		const checkbox = event.target as HTMLInputElement;
 		const id = checkbox.value;
 		const completed = checkbox.checked;
-		z?.current.mutate.shoppingList.update({ id, status: completed });
+		
+		if (offlineQueue.isOnline && z?.current) {
+			z.current.mutate.shoppingList.update({ id, status: completed });
+		} else {
+			offlineQueue.enqueue({
+				type: 'update',
+				table: 'shoppingList',
+				data: { id, status: completed }
+			});
+		}
 	}
 
 	function startEdit(item: any) {
@@ -105,11 +128,21 @@
 
 	function saveEdit(id: string) {
 		if (editName.trim()) {
-			z?.current.mutate.shoppingList.update({
+			const updateData = {
 				id,
 				name: editName.trim(),
 				store: editStore.trim()
-			});
+			};
+			
+			if (offlineQueue.isOnline && z?.current) {
+				z.current.mutate.shoppingList.update(updateData);
+			} else {
+				offlineQueue.enqueue({
+					type: 'update',
+					table: 'shoppingList',
+					data: updateData
+				});
+			}
 		}
 		cancelEdit();
 	}
@@ -148,11 +181,9 @@
 			{#each groupedByStore as group (group.store)}
 				<div class="store-group">
 					<h3 class="store-header">{group.store}</h3>
-					{#each group.items as item (item.id)}
-						<div class="list-item">
-							<input type="checkbox" value={item.id} checked={item.status} oninput={toggletask} />
-
-							{#if editingItemId === item.id}
+			{#each group.items as item (item.id)}
+				<div class="list-item" class:pending={optimisticUpdates.hasPendingChanges(item.id)}>
+					<input type="checkbox" value={item.id} checked={item.status} oninput={toggletask} />							{#if editingItemId === item.id}
 								<div class="item-content editing">
 									<input
 										type="text"
@@ -233,6 +264,11 @@
 		border-radius: 8px;
 		box-shadow: var(--level-1);
 		transition: all 0.2s ease;
+
+		&.pending {
+			opacity: 0.7;
+			border-left: 3px solid #4dabf7;
+		}
 
 		&:hover {
 			box-shadow: var(--level-3);

@@ -13,6 +13,7 @@
 	import { nanoid } from 'nanoid';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 	import { viewPreferencesState } from '$lib/utils/viewPreferences.svelte';
+	import OfflineIndicator from '$lib/components/offlineIndicator.svelte';
 
 	let { children, data } = $props();
 	let z = $derived(data.z);
@@ -105,6 +106,10 @@
 	}
 </script>
 
+{#if auth}
+	<OfflineIndicator {z} />
+{/if}
+
 <header>
 	<h1><a href="/">HiveOS</a></h1>
 
@@ -177,6 +182,16 @@
 <!-- <footer></footer> -->
 
 <style>
+	:global(body:has(.offline-banner, .syncing-banner)) header {
+		margin-top: 36px;
+	}
+
+	@media (max-width: 640px) {
+		:global(body:has(.offline-banner, .syncing-banner)) header {
+			margin-top: 32px;
+		}
+	}
+
 	header {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
@@ -184,6 +199,7 @@
 		padding: 20px;
 		background-color: var(--primary);
 		color: #000;
+		transition: margin-top 0.3s ease;
 	}
 
 	nav {
