@@ -7,6 +7,7 @@
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 	import { viewPreferencesState } from '$lib/utils/viewPreferences.svelte';
 	import { goto } from '$app/navigation';
+	import { offlineQueue } from '$lib/utils/offlineQueue.svelte';
 
 	let { data } = $props();
 
@@ -52,7 +53,7 @@
 			}
 		}
 
-		z?.current.mutate.events.insert({
+		const eventData = {
 			id: nanoid(),
 			name,
 			date,
@@ -67,7 +68,17 @@
 			assignedToId: assignedToId(),
 			createdAt: Date.now(),
 			viewMode: viewModeState.currentMode
-		});
+		};
+
+		if (offlineQueue.isOnline && z?.current) {
+			z.current.mutate.events.insert(eventData);
+		} else {
+			offlineQueue.enqueue({
+				type: 'insert',
+				table: 'events',
+				data: eventData
+			});
+		}
 
 		(event.target as HTMLFormElement).reset();
 		allDayChecked = false;

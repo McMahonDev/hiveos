@@ -4,6 +4,8 @@
 	import { isPast } from '$lib/utils/isPast';
 	import { isToday } from '$lib/utils/isToday';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
+	import { offlineQueue } from '$lib/utils/offlineQueue.svelte';
+	import { optimisticUpdates } from '$lib/utils/optimisticUpdates.svelte';
 
 	let { data, shortlist = false } = $props();
 	let z = data.z;
@@ -31,11 +33,19 @@
 
 	$inspect(events?.current);
 
-	let numberOfItems = $derived(events?.current?.length ?? 0);
+	// Merge with optimistic updates
+	let eventsWithOptimistic = $derived.by(() => {
+		if (!events?.current || !Array.isArray(events.current)) {
+			return [];
+		}
+		return optimisticUpdates.mergeWithRealData('events', events.current);
+	});
+
+	let numberOfItems = $derived(eventsWithOptimistic.length);
 
 	let sortedEvents = $derived(
-		Array.isArray(events?.current)
-			? events.current.slice().sort((a, b) => {
+		Array.isArray(eventsWithOptimistic)
+			? eventsWithOptimistic.slice().sort((a, b) => {
 					const hasDate = (x: any) => typeof x?.date === 'string' && x.date.trim() !== '';
 					const hasTime = (x: any) => typeof x?.time === 'string' && x.time.trim() !== '';
 
@@ -148,8 +158,15 @@
 			console.error('No ID provided for deletion.');
 			return;
 		}
-		if (id) {
-			z?.current.mutate.events.delete({ id });
+
+		if (offlineQueue.isOnline && z?.current) {
+			z.current.mutate.events.delete({ id });
+		} else {
+			offlineQueue.enqueue({
+				type: 'delete',
+				table: 'events',
+				data: { id }
+			});
 		}
 	}
 
@@ -202,7 +219,7 @@
 				}
 			}
 
-			z?.current.mutate.events.update({
+			const updateData = {
 				id,
 				name: editName.trim(),
 				date: editDate.trim(),
@@ -212,7 +229,17 @@
 				location: editLocation.trim() || undefined,
 				description: editDescription.trim() || undefined,
 				allDay: editAllDay
-			});
+			};
+
+			if (offlineQueue.isOnline && z?.current) {
+				z.current.mutate.events.update(updateData);
+			} else {
+				offlineQueue.enqueue({
+					type: 'update',
+					table: 'events',
+					data: updateData
+				});
+			}
 		}
 		cancelEdit();
 	}
@@ -254,7 +281,10 @@
 	{:else if Array.isArray(sortedEvents)}
 		<ul class="longList">
 			{#each sortedEvents as event}
-				<li class={editingItemId === event.id ? 'editing' : getDateClass(event.date, event.time)}>
+				<li
+					class={editingItemId === event.id ? 'editing' : getDateClass(event.date, event.time)}
+					class:pending={optimisticUpdates.hasPendingChanges(event.id)}
+				>
 					{#if editingItemId === event.id}
 						<div class="edit-content">
 							<input
@@ -400,6 +430,11 @@
 		padding: 15px;
 		margin-bottom: 15px;
 		transition: all 0.2s ease;
+
+		&.pending {
+			opacity: 0.7;
+			border-left: 4px solid #4dabf7;
+		}
 
 		&:hover {
 			box-shadow: var(--level-3);

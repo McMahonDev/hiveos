@@ -6,6 +6,7 @@
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 	import { viewPreferencesState } from '$lib/utils/viewPreferences.svelte';
 	import { goto } from '$app/navigation';
+	import { offlineQueue } from '$lib/utils/offlineQueue.svelte';
 
 	let { data } = $props();
 
@@ -131,7 +132,7 @@
 			// In shared mode, assign to groupId
 			const assignedTo = viewModeState.currentMode === 'personal' ? data.id : groupid || data.id;
 
-			z?.current.mutate.shoppingList.insert({
+			const mutationData = {
 				id,
 				name,
 				store,
@@ -140,7 +141,19 @@
 				createdById: data.id,
 				createdAt: Date.now(),
 				viewMode: viewModeState.currentMode
-			});
+			};
+
+			// If online, try to insert directly
+			if (offlineQueue.isOnline && z?.current) {
+				z.current.mutate.shoppingList.insert(mutationData);
+			} else {
+				// If offline, queue the mutation
+				offlineQueue.enqueue({
+					type: 'insert',
+					table: 'shoppingList',
+					data: mutationData
+				});
+			}
 
 			// Save to localStorage for autocomplete
 			saveToLocalStorage(name, store);
