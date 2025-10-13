@@ -7,6 +7,7 @@
 	import { isPast } from '$lib/utils/isPast';
 	import { isToday } from '$lib/utils/isToday';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
+	import { viewPreferencesState } from '$lib/utils/viewPreferences.svelte';
 
 	let { data } = $props();
 	let shortlist: boolean = true;
@@ -98,32 +99,36 @@
 <div class="container">
 	<h1>Welcome{data.name ? `, ${data.name}` : ''}!</h1>
 
-	<a class="card events" href="/events">
-		<div>
-			<h2>Events</h2>
-			<NewTab />
-			<p>
-				{eventNumber === 0 ? 'No upcoming events.' : getEventsString()}
-			</p>
-		</div>
+	{#if viewPreferencesState.shouldShowList(viewModeState.currentMode, 'events')}
+		<a class="card events" href="/events">
+			<div>
+				<h2>Events</h2>
+				<NewTab />
+				<p>
+					{eventNumber === 0 ? 'No upcoming events.' : getEventsString()}
+				</p>
+			</div>
 
-		{#if eventNumber > 0}
-			<EventsList {data} {shortlist} />
-		{/if}
-	</a>
+			{#if eventNumber > 0}
+				<EventsList {data} {shortlist} />
+			{/if}
+		</a>
+	{/if}
 
-	<a class="card shoppingList" href="/shopping-list">
-		<div>
-			<h2>Shopping List</h2>
-			<NewTab />
-			<p>
-				{shoppingListCount === 0 ? 'No items in your shopping list.' : getShoppingListString()}
-			</p>
-		</div>
-		{#if shoppingListCount > 0}
-			<ShoppingList {data} {shortlist} />
-		{/if}
-	</a>
+	{#if viewPreferencesState.shouldShowList(viewModeState.currentMode, 'shoppingList')}
+		<a class="card shoppingList" href="/shopping-list">
+			<div>
+				<h2>Shopping List</h2>
+				<NewTab />
+				<p>
+					{shoppingListCount === 0 ? 'No items in your shopping list.' : getShoppingListString()}
+				</p>
+			</div>
+			{#if shoppingListCount > 0}
+				<ShoppingList {data} {shortlist} />
+			{/if}
+		</a>
+	{/if}
 </div>
 
 <style>

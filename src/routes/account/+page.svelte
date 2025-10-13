@@ -161,57 +161,450 @@
 	}
 </script>
 
-<div class="container">
-	<h1>Your details</h1>
+<div class="account-container">
+	<h1 class="page-title">Account Settings</h1>
 
-	<div class="details">
-		<p><strong>Name:</strong> {user?.current[0]?.name}</p>
-		<p><strong>Email:</strong> {user?.current[0]?.email}</p>
-		<p>
-			<strong>Group:</strong>{#if group.current[0]?.name}{group.current[0]?.name}{:else}No group
-				found{/if}
-		</p>
-		{#if !group.current[0]?.name}
-			<form onsubmit={createGroup}>
-				<input type="text" name="groupName" placeholder="Group Name" />
-				<button class="" type="submit">Generate Group</button>
-			</form>
-			{#if userGroupRequests.current.length > 0}
-				<p>Pending Requests</p>
-				<ul>
-					{#each userGroupRequests.current as request}
-						<li data-id={request.id}>
-							Group:{request.groupName} from {request.sentByEmail}
-							<button onclick={acceptRequest}>Accept</button>
-							<button onclick={rejectRequest}>Reject</button>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		{/if}
-		{#if showDeleteGroup}
-			<form onsubmit={deleteGroup}>
-				<button class="" type="submit">Delete Group</button>
-			</form>
+	<div class="cards-grid">
+		<!-- User Profile Card -->
+		<div class="card profile-card">
+			<h2 class="card-title">Your Profile</h2>
+			<div class="profile-info">
+				<div class="info-row">
+					<span class="info-label">Name</span>
+					<span class="info-value">{user?.current[0]?.name ?? 'Loading...'}</span>
+				</div>
+				<div class="info-row">
+					<span class="info-label">Email</span>
+					<span class="info-value">{user?.current[0]?.email ?? 'Loading...'}</span>
+				</div>
+				<div class="info-row">
+					<span class="info-label">Group</span>
+					<span class="info-value group-badge">
+						{#if group?.current[0]?.name}
+							{group.current[0].name}
+						{:else}
+							<span class="no-group">No group</span>
+						{/if}
+					</span>
+				</div>
+			</div>
+		</div>
 
-			<div>
-				<div>
-					<p>All members:</p>
-					<ul>
-						{#each allGroupMembers.current as member}
-							<li>{getName(member.userId)}</li>
+		<!-- Group Management Card -->
+		{#if !group?.current[0]?.name}
+			<div class="card group-card">
+				<h2 class="card-title">Create a Group</h2>
+				<p class="card-description">Groups allow you to share tasks and collaborate with others.</p>
+				<form onsubmit={createGroup} class="group-form">
+					<div class="input-group">
+						<label for="groupName">Group Name</label>
+						<input
+							type="text"
+							id="groupName"
+							name="groupName"
+							placeholder="Enter group name"
+							required
+						/>
+					</div>
+					<button class="primary-button" type="submit">Create Group</button>
+				</form>
+			</div>
+
+			<!-- Pending Requests Card -->
+			{#if userGroupRequests?.current && userGroupRequests.current.length > 0}
+				<div class="card requests-card">
+					<h2 class="card-title">Pending Invitations</h2>
+					<p class="card-description">You have been invited to join the following groups:</p>
+					<ul class="requests-list">
+						{#each userGroupRequests.current as request}
+							<li data-id={request.id} class="request-item">
+								<div class="request-info">
+									<span class="request-group">{request.groupName}</span>
+									<span class="request-from">from {request.sentByEmail}</span>
+								</div>
+								<div class="request-actions">
+									<button onclick={acceptRequest} class="accept-button">Accept</button>
+									<button onclick={rejectRequest} class="reject-button">Decline</button>
+								</div>
+							</li>
 						{/each}
 					</ul>
 				</div>
-				<div>
-					<p>Invite Members:</p>
+			{/if}
+		{/if}
 
-					<form onsubmit={inviteMember}>
-						<input type="email" name="email" placeholder="Email" />
-						<button class="" type="submit">Invite Member</button>
-					</form>
-				</div>
+		<!-- Group Admin Card -->
+		{#if showDeleteGroup}
+			<div class="card members-card">
+				<h2 class="card-title">Group Members</h2>
+				<ul class="members-list">
+					{#each allGroupMembers?.current ?? [] as member}
+						<li class="member-item">
+							<span class="member-avatar">{getName(member.userId).charAt(0).toUpperCase()}</span>
+							<span class="member-name">{getName(member.userId)}</span>
+						</li>
+					{/each}
+				</ul>
+			</div>
+
+			<div class="card invite-card">
+				<h2 class="card-title">Invite Members</h2>
+				<p class="card-description">Invite others to join your group by email.</p>
+				<form onsubmit={inviteMember} class="invite-form">
+					<div class="input-group">
+						<label for="email">Email Address</label>
+						<input
+							type="email"
+							id="email"
+							name="email"
+							placeholder="colleague@example.com"
+							required
+						/>
+					</div>
+					<button class="primary-button" type="submit">Send Invitation</button>
+				</form>
+			</div>
+
+			<div class="card danger-card">
+				<h2 class="card-title danger-title">Danger Zone</h2>
+				<p class="card-description">
+					Deleting your group is permanent and cannot be undone. All group members will be removed.
+				</p>
+				<form onsubmit={deleteGroup}>
+					<button class="danger-button" type="submit">Delete Group</button>
+				</form>
 			</div>
 		{/if}
 	</div>
 </div>
+
+<style>
+	.account-container {
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 2rem 1rem;
+	}
+
+	.page-title {
+		font-size: 2.5rem;
+		font-weight: 800;
+		color: var(--textColor);
+		margin-bottom: 2rem;
+		text-align: center;
+	}
+
+	.cards-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+		gap: 1.5rem;
+		margin-bottom: 2rem;
+	}
+
+	.card {
+		background: var(--cardBg);
+		border-radius: var(--borderRadius);
+		padding: 1.5rem;
+		box-shadow: var(--cardShadow);
+		border: 1px solid var(--lineColor);
+		transition:
+			transform 0.2s ease,
+			box-shadow 0.2s ease;
+	}
+
+	.card:hover {
+		transform: translateY(-2px);
+		box-shadow: var(--level-3);
+	}
+
+	.card-title {
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: var(--textColor);
+		margin-bottom: 1rem;
+	}
+
+	.card-description {
+		font-size: 0.95rem;
+		color: var(--grey);
+		margin-bottom: 1.5rem;
+		line-height: 1.5;
+	}
+
+	/* Profile Card */
+	.profile-card {
+		grid-column: span 1;
+	}
+
+	.profile-info {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.info-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.75rem;
+		background: var(--backgroundGrey);
+		border-radius: 8px;
+		transition: background 0.2s ease;
+	}
+
+	.info-row:hover {
+		background: var(--lineColor);
+	}
+
+	.info-label {
+		font-weight: 600;
+		color: var(--grey);
+		font-size: 0.9rem;
+	}
+
+	.info-value {
+		font-weight: 500;
+		color: var(--textColor);
+	}
+
+	.group-badge {
+		background: var(--primary);
+		color: var(--buttonTextColor);
+		padding: 0.25rem 0.75rem;
+		border-radius: 20px;
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+
+	.no-group {
+		color: var(--grey);
+		font-style: italic;
+	}
+
+	/* Forms */
+	.group-form,
+	.invite-form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.input-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.input-group label {
+		font-weight: 600;
+		font-size: 0.9rem;
+		color: var(--textColor);
+		width: auto;
+		margin-bottom: 0;
+	}
+
+	.input-group input {
+		padding: 0.75rem 1rem;
+		border: 2px solid var(--lineColor);
+		border-radius: 8px;
+		font-size: 1rem;
+		transition: all 0.2s ease;
+		font-family: var(--bodyFont);
+	}
+
+	.input-group input:focus {
+		outline: none;
+		border-color: var(--primary);
+		box-shadow: 0 0 0 3px rgba(255, 212, 0, 0.1);
+	}
+
+	.primary-button {
+		padding: 0.875rem 1.5rem;
+		background: var(--primary);
+		color: var(--buttonTextColor);
+		border: none;
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: var(--level-1);
+	}
+
+	.primary-button:hover {
+		background: #e6c000;
+		transform: translateY(-1px);
+		box-shadow: var(--level-2);
+	}
+
+	.primary-button:active {
+		transform: translateY(0);
+	}
+
+	/* Requests List */
+	.requests-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.request-item {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		padding: 1rem;
+		background: var(--backgroundGrey);
+		border-radius: 8px;
+		border: 1px solid var(--lineColor);
+	}
+
+	.request-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.request-group {
+		font-weight: 700;
+		font-size: 1.1rem;
+		color: var(--textColor);
+	}
+
+	.request-from {
+		font-size: 0.9rem;
+		color: var(--grey);
+	}
+
+	.request-actions {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.accept-button,
+	.reject-button {
+		flex: 1;
+		padding: 0.5rem 1rem;
+		border: none;
+		border-radius: 6px;
+		font-size: 0.9rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.accept-button {
+		background: var(--green);
+		color: white;
+	}
+
+	.accept-button:hover {
+		background: #6bb44e;
+		transform: translateY(-1px);
+	}
+
+	.reject-button {
+		background: var(--lightGreyAlt);
+		color: var(--textColor);
+	}
+
+	.reject-button:hover {
+		background: var(--lineColor);
+		transform: translateY(-1px);
+	}
+
+	/* Members List */
+	.members-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.member-item {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 0.75rem;
+		background: var(--backgroundGrey);
+		border-radius: 8px;
+		transition: background 0.2s ease;
+	}
+
+	.member-item:hover {
+		background: var(--lineColor);
+	}
+
+	.member-avatar {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		background: var(--primary);
+		color: var(--buttonTextColor);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-weight: 700;
+		font-size: 1.1rem;
+	}
+
+	.member-name {
+		font-weight: 600;
+		color: var(--textColor);
+	}
+
+	/* Danger Zone */
+	.danger-card {
+		border-color: rgba(202, 46, 85, 0.3);
+	}
+
+	.danger-title {
+		color: var(--danger);
+	}
+
+	.danger-button {
+		width: 100%;
+		padding: 0.875rem 1.5rem;
+		background: var(--danger);
+		color: white;
+		border: none;
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: var(--level-1);
+	}
+
+	.danger-button:hover {
+		background: #a02445;
+		transform: translateY(-1px);
+		box-shadow: var(--level-2);
+	}
+
+	.danger-button:active {
+		transform: translateY(0);
+	}
+
+	/* Responsive adjustments */
+	@media (max-width: 768px) {
+		.page-title {
+			font-size: 2rem;
+		}
+
+		.cards-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.request-item {
+			padding: 0.75rem;
+		}
+
+		.request-actions {
+			flex-direction: column;
+		}
+	}
+</style>
