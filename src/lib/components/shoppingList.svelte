@@ -30,6 +30,45 @@
 		}
 	});
 
+	// Group items by store
+	let groupedByStore = $derived.by(() => {
+		if (!shoppingList?.current || !Array.isArray(shoppingList.current)) {
+			return [];
+		}
+
+		const items = [...shoppingList.current];
+
+		// Create a map of store -> items
+		const storeMap = new Map<string, any[]>();
+
+		items.forEach((item) => {
+			const store = item.store?.trim() || 'Any Store';
+			if (!storeMap.has(store)) {
+				storeMap.set(store, []);
+			}
+			storeMap.get(store)!.push(item);
+		});
+
+		// Convert to array and sort stores alphabetically (with "Any Store" at the top)
+		const grouped = Array.from(storeMap.entries())
+			.sort(([storeA], [storeB]) => {
+				if (storeA === 'Any Store') return -1;
+				if (storeB === 'Any Store') return 1;
+				return storeA.toLowerCase().localeCompare(storeB.toLowerCase());
+			})
+			.map(([store, items]) => ({
+				store,
+				items: items.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+			}));
+
+		return grouped;
+	});
+
+	// Flat sorted list for shortlist view
+	let sortedList = $derived.by(() => {
+		return groupedByStore.flatMap((group) => group.items);
+	});
+
 	let numberOfItems = $derived(shoppingList?.current?.length ?? 0);
 	let editingItemId = $state<string | null>(null);
 	let editName = $state('');
@@ -87,9 +126,9 @@
 
 <div>
 	{#if shortlist}
-		{#if shoppingList && Array.isArray(shoppingList.current)}
+		{#if sortedList.length > 0}
 			<ul class="shortlist">
-				{#each shoppingList.current as item, i}
+				{#each sortedList as item, i}
 					{#if i < 3}
 						<li>
 							{item.name}
@@ -102,59 +141,61 @@
 				{/if}
 			</ul>
 		{/if}
-	{:else if shoppingList && Array.isArray(shoppingList.current) && shoppingList.current.length === 0}
+	{:else if sortedList.length === 0}
 		<p>No items in the shopping list.</p>
 	{:else}
 		<div class="list-container">
-			{#each shoppingList && Array.isArray(shoppingList.current) ? shoppingList.current : [] as item (item.id)}
-				<div class="list-item">
-					<input type="checkbox" value={item.id} checked={item.status} oninput={toggletask} />
+			{#each groupedByStore as group (group.store)}
+				<div class="store-group">
+					<h3 class="store-header">{group.store}</h3>
+					{#each group.items as item (item.id)}
+						<div class="list-item">
+							<input type="checkbox" value={item.id} checked={item.status} oninput={toggletask} />
 
-					{#if editingItemId === item.id}
-						<div class="item-content editing">
-							<input
-								type="text"
-								class="edit-input"
-								bind:value={editName}
-								placeholder="Item name"
-								onkeydown={(e) => handleKeydown(e, item.id)}
-								autofocus
-							/>
-							<input
-								type="text"
-								class="edit-input store-input"
-								bind:value={editStore}
-								placeholder="Store (optional)"
-								onkeydown={(e) => handleKeydown(e, item.id)}
-							/>
-						</div>
-						<div class="edit-actions">
-							<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
-								Save
-							</button>
-							<button class="cancel-item" onclick={cancelEdit} title="Cancel"> Cancel </button>
-						</div>
-					{:else}
-						<div class="item-content">
-							<p class:completed={item.status}>{item.name}</p>
-							{#if item.store}
-								<span class="store">{item.store}</span>
+							{#if editingItemId === item.id}
+								<div class="item-content editing">
+									<input
+										type="text"
+										class="edit-input"
+										bind:value={editName}
+										placeholder="Item name"
+										onkeydown={(e) => handleKeydown(e, item.id)}
+										autofocus
+									/>
+									<input
+										type="text"
+										class="edit-input store-input"
+										bind:value={editStore}
+										placeholder="Store (optional)"
+										onkeydown={(e) => handleKeydown(e, item.id)}
+									/>
+								</div>
+								<div class="edit-actions">
+									<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
+										Save
+									</button>
+									<button class="cancel-item" onclick={cancelEdit} title="Cancel"> Cancel </button>
+								</div>
+							{:else}
+								<div class="item-content">
+									<p class:completed={item.status}>{item.name}</p>
+								</div>
+								<div class="item-actions">
+									<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item">
+										Edit
+									</button>
+									<button
+										class="delete-item"
+										data-id={item.id}
+										onclick={() => deleteItem(item.id)}
+										title="Delete Item"
+									>
+										<DeleteIcon />
+									</button>
+								</div>
 							{/if}
 						</div>
-						<div class="item-actions">
-							<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item">
-								Edit
-							</button>
-							<button
-								class="delete-item"
-								data-id={item.id}
-								onclick={() => deleteItem(item.id)}
-								title="Delete Item"
-							>
-								<DeleteIcon />
-							</button>
-						</div>
-					{/if}
+					{/each}
 				</div>
 			{/each}
 		</div>
@@ -165,7 +206,22 @@
 	.list-container {
 		display: flex;
 		flex-direction: column;
+		gap: 24px;
+	}
+
+	.store-group {
+		display: flex;
+		flex-direction: column;
 		gap: 10px;
+	}
+
+	.store-header {
+		font-size: 1.25rem;
+		font-weight: 600;
+		margin: 0 0 8px 0;
+		padding-bottom: 8px;
+		border-bottom: 2px solid var(--level-3, #ddd);
+		color: var(--text-primary, #333);
 	}
 
 	.list-item {
