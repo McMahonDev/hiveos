@@ -106,6 +106,7 @@
 				viewMode: viewModeState.currentMode
 			});
 			(event.target as HTMLFormElement).reset();
+			modal = false;
 		}
 	}
 
@@ -180,16 +181,7 @@
 			</button>
 		</div>
 	</div>
-	<div class={modal ? 'modal open' : 'modal closed'} role="dialog" aria-modal="true" tabindex="-1">
-		<h2>Add an item</h2>
-		<form {onsubmit}>
-			<label for="name"
-				>Item Name
-				<input type="text" id="name" name="name" />
-			</label>
-			<button type="submit">Add</button>
-		</form>
-	</div>
+
 	<div class="list-container">
 		{#if customListItems?.current && Array.isArray(customListItems.current)}
 			<div class="list-items">
@@ -231,6 +223,31 @@
 	</div>
 </section>
 
+{#if modal}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="modal-overlay" onclick={() => (modal = false)}>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-content" onclick={(e) => e.stopPropagation()}>
+			<div class="modal-header">
+				<h2>Add an item</h2>
+				<button type="button" class="close-button" onclick={() => (modal = false)}>
+					<CloseIcon />
+				</button>
+			</div>
+
+			<form {onsubmit}>
+				<label for="name"
+					>Item Name
+					<input type="text" id="name" name="name" />
+				</label>
+				<button type="submit">Add</button>
+			</form>
+		</div>
+	</div>
+{/if}
+
 <style>
 	.custom-list {
 		display: grid;
@@ -254,25 +271,6 @@
 				display: flex;
 				gap: 10px;
 				align-items: center;
-			}
-		}
-
-		.modal {
-			background: var(--level-2);
-			padding: 20px;
-			border-radius: 10px;
-			box-shadow: var(--level-3);
-			transition: all 0.3s ease-in-out;
-			&.closed {
-				max-height: 0;
-				overflow: hidden;
-				padding: 0 20px;
-				opacity: 0;
-				box-shadow: none;
-			}
-			&.open {
-				max-height: 500px;
-				opacity: 1;
 			}
 		}
 
@@ -490,5 +488,79 @@
 		padding: 5px;
 		border: 1px solid #ccc;
 		border-radius: 4px;
+	}
+
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+		padding: 20px;
+		backdrop-filter: blur(2px);
+	}
+
+	.modal-content {
+		background: #fff;
+		padding: 20px;
+		border-radius: 10px;
+		box-shadow: var(--level-3);
+		width: 100%;
+		max-width: 600px;
+		max-height: 90vh;
+		overflow-y: auto;
+		animation: slideUp 0.3s ease-out;
+
+		@media screen and (max-width: 690px) {
+			max-height: 85vh;
+			padding: 16px;
+		}
+	}
+
+	.modal-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 20px;
+
+		h2 {
+			margin: 0;
+		}
+	}
+
+	.close-button {
+		background: transparent;
+		border: none;
+		padding: 8px;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 4px;
+		transition: background 0.2s ease;
+
+		&:hover {
+			background: rgba(0, 0, 0, 0.05);
+		}
+
+		&:active {
+			transform: scale(0.95);
+		}
+	}
+
+	@keyframes slideUp {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 </style>
