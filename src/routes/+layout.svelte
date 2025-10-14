@@ -289,6 +289,10 @@
 		background-color: var(--background);
 		transition: all 0.3s ease;
 
+		@media screen and (max-width: 690px) {
+			overflow-y: auto;
+		}
+
 		ul {
 			list-style: none;
 			padding: 0;
