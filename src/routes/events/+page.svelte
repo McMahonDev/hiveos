@@ -82,6 +82,7 @@
 
 		(event.target as HTMLFormElement).reset();
 		allDayChecked = false;
+		modal = false;
 	}
 
 	function getTimeZoneAbbreviation(): string {
@@ -116,113 +117,93 @@
 	<div class="list-container">
 		<EventsList {data} />
 	</div>
+</section>
 
-	<div class={modal ? 'modal open' : 'modal closed'}>
-		<h2>Add an event</h2>
-
-		<form {onsubmit}>
-			<label for="name"
-				>Event Name
-				<input type="text" id="name" name="name" required />
-			</label>
-
-			<label class="checkbox-label">
-				<input type="checkbox" bind:checked={allDayChecked} id="allDay" />
-				All-day event
-			</label>
-
-			<div class="date-time-group">
-				<div class="date-time-row">
-					<label for="date"
-						>Start Date
-						<input type="date" id="date" name="date" required />
-					</label>
-					{#if !allDayChecked}
-						<label for="time"
-							>Start Time
-							<input type="time" name="time" id="time" />
-						</label>
-					{/if}
-				</div>
-
-				<div class="date-time-row">
-					<label for="endDate"
-						>End Date
-						<input type="date" id="endDate" name="endDate" />
-					</label>
-					{#if !allDayChecked}
-						<label for="endTime"
-							>End Time
-							<input type="time" name="endTime" id="endTime" />
-						</label>
-					{/if}
-				</div>
+{#if modal}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="modal-overlay" onclick={() => (modal = false)}>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-content" onclick={(e) => e.stopPropagation()}>
+			<div class="modal-header">
+				<h2>Add an event</h2>
+				<button type="button" class="close-button" onclick={() => (modal = false)}>
+					<CloseIcon />
+				</button>
 			</div>
 
-			<label for="location"
-				>Location (optional)
-				<input
-					type="text"
-					id="location"
-					name="location"
-					placeholder="Venue, address, or meeting link"
-				/>
-			</label>
+			<form {onsubmit}>
+				<label for="name"
+					>Event Name
+					<input type="text" id="name" name="name" required />
+				</label>
 
-			<label for="description"
-				>Description (optional)
-				<textarea
-					id="description"
-					name="description"
-					rows="3"
-					placeholder="Event details, agenda, notes..."
-				></textarea>
-			</label>
+				<label class="checkbox-label">
+					<input type="checkbox" bind:checked={allDayChecked} id="allDay" />
+					All-day event
+				</label>
 
-			<button type="submit">Add Event</button>
-		</form>
+				<div class="date-time-group">
+					<div class="date-time-row">
+						<label for="date"
+							>Start Date
+							<input type="date" id="date" name="date" required />
+						</label>
+						{#if !allDayChecked}
+							<label for="time"
+								>Start Time
+								<input type="time" name="time" id="time" />
+							</label>
+						{/if}
+					</div>
+
+					<div class="date-time-row">
+						<label for="endDate"
+							>End Date
+							<input type="date" id="endDate" name="endDate" />
+						</label>
+						{#if !allDayChecked}
+							<label for="endTime"
+								>End Time
+								<input type="time" name="endTime" id="endTime" />
+							</label>
+						{/if}
+					</div>
+				</div>
+
+				<label for="location"
+					>Location (optional)
+					<input
+						type="text"
+						id="location"
+						name="location"
+						placeholder="Venue, address, or meeting link"
+					/>
+				</label>
+
+				<label for="description"
+					>Description (optional)
+					<textarea
+						id="description"
+						name="description"
+						rows="3"
+						placeholder="Event details, agenda, notes..."
+					></textarea>
+				</label>
+
+				<button type="submit">Add Event</button>
+			</form>
+		</div>
 	</div>
-</section>
+{/if}
 
 <style>
 	.events {
 		display: grid;
 		grid-template-columns: 1fr auto;
 		gap: 20px;
-		@media screen and (min-width: 690px) {
-			grid-template-columns: 1fr 1fr;
-		}
-		div {
-			grid-row: 2;
-			grid-column: 1;
-			@media screen and (min-width: 690px) {
-				grid-column: 2;
-			}
-		}
 
-		.modal {
-			grid-column: 1/-1;
-			grid-row: 2;
-			background: var(--level-2);
-			padding: 20px;
-			border-radius: 10px;
-			box-shadow: var(--level-3);
-			transition: all 0.3s ease-in-out;
-			&.closed {
-				max-height: 0;
-				overflow: hidden;
-				padding: 0 20px;
-				opacity: 0;
-				box-shadow: none;
-			}
-			&.open {
-				max-height: 800px;
-				opacity: 1;
-				overflow-y: auto;
-			}
-			@media screen and (min-width: 690px) {
-			}
-		}
 		h1 {
 			grid-column: 1;
 			grid-row: 1;
@@ -254,7 +235,81 @@
 		}
 		.list-container {
 			grid-column: 1 / -1;
-			grid-row: 3;
+			grid-row: 2;
+		}
+	}
+
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+		padding: 20px;
+		backdrop-filter: blur(2px);
+	}
+
+	.modal-content {
+		background: #fff;
+		padding: 20px;
+		border-radius: 10px;
+		box-shadow: var(--level-3);
+		width: 100%;
+		max-width: 600px;
+		max-height: 90vh;
+		overflow-y: auto;
+		animation: slideUp 0.3s ease-out;
+
+		@media screen and (max-width: 690px) {
+			max-height: 85vh;
+			padding: 16px;
+		}
+	}
+
+	.modal-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 20px;
+
+		h2 {
+			margin: 0;
+		}
+	}
+
+	.close-button {
+		background: transparent;
+		border: none;
+		padding: 8px;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 4px;
+		transition: background 0.2s ease;
+
+		&:hover {
+			background: rgba(0, 0, 0, 0.05);
+		}
+
+		&:active {
+			transform: scale(0.95);
+		}
+	}
+
+	@keyframes slideUp {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
 		}
 	}
 
