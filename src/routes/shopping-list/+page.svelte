@@ -161,6 +161,7 @@
 			(event.target as HTMLFormElement).reset();
 			selectedStore = '';
 			newStoreName = '';
+			modal = false;
 		}
 	}
 </script>
@@ -177,116 +178,97 @@
 	<div class="list-container">
 		<ShoppingList {data} />
 	</div>
+</section>
 
-	<div class={modal ? 'modal open' : 'modal closed'} role="dialog" aria-modal="true" tabindex="-1">
-		<h2>Add an item</h2>
-		<form {onsubmit}>
-			<label for="name"
-				>Item Name
-				<input
-					type="text"
-					id="name"
-					name="name"
-					list="items-list"
-					autocomplete="off"
-					placeholder="e.g., Milk, Bread, Eggs"
-					required
-				/>
-			</label>
-			<datalist id="items-list">
-				{#each savedItems as item}
-					<option value={item}></option>
-				{/each}
-			</datalist>
+{#if modal}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="modal-overlay" onclick={() => (modal = false)}>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-content" onclick={(e) => e.stopPropagation()}>
+			<div class="modal-header">
+				<h2>Add an item</h2>
+				<button type="button" class="close-button" onclick={() => (modal = false)}>
+					<CloseIcon />
+				</button>
+			</div>
 
-			<fieldset class="store-selection">
-				<legend>Select Store</legend>
-
-				<label class="radio-label">
-					<input type="radio" name="store-radio" value="" bind:group={selectedStore} />
-					<span>Any Store</span>
-				</label>
-
-				{#each savedStores as store}
-					<div class="radio-label-wrapper">
-						<label class="radio-label">
-							<input type="radio" name="store-radio" value={store} bind:group={selectedStore} />
-							<span>{store}</span>
-						</label>
-						{#if isLocalStorageOnly(store)}
-							<button
-								type="button"
-								class="remove-store-btn"
-								onclick={() => removeStore(store)}
-								title="Remove store from saved list"
-								aria-label="Remove {store}"
-							>
-								×
-							</button>
-						{/if}
-					</div>
-				{/each}
-
-				<label class="radio-label">
-					<input type="radio" name="store-radio" value="__new__" bind:group={selectedStore} />
-					<span>Add New Store</span>
-				</label>
-
-				{#if showNewStoreInput}
+			<form {onsubmit}>
+				<label for="name"
+					>Item Name
 					<input
 						type="text"
-						class="new-store-input"
-						bind:value={newStoreName}
-						placeholder="Enter new store name"
-						autofocus
+						id="name"
+						name="name"
+						list="items-list"
+						autocomplete="off"
+						placeholder="e.g., Milk, Bread, Eggs"
+						required
 					/>
-				{/if}
-			</fieldset>
+				</label>
+				<datalist id="items-list">
+					{#each savedItems as item}
+						<option value={item}></option>
+					{/each}
+				</datalist>
 
-			<button type="submit">Add Item</button>
-		</form>
+				<fieldset class="store-selection">
+					<legend>Select Store</legend>
+
+					<label class="radio-label">
+						<input type="radio" name="store-radio" value="" bind:group={selectedStore} />
+						<span>Any Store</span>
+					</label>
+
+					{#each savedStores as store}
+						<div class="radio-label-wrapper">
+							<label class="radio-label">
+								<input type="radio" name="store-radio" value={store} bind:group={selectedStore} />
+								<span>{store}</span>
+							</label>
+							{#if isLocalStorageOnly(store)}
+								<button
+									type="button"
+									class="remove-store-btn"
+									onclick={() => removeStore(store)}
+									title="Remove store from saved list"
+									aria-label="Remove {store}"
+								>
+									×
+								</button>
+							{/if}
+						</div>
+					{/each}
+
+					<label class="radio-label">
+						<input type="radio" name="store-radio" value="__new__" bind:group={selectedStore} />
+						<span>Add New Store</span>
+					</label>
+
+					{#if showNewStoreInput}
+						<input
+							type="text"
+							class="new-store-input"
+							bind:value={newStoreName}
+							placeholder="Enter new store name"
+							autofocus
+						/>
+					{/if}
+				</fieldset>
+
+				<button type="submit">Add Item</button>
+			</form>
+		</div>
 	</div>
-</section>
+{/if}
 
 <style>
 	.shopping-list {
 		display: grid;
 		grid-template-columns: 1fr auto;
 		gap: 20px;
-		@media screen and (min-width: 690px) {
-			grid-template-columns: 1fr 1fr;
-		}
-		div {
-			grid-row: 2;
-			grid-column: 1;
-			@media screen and (min-width: 690px) {
-				grid-column: 2;
-			}
-		}
 
-		.modal {
-			grid-column: 1/-1;
-			grid-row: 2;
-			background: var(--level-2);
-			padding: 20px;
-			border-radius: 10px;
-			box-shadow: var(--level-3);
-			transition: all 0.3s ease-in-out;
-			&.closed {
-				max-height: 0;
-				overflow: hidden;
-				padding: 0 20px;
-				opacity: 0;
-				box-shadow: none;
-			}
-			&.open {
-				max-height: 800px;
-				opacity: 1;
-				overflow-y: auto;
-			}
-			@media screen and (min-width: 690px) {
-			}
-		}
 		h1 {
 			grid-column: 1;
 			grid-row: 1;
@@ -318,7 +300,81 @@
 		}
 		.list-container {
 			grid-column: 1 / -1;
-			grid-row: 3;
+			grid-row: 2;
+		}
+	}
+
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+		padding: 20px;
+		backdrop-filter: blur(2px);
+	}
+
+	.modal-content {
+		background: #fff;
+		padding: 20px;
+		border-radius: 10px;
+		box-shadow: var(--level-3);
+		width: 100%;
+		max-width: 600px;
+		max-height: 90vh;
+		overflow-y: auto;
+		animation: slideUp 0.3s ease-out;
+
+		@media screen and (max-width: 690px) {
+			max-height: 85vh;
+			padding: 16px;
+		}
+	}
+
+	.modal-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 20px;
+
+		h2 {
+			margin: 0;
+		}
+	}
+
+	.close-button {
+		background: transparent;
+		border: none;
+		padding: 8px;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 4px;
+		transition: background 0.2s ease;
+
+		&:hover {
+			background: rgba(0, 0, 0, 0.05);
+		}
+
+		&:active {
+			transform: scale(0.95);
+		}
+	}
+
+	@keyframes slideUp {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
 		}
 	}
 
