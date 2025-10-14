@@ -255,7 +255,7 @@
 
 	.main-layout {
 		display: grid;
-		grid-template-columns: auto 2fr;
+		grid-template-columns: 200px 2fr 200px;
 		grid-template-rows: 1fr;
 		gap: 20px;
 		/* height: calc(100dvh - var(--headerHeight) - var(--footerHeight)); */
@@ -272,8 +272,8 @@
 	main {
 		padding: 20px;
 		background-color: var(--background);
-		margin-right: var(--margin-right);
-		margin-left: var(--margin-left);
+		/* margin-right: var(--margin-right);
+		margin-left: var(--margin-left); */
 		opacity: 1;
 		transition: all 0.3s ease;
 		&.menuOpen {
