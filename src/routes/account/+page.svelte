@@ -336,11 +336,9 @@
 					</div>
 					<div class="info-row">
 						<span class="info-label">Email</span>
-						<div class="email-with-badge">
+						<div class="info-value-wrapper">
 							<span class="info-value">{user?.current[0]?.email ?? 'Loading...'}</span>
-							{#if user?.current[0]?.email_verified}
-								<span class="verified-badge" title="Email verified">✓ Verified</span>
-							{:else}
+							{#if !user?.current[0]?.email_verified}
 								<span class="unverified-badge" title="Email not verified">⚠ Unverified</span>
 							{/if}
 						</div>
@@ -642,6 +640,7 @@
 		background: var(--backgroundGrey);
 		border-radius: 8px;
 		transition: background 0.2s ease;
+		gap: 1rem;
 	}
 
 	.info-row:hover {
@@ -745,35 +744,25 @@
 	}
 
 	/* Email verification badges */
-	.email-with-badge {
+	.info-value-wrapper {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		flex-wrap: wrap;
+		gap: 0.625rem;
 	}
 
-	.verified-badge,
 	.unverified-badge {
-		font-size: 0.75rem;
+		font-size: 0.7rem;
 		font-weight: 700;
-		padding: 0.25rem 0.625rem;
+		padding: 0.3rem 0.6rem;
 		border-radius: 12px;
 		display: inline-flex;
 		align-items: center;
-		gap: 0.25rem;
-		letter-spacing: 0.02em;
-	}
-
-	.verified-badge {
-		background: rgba(116, 200, 88, 0.15);
-		color: var(--green);
-		border: 1px solid rgba(116, 200, 88, 0.3);
-	}
-
-	.unverified-badge {
+		gap: 0.3rem;
 		background: rgba(255, 152, 0, 0.15);
-		color: #ff9800;
+		color: #e67e00;
 		border: 1px solid rgba(255, 152, 0, 0.3);
+		white-space: nowrap;
+		flex-shrink: 0;
 	}
 
 	/* Verification Card */

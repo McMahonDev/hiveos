@@ -295,10 +295,6 @@
 			overflow-y: auto;
 		}
 
-		@media screen and (max-width: 690px) {
-			overflow-y: auto;
-		}
-
 		ul {
 			list-style: none;
 			padding: 0;
