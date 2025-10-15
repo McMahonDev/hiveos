@@ -9,6 +9,12 @@
 	const z = data.z;
 	let userId = $derived(data.id);
 
+	let isEditingProfile = $state(false);
+	let editName = $state('');
+	let editEmail = $state('');
+	let updateMessage = $state('');
+	let updateError = $state('');
+
 	let userGroupMembers = $derived(
 		z && z.current ? new Query(z.current.query.userGroupMembers.where('userId', userId)) : null
 	);
@@ -171,6 +177,63 @@
 			console.error('Logout failed:', error);
 		}
 	}
+
+	function startEditProfile() {
+		editName = user?.current[0]?.name ?? '';
+		editEmail = user?.current[0]?.email ?? '';
+		isEditingProfile = true;
+		updateMessage = '';
+		updateError = '';
+	}
+
+	function cancelEditProfile() {
+		isEditingProfile = false;
+		editName = '';
+		editEmail = '';
+		updateMessage = '';
+		updateError = '';
+	}
+
+	async function saveProfileChanges(event: Event) {
+		event.preventDefault();
+		updateMessage = '';
+		updateError = '';
+
+		try {
+			// Update via Better Auth
+			const response = await authClient.updateUser({
+				name: editName
+				// Note: Better Auth may require additional verification for email changes
+			});
+
+			if (response.error) {
+				updateError = response.error.message || 'Failed to update profile';
+				return;
+			}
+
+			// Update in Zero/database
+			if (z?.current && user?.current[0]) {
+				await z.current.mutate.user.update({
+					id: userId,
+					name: editName
+				});
+			}
+
+			updateMessage = 'Profile updated successfully!';
+			isEditingProfile = false;
+
+			// Refresh data
+			await invalidateAll();
+
+			// Clear success message after 3 seconds
+			setTimeout(() => {
+				updateMessage = '';
+			}, 3000);
+		} catch (error) {
+			console.error('Update failed:', error);
+			updateError = 'An error occurred while updating your profile';
+		}
+	}
 </script>
 
 <div class="account-container">
@@ -179,27 +242,83 @@
 	<div class="cards-grid">
 		<!-- User Profile Card -->
 		<div class="card profile-card">
-			<h2 class="card-title">Your Profile</h2>
-			<div class="profile-info">
-				<div class="info-row">
-					<span class="info-label">Name</span>
-					<span class="info-value">{user?.current[0]?.name ?? 'Loading...'}</span>
-				</div>
-				<div class="info-row">
-					<span class="info-label">Email</span>
-					<span class="info-value">{user?.current[0]?.email ?? 'Loading...'}</span>
-				</div>
-				<div class="info-row">
-					<span class="info-label">Group</span>
-					<span class="info-value group-badge">
-						{#if group?.current[0]?.name}
-							{group.current[0].name}
-						{:else}
-							<span class="no-group">No group</span>
-						{/if}
-					</span>
-				</div>
+			<div class="card-header">
+				<h2 class="card-title">Your Profile</h2>
+				{#if !isEditingProfile}
+					<button onclick={startEditProfile} class="edit-button">Edit</button>
+				{/if}
 			</div>
+
+			{#if updateMessage}
+				<div class="alert alert-success">{updateMessage}</div>
+			{/if}
+			{#if updateError}
+				<div class="alert alert-error">{updateError}</div>
+			{/if}
+
+			{#if isEditingProfile}
+				<form onsubmit={saveProfileChanges} class="profile-edit-form">
+					<div class="input-group">
+						<label for="editName">Name</label>
+						<input
+							type="text"
+							id="editName"
+							bind:value={editName}
+							placeholder="Your name"
+							required
+						/>
+					</div>
+					<div class="input-group">
+						<label for="editEmail">Email</label>
+						<input
+							type="email"
+							id="editEmail"
+							value={editEmail}
+							placeholder="Your email"
+							disabled
+							title="Email cannot be changed at this time"
+						/>
+						<span class="input-hint">Email changes require verification (coming soon)</span>
+					</div>
+					<div class="info-row">
+						<span class="info-label">Group</span>
+						<span class="info-value group-badge">
+							{#if group?.current[0]?.name}
+								{group.current[0].name}
+							{:else}
+								<span class="no-group">No group</span>
+							{/if}
+						</span>
+					</div>
+					<div class="form-actions">
+						<button type="submit" class="primary-button">Save Changes</button>
+						<button type="button" onclick={cancelEditProfile} class="secondary-button"
+							>Cancel</button
+						>
+					</div>
+				</form>
+			{:else}
+				<div class="profile-info">
+					<div class="info-row">
+						<span class="info-label">Name</span>
+						<span class="info-value">{user?.current[0]?.name ?? 'Loading...'}</span>
+					</div>
+					<div class="info-row">
+						<span class="info-label">Email</span>
+						<span class="info-value">{user?.current[0]?.email ?? 'Loading...'}</span>
+					</div>
+					<div class="info-row">
+						<span class="info-label">Group</span>
+						<span class="info-value group-badge">
+							{#if group?.current[0]?.name}
+								{group.current[0].name}
+							{:else}
+								<span class="no-group">No group</span>
+							{/if}
+						</span>
+					</div>
+				</div>
+			{/if}
 		</div>
 
 		<!-- Group Management Card -->
@@ -357,10 +476,99 @@
 		grid-column: span 1;
 	}
 
+	.card-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1rem;
+	}
+
+	.card-header .card-title {
+		margin-bottom: 0;
+	}
+
+	.edit-button {
+		padding: 0.5rem 1rem;
+		background: var(--primary);
+		color: var(--buttonTextColor);
+		border: none;
+		border-radius: 6px;
+		font-size: 0.9rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.edit-button:hover {
+		background: #e6c000;
+		transform: translateY(-1px);
+	}
+
 	.profile-info {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+	}
+
+	.profile-edit-form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.form-actions {
+		display: flex;
+		gap: 0.75rem;
+		margin-top: 0.5rem;
+	}
+
+	.secondary-button {
+		flex: 1;
+		padding: 0.875rem 1.5rem;
+		background: var(--backgroundGrey);
+		color: var(--textColor);
+		border: 2px solid var(--lineColor);
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.secondary-button:hover {
+		background: var(--lineColor);
+		transform: translateY(-1px);
+	}
+
+	.secondary-button:active {
+		transform: translateY(0);
+	}
+
+	.input-hint {
+		font-size: 0.8rem;
+		color: var(--grey);
+		font-style: italic;
+		margin-top: -0.25rem;
+	}
+
+	.alert {
+		padding: 0.75rem 1rem;
+		border-radius: 8px;
+		font-size: 0.9rem;
+		font-weight: 500;
+		margin-bottom: 1rem;
+	}
+
+	.alert-success {
+		background: rgba(116, 200, 88, 0.15);
+		color: var(--green);
+		border: 1px solid rgba(116, 200, 88, 0.3);
+	}
+
+	.alert-error {
+		background: rgba(202, 46, 85, 0.15);
+		color: var(--danger);
+		border: 1px solid rgba(202, 46, 85, 0.3);
 	}
 
 	.info-row {
