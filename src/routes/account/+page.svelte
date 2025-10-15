@@ -1,11 +1,22 @@
 <script lang="ts">
 	import { nanoid } from 'nanoid';
 	import { Query } from 'zero-svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, goto } from '$app/navigation';
+	import { authClient } from '$lib/auth/client';
+	import LogoutIcon from '$lib/static/icons/logoutIcon.svelte';
 
 	const { data } = $props();
 	const z = data.z;
 	let userId = $derived(data.id);
+
+	let isEditingProfile = $state(false);
+	let editName = $state('');
+	let editEmail = $state('');
+	let updateMessage = $state('');
+	let updateError = $state('');
+	let verificationMessage = $state('');
+	let verificationError = $state('');
+	let isSendingVerification = $state(false);
 
 	let userGroupMembers = $derived(
 		z && z.current ? new Query(z.current.query.userGroupMembers.where('userId', userId)) : null
@@ -159,6 +170,101 @@
 		}
 		return id;
 	}
+
+	async function handleLogout() {
+		try {
+			await authClient.signOut();
+			await invalidateAll();
+			await goto('/account/login', { replaceState: true, noScroll: true });
+		} catch (error) {
+			console.error('Logout failed:', error);
+		}
+	}
+
+	function startEditProfile() {
+		editName = user?.current[0]?.name ?? '';
+		editEmail = user?.current[0]?.email ?? '';
+		isEditingProfile = true;
+		updateMessage = '';
+		updateError = '';
+	}
+
+	function cancelEditProfile() {
+		isEditingProfile = false;
+		editName = '';
+		editEmail = '';
+		updateMessage = '';
+		updateError = '';
+	}
+
+	async function saveProfileChanges(event: Event) {
+		event.preventDefault();
+		updateMessage = '';
+		updateError = '';
+
+		try {
+			// Update via Better Auth
+			const response = await authClient.updateUser({
+				name: editName
+				// Note: Better Auth may require additional verification for email changes
+			});
+
+			if (response.error) {
+				updateError = response.error.message || 'Failed to update profile';
+				return;
+			}
+
+			// Update in Zero/database
+			if (z?.current && user?.current[0]) {
+				await z.current.mutate.user.update({
+					id: userId,
+					name: editName
+				});
+			}
+
+			updateMessage = 'Profile updated successfully!';
+			isEditingProfile = false;
+
+			// Refresh data
+			await invalidateAll();
+
+			// Clear success message after 3 seconds
+			setTimeout(() => {
+				updateMessage = '';
+			}, 3000);
+		} catch (error) {
+			console.error('Update failed:', error);
+			updateError = 'An error occurred while updating your profile';
+		}
+	}
+
+	async function resendVerificationEmail() {
+		verificationMessage = '';
+		verificationError = '';
+		isSendingVerification = true;
+
+		try {
+			const result = await authClient.sendVerificationEmail({
+				email: userEmail,
+				callbackURL: '/'
+			});
+
+			if (result.error) {
+				verificationError = result.error.message || 'Failed to send verification email';
+			} else {
+				verificationMessage = 'Verification email sent! Please check your inbox.';
+				// Clear success message after 5 seconds
+				setTimeout(() => {
+					verificationMessage = '';
+				}, 5000);
+			}
+		} catch (error) {
+			console.error('Send verification error:', error);
+			verificationError = 'An error occurred while sending verification email';
+		} finally {
+			isSendingVerification = false;
+		}
+	}
 </script>
 
 <div class="account-container">
@@ -167,28 +273,116 @@
 	<div class="cards-grid">
 		<!-- User Profile Card -->
 		<div class="card profile-card">
-			<h2 class="card-title">Your Profile</h2>
-			<div class="profile-info">
-				<div class="info-row">
-					<span class="info-label">Name</span>
-					<span class="info-value">{user?.current[0]?.name ?? 'Loading...'}</span>
-				</div>
-				<div class="info-row">
-					<span class="info-label">Email</span>
-					<span class="info-value">{user?.current[0]?.email ?? 'Loading...'}</span>
-				</div>
-				<div class="info-row">
-					<span class="info-label">Group</span>
-					<span class="info-value group-badge">
-						{#if group?.current[0]?.name}
-							{group.current[0].name}
-						{:else}
-							<span class="no-group">No group</span>
-						{/if}
-					</span>
-				</div>
+			<div class="card-header">
+				<h2 class="card-title">Your Profile</h2>
+				{#if !isEditingProfile}
+					<button onclick={startEditProfile} class="edit-button">Edit</button>
+				{/if}
 			</div>
+
+			{#if updateMessage}
+				<div class="alert alert-success">{updateMessage}</div>
+			{/if}
+			{#if updateError}
+				<div class="alert alert-error">{updateError}</div>
+			{/if}
+
+			{#if isEditingProfile}
+				<form onsubmit={saveProfileChanges} class="profile-edit-form">
+					<div class="input-group">
+						<label for="editName">Name</label>
+						<input
+							type="text"
+							id="editName"
+							bind:value={editName}
+							placeholder="Your name"
+							required
+						/>
+					</div>
+					<div class="input-group">
+						<label for="editEmail">Email</label>
+						<input
+							type="email"
+							id="editEmail"
+							value={editEmail}
+							placeholder="Your email"
+							disabled
+							title="Email cannot be changed at this time"
+						/>
+						<span class="input-hint">Email changes require verification (coming soon)</span>
+					</div>
+					<div class="info-row">
+						<span class="info-label">Group</span>
+						<span class="info-value group-badge">
+							{#if group?.current[0]?.name}
+								{group.current[0].name}
+							{:else}
+								<span class="no-group">No group</span>
+							{/if}
+						</span>
+					</div>
+					<div class="form-actions">
+						<button type="submit" class="primary-button">Save Changes</button>
+						<button type="button" onclick={cancelEditProfile} class="secondary-button"
+							>Cancel</button
+						>
+					</div>
+				</form>
+			{:else}
+				<div class="profile-info">
+					<div class="info-row">
+						<span class="info-label">Name</span>
+						<span class="info-value">{user?.current[0]?.name ?? 'Loading...'}</span>
+					</div>
+					<div class="info-row">
+						<span class="info-label">Email</span>
+						<div class="email-with-badge">
+							<span class="info-value">{user?.current[0]?.email ?? 'Loading...'}</span>
+							{#if user?.current[0]?.email_verified}
+								<span class="verified-badge" title="Email verified">✓ Verified</span>
+							{:else}
+								<span class="unverified-badge" title="Email not verified">⚠ Unverified</span>
+							{/if}
+						</div>
+					</div>
+					<div class="info-row">
+						<span class="info-label">Group</span>
+						<span class="info-value group-badge">
+							{#if group?.current[0]?.name}
+								{group.current[0].name}
+							{:else}
+								<span class="no-group">No group</span>
+							{/if}
+						</span>
+					</div>
+				</div>
+			{/if}
 		</div>
+
+		<!-- Email Verification Card (only show if email is not verified) -->
+		{#if !user?.current[0]?.email_verified}
+			<div class="card verification-card">
+				<h2 class="card-title">Email Verification</h2>
+				<p class="card-description">
+					Your email address is not verified. Please check your inbox for a verification email.
+				</p>
+
+				{#if verificationMessage}
+					<div class="alert alert-success">{verificationMessage}</div>
+				{/if}
+				{#if verificationError}
+					<div class="alert alert-error">{verificationError}</div>
+				{/if}
+
+				<button
+					onclick={resendVerificationEmail}
+					class="primary-button"
+					disabled={isSendingVerification}
+				>
+					{isSendingVerification ? 'Sending...' : 'Resend Verification Email'}
+				</button>
+			</div>
+		{/if}
 
 		<!-- Group Management Card -->
 		{#if !group?.current[0]?.name}
@@ -275,6 +469,16 @@
 				</form>
 			</div>
 		{/if}
+
+		<!-- Logout Card -->
+		<div class="card logout-card">
+			<h2 class="card-title">Session</h2>
+			<p class="card-description">Sign out of your account on this device.</p>
+			<button onclick={handleLogout} class="logout-button">
+				<LogoutIcon />
+				<span>Logout</span>
+			</button>
+		</div>
 	</div>
 </div>
 
@@ -335,10 +539,99 @@
 		grid-column: span 1;
 	}
 
+	.card-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1rem;
+	}
+
+	.card-header .card-title {
+		margin-bottom: 0;
+	}
+
+	.edit-button {
+		padding: 0.5rem 1rem;
+		background: var(--primary);
+		color: var(--buttonTextColor);
+		border: none;
+		border-radius: 6px;
+		font-size: 0.9rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.edit-button:hover {
+		background: #e6c000;
+		transform: translateY(-1px);
+	}
+
 	.profile-info {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+	}
+
+	.profile-edit-form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.form-actions {
+		display: flex;
+		gap: 0.75rem;
+		margin-top: 0.5rem;
+	}
+
+	.secondary-button {
+		flex: 1;
+		padding: 0.875rem 1.5rem;
+		background: var(--backgroundGrey);
+		color: var(--textColor);
+		border: 2px solid var(--lineColor);
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.secondary-button:hover {
+		background: var(--lineColor);
+		transform: translateY(-1px);
+	}
+
+	.secondary-button:active {
+		transform: translateY(0);
+	}
+
+	.input-hint {
+		font-size: 0.8rem;
+		color: var(--grey);
+		font-style: italic;
+		margin-top: -0.25rem;
+	}
+
+	.alert {
+		padding: 0.75rem 1rem;
+		border-radius: 8px;
+		font-size: 0.9rem;
+		font-weight: 500;
+		margin-bottom: 1rem;
+	}
+
+	.alert-success {
+		background: rgba(116, 200, 88, 0.15);
+		color: var(--green);
+		border: 1px solid rgba(116, 200, 88, 0.3);
+	}
+
+	.alert-error {
+		background: rgba(202, 46, 85, 0.15);
+		color: var(--danger);
+		border: 1px solid rgba(202, 46, 85, 0.3);
 	}
 
 	.info-row {
@@ -438,6 +731,55 @@
 
 	.primary-button:active {
 		transform: translateY(0);
+	}
+
+	.primary-button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+		transform: none;
+	}
+
+	.primary-button:disabled:hover {
+		background: var(--primary);
+		transform: none;
+	}
+
+	/* Email verification badges */
+	.email-with-badge {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.verified-badge,
+	.unverified-badge {
+		font-size: 0.75rem;
+		font-weight: 700;
+		padding: 0.25rem 0.625rem;
+		border-radius: 12px;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		letter-spacing: 0.02em;
+	}
+
+	.verified-badge {
+		background: rgba(116, 200, 88, 0.15);
+		color: var(--green);
+		border: 1px solid rgba(116, 200, 88, 0.3);
+	}
+
+	.unverified-badge {
+		background: rgba(255, 152, 0, 0.15);
+		color: #ff9800;
+		border: 1px solid rgba(255, 152, 0, 0.3);
+	}
+
+	/* Verification Card */
+	.verification-card {
+		border: 2px solid rgba(255, 152, 0, 0.3);
+		background: rgba(255, 152, 0, 0.05);
 	}
 
 	/* Requests List */
@@ -586,6 +928,40 @@
 	}
 
 	.danger-button:active {
+		transform: translateY(0);
+	}
+
+	/* Logout Card */
+	.logout-card {
+		background: var(--backgroundGrey);
+	}
+
+	.logout-button {
+		width: 100%;
+		padding: 0.875rem 1.5rem;
+		background: #000;
+		color: white;
+		border: none;
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: var(--level-1);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		--svg-fill: #fff;
+	}
+
+	.logout-button:hover {
+		background: #333;
+		transform: translateY(-1px);
+		box-shadow: var(--level-2);
+	}
+
+	.logout-button:active {
 		transform: translateY(0);
 	}
 
