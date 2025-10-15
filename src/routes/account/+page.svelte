@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { nanoid } from 'nanoid';
 	import { Query } from 'zero-svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, goto } from '$app/navigation';
+	import { authClient } from '$lib/auth/client';
+	import LogoutIcon from '$lib/static/icons/logoutIcon.svelte';
 
 	const { data } = $props();
 	const z = data.z;
@@ -159,6 +161,16 @@
 		}
 		return id;
 	}
+
+	async function handleLogout() {
+		try {
+			await authClient.signOut();
+			await invalidateAll();
+			await goto('/account/login', { replaceState: true, noScroll: true });
+		} catch (error) {
+			console.error('Logout failed:', error);
+		}
+	}
 </script>
 
 <div class="account-container">
@@ -275,6 +287,16 @@
 				</form>
 			</div>
 		{/if}
+
+		<!-- Logout Card -->
+		<div class="card logout-card">
+			<h2 class="card-title">Session</h2>
+			<p class="card-description">Sign out of your account on this device.</p>
+			<button onclick={handleLogout} class="logout-button">
+				<LogoutIcon />
+				<span>Logout</span>
+			</button>
+		</div>
 	</div>
 </div>
 
@@ -586,6 +608,40 @@
 	}
 
 	.danger-button:active {
+		transform: translateY(0);
+	}
+
+	/* Logout Card */
+	.logout-card {
+		background: var(--backgroundGrey);
+	}
+
+	.logout-button {
+		width: 100%;
+		padding: 0.875rem 1.5rem;
+		background: #000;
+		color: white;
+		border: none;
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: var(--level-1);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		--svg-fill: #fff;
+	}
+
+	.logout-button:hover {
+		background: #333;
+		transform: translateY(-1px);
+		box-shadow: var(--level-2);
+	}
+
+	.logout-button:active {
 		transform: translateY(0);
 	}
 
