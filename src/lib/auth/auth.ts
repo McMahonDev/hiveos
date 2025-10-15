@@ -65,7 +65,7 @@ async function sendEmail({ to, subject, text, html }: {
     throw error;
   }
 }
- 
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg", // or "pg" or "mysql"

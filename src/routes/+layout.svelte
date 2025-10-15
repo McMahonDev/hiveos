@@ -153,12 +153,13 @@
 						{/each}
 					{/if}
 				{/if}
-				<li><button onclick={() => openCreateList()}>Create List</button></li>
-				<li><button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button></li>
+				<li class="create-list-item">
+					<button class="create-list-btn" onclick={() => openCreateList()}>+ Create List</button>
+				</li>
 				<li class="push-bottom">
 					<a onclick={() => (menuOpen = false)} href="/settings">Settings</a>
 				</li>
-				<li class=""><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
+				<li><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
 			</ul>
 		</aside>
 		{#if createListModalOpen}
@@ -288,6 +289,7 @@
 		padding: 20px;
 		background-color: var(--background);
 		transition: all 0.3s ease;
+		min-height: calc(100dvh - 100px);
 
 		@media screen and (max-width: 690px) {
 			overflow-y: auto;
@@ -326,10 +328,32 @@
 					cursor: pointer;
 				}
 			}
-			.logout {
-				display: none;
+			.create-list-item {
+				margin-top: 10px;
+				padding-top: 10px;
+				border-top: 1px solid rgba(0, 0, 0, 0.1);
+			}
+
+			.create-list-btn {
+				background-color: transparent;
+				border: 2px dashed rgba(0, 0, 0, 0.2);
+				cursor: pointer;
+				font-size: 1.2rem;
+				font-weight: 600;
+				color: var(--textColor);
+				width: 100%;
+				padding: 8px;
+				border-radius: 5px;
+				transition: all 0.2s ease;
+
+				&:hover {
+					background-color: rgba(0, 0, 0, 0.05);
+					border-color: rgba(0, 0, 0, 0.3);
+				}
+
 				@media screen and (max-width: 690px) {
-					display: unset;
+					font-size: 1.2rem;
+					padding: 12px;
 				}
 			}
 		}
@@ -338,14 +362,24 @@
 			left: 0;
 			top: -100%;
 			position: fixed;
-			display: block;
-			position: fixed;
-
+			z-index: 9998;
 			width: 100%;
-			height: calc(100dvh - var(--headerHeight));
+			max-height: calc(100dvh - var(--headerHeight) - 32px);
 			text-align: center;
+			transition: top 0.3s ease;
+			overflow-y: auto;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
 			&.menuOpen {
-				top: calc(var(--headerHeight));
+				top: calc(var(--headerHeight) + 32px);
+			}
+
+			:global(body:not(:has(.offline-banner, .syncing-banner))) & {
+				max-height: calc(100dvh - var(--headerHeight));
+
+				&.menuOpen {
+					top: var(--headerHeight);
+				}
 			}
 		}
 	}
