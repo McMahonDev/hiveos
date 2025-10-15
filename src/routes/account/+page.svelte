@@ -14,6 +14,9 @@
 	let editEmail = $state('');
 	let updateMessage = $state('');
 	let updateError = $state('');
+	let verificationMessage = $state('');
+	let verificationError = $state('');
+	let isSendingVerification = $state(false);
 
 	let userGroupMembers = $derived(
 		z && z.current ? new Query(z.current.query.userGroupMembers.where('userId', userId)) : null
@@ -234,6 +237,34 @@
 			updateError = 'An error occurred while updating your profile';
 		}
 	}
+
+	async function resendVerificationEmail() {
+		verificationMessage = '';
+		verificationError = '';
+		isSendingVerification = true;
+
+		try {
+			const result = await authClient.sendVerificationEmail({
+				email: userEmail,
+				callbackURL: '/'
+			});
+
+			if (result.error) {
+				verificationError = result.error.message || 'Failed to send verification email';
+			} else {
+				verificationMessage = 'Verification email sent! Please check your inbox.';
+				// Clear success message after 5 seconds
+				setTimeout(() => {
+					verificationMessage = '';
+				}, 5000);
+			}
+		} catch (error) {
+			console.error('Send verification error:', error);
+			verificationError = 'An error occurred while sending verification email';
+		} finally {
+			isSendingVerification = false;
+		}
+	}
 </script>
 
 <div class="account-container">
@@ -305,7 +336,14 @@
 					</div>
 					<div class="info-row">
 						<span class="info-label">Email</span>
-						<span class="info-value">{user?.current[0]?.email ?? 'Loading...'}</span>
+						<div class="email-with-badge">
+							<span class="info-value">{user?.current[0]?.email ?? 'Loading...'}</span>
+							{#if user?.current[0]?.email_verified}
+								<span class="verified-badge" title="Email verified">✓ Verified</span>
+							{:else}
+								<span class="unverified-badge" title="Email not verified">⚠ Unverified</span>
+							{/if}
+						</div>
 					</div>
 					<div class="info-row">
 						<span class="info-label">Group</span>
@@ -320,6 +358,31 @@
 				</div>
 			{/if}
 		</div>
+
+		<!-- Email Verification Card (only show if email is not verified) -->
+		{#if !user?.current[0]?.email_verified}
+			<div class="card verification-card">
+				<h2 class="card-title">Email Verification</h2>
+				<p class="card-description">
+					Your email address is not verified. Please check your inbox for a verification email.
+				</p>
+
+				{#if verificationMessage}
+					<div class="alert alert-success">{verificationMessage}</div>
+				{/if}
+				{#if verificationError}
+					<div class="alert alert-error">{verificationError}</div>
+				{/if}
+
+				<button
+					onclick={resendVerificationEmail}
+					class="primary-button"
+					disabled={isSendingVerification}
+				>
+					{isSendingVerification ? 'Sending...' : 'Resend Verification Email'}
+				</button>
+			</div>
+		{/if}
 
 		<!-- Group Management Card -->
 		{#if !group?.current[0]?.name}
@@ -668,6 +731,55 @@
 
 	.primary-button:active {
 		transform: translateY(0);
+	}
+
+	.primary-button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+		transform: none;
+	}
+
+	.primary-button:disabled:hover {
+		background: var(--primary);
+		transform: none;
+	}
+
+	/* Email verification badges */
+	.email-with-badge {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.verified-badge,
+	.unverified-badge {
+		font-size: 0.75rem;
+		font-weight: 700;
+		padding: 0.25rem 0.625rem;
+		border-radius: 12px;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		letter-spacing: 0.02em;
+	}
+
+	.verified-badge {
+		background: rgba(116, 200, 88, 0.15);
+		color: var(--green);
+		border: 1px solid rgba(116, 200, 88, 0.3);
+	}
+
+	.unverified-badge {
+		background: rgba(255, 152, 0, 0.15);
+		color: #ff9800;
+		border: 1px solid rgba(255, 152, 0, 0.3);
+	}
+
+	/* Verification Card */
+	.verification-card {
+		border: 2px solid rgba(255, 152, 0, 0.3);
+		background: rgba(255, 152, 0, 0.05);
 	}
 
 	/* Requests List */

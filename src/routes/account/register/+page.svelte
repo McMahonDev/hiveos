@@ -9,6 +9,7 @@
 	let confirmPassword = '';
 	let error = '';
 	let isLoading = false;
+	let showVerificationNotice = false;
 
 	async function handleSignup() {
 		error = '';
@@ -31,19 +32,25 @@
 			const { data, error: err } = await authClient.signUp.email({
 				name,
 				email,
-				password
+				password,
+				callbackURL: '/'
 			});
 
 			if (err) {
 				error = err.message ?? 'An unknown error occurred.';
 			} else {
+				// Show verification notice
+				showVerificationNotice = true;
+
 				// Update user state immediately for instant UI update
 				user.auth = true;
 				user.isLoggedIn = true;
 				user.email = email;
 
-				// Use client-side navigation without page refresh
-				goto('/', { replaceState: true, noScroll: true });
+				// Redirect after a short delay to let user see the verification notice
+				setTimeout(() => {
+					goto('/', { replaceState: true, noScroll: true });
+				}, 3000);
 			}
 		} catch (e) {
 			console.error('Sign up error:', e);
@@ -114,6 +121,15 @@
 
 	{#if error}
 		<div class="auth-error">{error}</div>
+	{/if}
+
+	{#if showVerificationNotice}
+		<div class="auth-success">
+			<strong>Account created successfully!</strong>
+			<p>We've sent a verification email to <strong>{email}</strong>.</p>
+			<p>Please check your inbox and verify your email address.</p>
+			<p class="redirect-note">Redirecting you to the dashboard...</p>
+		</div>
 	{/if}
 
 	<div class="auth-link">
