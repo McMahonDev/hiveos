@@ -4,6 +4,7 @@
 	import { invalidateAll, goto } from '$app/navigation';
 	import { authClient } from '$lib/auth/client';
 	import LogoutIcon from '$lib/static/icons/logoutIcon.svelte';
+	import SubscriptionTierBadge from '$lib/components/subscriptionTierBadge.svelte';
 
 	const { data } = $props();
 	const z = data.z;
@@ -62,13 +63,18 @@
 			z?.current.mutate.userGroups.insert({
 				id,
 				name: name,
-				createdById: userId
+				createdById: userId,
+				groupType: 'family', // Default to family type
+				maxMembers: 6, // Default family plan limit
+				createdAt: Date.now()
 			});
 			z?.current.mutate.userGroupMembers.insert({
 				id: nanoid(),
 				userId: userId,
 				userGroupId: id,
-				userGroupCreatorId: userId
+				userGroupCreatorId: userId,
+				isAdmin: true, // Creator is always admin
+				joinedAt: Date.now()
 			});
 			groupId = id;
 
@@ -105,22 +111,23 @@
 		event.preventDefault();
 		const form = event.target as HTMLFormElement;
 		const email = form.email.value;
-		if (email) {
+		if (email && group?.current[0]) {
 			const id = nanoid();
 			z?.current.mutate.userGroupRequests.insert({
 				id,
 				email: email,
-				userGroupId: group.current[0]?.id,
+				userGroupId: group.current[0].id,
 				status: false,
 				sentByEmail: userEmail,
-				groupName: group.current[0]?.name
+				groupName: group.current[0].name
 			});
 		}
 		form.reset();
 	}
 	function acceptRequest(event: Event) {
 		event.preventDefault();
-		const requestId = event?.target?.closest('li').dataset.id;
+		const target = event?.target as HTMLElement;
+		const requestId = target?.closest('li')?.dataset.id;
 		if (requestId && userGroupRequests && userGroupRequests.current) {
 			const request = userGroupRequests.current.find((r) => r.id === requestId);
 			if (request) {
@@ -128,7 +135,9 @@
 					id: nanoid(),
 					userId: userId,
 					userGroupId: request.userGroupId,
-					userGroupCreatorId: group?.current?.[0]?.createdById ?? ''
+					userGroupCreatorId: group?.current?.[0]?.createdById ?? '',
+					isAdmin: false, // New members are not admins by default
+					joinedAt: Date.now()
 				});
 				// delete all other records in usergroupmembers that have the same userID, there can only be one
 				const otherMemberships =
@@ -157,7 +166,8 @@
 	}
 	function rejectRequest(event: Event) {
 		event.preventDefault();
-		const requestId = event?.target?.closest('li').dataset.id;
+		const target = event?.target as HTMLElement;
+		const requestId = target?.closest('li')?.dataset.id;
 		if (requestId) {
 			z?.current.mutate.userGroupRequests.delete({ id: requestId });
 		}
@@ -355,6 +365,12 @@
 					</div>
 				</div>
 			{/if}
+		</div>
+
+		<!-- Subscription Tier Card -->
+		<div class="card subscription-card">
+			<h2 class="card-title">Subscription Tier</h2>
+			<SubscriptionTierBadge user={user?.current[0] ?? null} showUpgradeButton={true} />
 		</div>
 
 		<!-- Email Verification Card (only show if email is not verified) -->
