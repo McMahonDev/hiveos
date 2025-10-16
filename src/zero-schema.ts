@@ -129,7 +129,7 @@ const userGroups = table('userGroups')
 		name: string(),
 		createdById: string(),
 		groupType: string(), // 'family', 'team', etc.
-		maxMembers: number(), // Maximum number of members allowed
+		maxMembers: number().optional(), // Maximum number of members (null = unlimited for individual groups, 6 for family)
 		createdAt: number() // Timestamp when group was created
 	})
 	.primaryKey('id');

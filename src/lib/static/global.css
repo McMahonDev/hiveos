@@ -185,7 +185,7 @@ blockquote {
 label {
 	font-size: var(--smallText);
 	/* display: grid; */
-	width: 100px;
+	/* width: 100px; */
 	margin-bottom: 20px;
 }
 

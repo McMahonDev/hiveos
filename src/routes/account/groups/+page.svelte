@@ -48,6 +48,18 @@
 			: null
 	);
 
+	// Query group data for stats
+	let allShoppingList = $derived(
+		z && z.current && activeGroupId
+			? new Query(z.current.query.shoppingList.where('assignedToId', activeGroupId))
+			: null
+	);
+	let allEvents = $derived(
+		z && z.current && activeGroupId
+			? new Query(z.current.query.events.where('assignedToId', activeGroupId))
+			: null
+	);
+
 	// State for code generation
 	let showCodeGenerator = $state(false);
 	let newCodePrefix = $state('');
@@ -128,11 +140,13 @@
 		if (confirm('Are you sure you want to remove this member from the group?')) {
 			z?.current.mutate.userGroupMembers.delete({ id: memberId });
 
-			// Update the removed user's active group
+			// Update the removed user's active group only
+			// Note: Subscription tier is completely decoupled from groups
+			// Removed members keep their paid subscription
 			z?.current.mutate.user.update({
 				id: memberUserId,
-				active_group_id: null,
-				subscription_tier: 'free'
+				active_group_id: null
+				// DO NOT change subscription_tier - it's independent of group membership
 			});
 
 			successMessage = 'Member removed from group';
@@ -182,6 +196,97 @@
 		const used = (code.maxUses ?? 0) - (code.usesRemaining ?? 0);
 		return `${used} / ${code.maxUses}`;
 	}
+
+	function inviteMemberByEmail(event: Event) {
+		event.preventDefault();
+		if (!isAdmin || !group) return;
+
+		const form = event.target as HTMLFormElement;
+		const email = form.email.value;
+
+		if (!email) return;
+
+		// Check if group is at capacity (only applies to groups with maxMembers set, like family groups)
+		if (group.maxMembers !== null) {
+			const currentMemberCount = allGroupMembers?.current?.length ?? 0;
+			if (currentMemberCount >= group.maxMembers) {
+				errorMessage = `This group is at full capacity (${group.maxMembers} members). Remove a member before inviting new ones.`;
+				setTimeout(() => {
+					errorMessage = '';
+				}, 5000);
+				return;
+			}
+		}
+
+		// Check if the invited user exists and has a paid subscription
+		const invitedUser = z?.current
+			? new Query(z.current.query.user.where('email', email)).current[0]
+			: null;
+
+		// Only paid users (individual or family tier) can be invited to groups
+		if (invitedUser) {
+			const tier = invitedUser.subscription_tier;
+			if (tier !== 'individual' && tier !== 'family') {
+				errorMessage =
+					'Only paid users can be invited to groups. The invited user must upgrade to an Individual ($5/mo) or Family plan first.';
+				setTimeout(() => {
+					errorMessage = '';
+				}, 5000);
+				return;
+			}
+		}
+
+		const id = nanoid();
+		z?.current.mutate.userGroupRequests.insert({
+			id,
+			email: email,
+			userGroupId: group.id,
+			status: false,
+			sentByEmail: userRecord?.email ?? '',
+			groupName: group.name
+		});
+
+		successMessage = `Invitation sent to ${email}`;
+		form.reset();
+
+		setTimeout(() => {
+			successMessage = '';
+		}, 3000);
+	}
+
+	function deleteGroup(event: Event) {
+		event.preventDefault();
+		if (!isAdmin || !group) return;
+
+		if (
+			!confirm(
+				'Are you sure you want to delete this group? This action cannot be undone and all members will be removed.'
+			)
+		) {
+			return;
+		}
+
+		// Delete the group
+		z?.current.mutate.userGroups.delete({ id: group.id });
+
+		// Delete all member records
+		allGroupMembers?.current?.forEach((member) => {
+			z?.current.mutate.userGroupMembers.delete({ id: member.id });
+		});
+
+		// Update user's active group only (subscription remains unchanged)
+		z?.current.mutate.user.update({
+			id: userId,
+			active_group_id: null
+		});
+
+		successMessage = 'Group deleted successfully. Redirecting...';
+
+		// Redirect to account settings after a brief delay
+		setTimeout(() => {
+			window.location.href = '/account';
+		}, 1500);
+	}
 </script>
 
 <div class="groups-container">
@@ -216,9 +321,15 @@
 			<div class="group-stats">
 				<div class="stat">
 					<span class="stat-label">Members</span>
-					<span class="stat-value"
-						>{allGroupMembers?.current?.length ?? 0} / {group.maxMembers ?? '∞'}</span
-					>
+					<span class="stat-value">
+						{#if group.groupType === 'individual'}
+							{allGroupMembers?.current?.length ?? 0} members
+						{:else if group.maxMembers}
+							{allGroupMembers?.current?.length ?? 0} / {group.maxMembers}
+						{:else}
+							{allGroupMembers?.current?.length ?? 0} members
+						{/if}
+					</span>
 				</div>
 				<div class="stat">
 					<span class="stat-label">Created</span>
@@ -405,6 +516,42 @@
 				<p class="empty-message">No members found.</p>
 			{/if}
 		</div>
+
+		<!-- Email-based Invite Members Section (Admin Only) -->
+		{#if isAdmin}
+			<div class="card invite-members-card">
+				<h2 class="card-title">Invite Members by Email</h2>
+				<p class="card-description">Send direct email invitations to specific users.</p>
+				<div class="info-banner">
+					<strong>Note:</strong> Only paid users (Individual or Family plan) can be invited to groups.
+					Free users must upgrade to Individual ($5/mo) before accepting an invitation.
+				</div>
+				<form onsubmit={inviteMemberByEmail} class="invite-form">
+					<div class="input-group">
+						<label for="invite-email">Email Address</label>
+						<input
+							type="email"
+							id="invite-email"
+							name="email"
+							placeholder="colleague@example.com"
+							required
+						/>
+					</div>
+					<button class="primary-button" type="submit">Send Invitation</button>
+				</form>
+			</div>
+
+			<!-- Danger Zone (Admin Only) -->
+			<div class="card danger-card">
+				<h2 class="card-title danger-title">Danger Zone</h2>
+				<p class="card-description">
+					Deleting your group is permanent and cannot be undone. All group members will be removed.
+				</p>
+				<form onsubmit={deleteGroup}>
+					<button class="danger-button" type="submit">Delete Group</button>
+				</form>
+			</div>
+		{/if}
 	{/if}
 </div>
 
@@ -850,6 +997,81 @@
 	}
 
 	/* Responsive */
+	/* Invite Members Card */
+	.invite-members-card {
+		margin-top: 1.5rem;
+	}
+
+	.invite-form {
+		margin-top: 1rem;
+	}
+
+	.input-group {
+		margin-bottom: 1rem;
+	}
+
+	.input-group label {
+		display: block;
+		font-weight: 600;
+		margin-bottom: 0.5rem;
+		color: var(--textColor);
+	}
+
+	.input-group input {
+		width: 100%;
+		padding: 0.875rem;
+		border: 1px solid var(--lineColor);
+		border-radius: 8px;
+		font-size: 1rem;
+		background: var(--level-1);
+		color: var(--textColor);
+	}
+
+	.info-banner {
+		padding: 0.875rem 1rem;
+		background: rgba(255, 212, 0, 0.1);
+		border-left: 3px solid var(--primary);
+		border-radius: 6px;
+		font-size: 0.9rem;
+		color: var(--textColor);
+		margin-bottom: 1rem;
+		line-height: 1.5;
+	}
+
+	.info-banner strong {
+		color: var(--textColor);
+		font-weight: 600;
+	}
+
+	/* Danger Zone Card */
+	.danger-card {
+		margin-top: 1.5rem;
+		border: 2px solid var(--danger);
+	}
+
+	.danger-title {
+		color: var(--danger);
+	}
+
+	.danger-button {
+		width: 100%;
+		padding: 0.875rem 1.5rem;
+		background: var(--danger);
+		color: white;
+		border: none;
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.danger-button:hover {
+		background: #b8184a;
+		transform: translateY(-1px);
+		box-shadow: var(--level-2);
+	}
+
 	@media (max-width: 768px) {
 		.page-header {
 			flex-direction: column;

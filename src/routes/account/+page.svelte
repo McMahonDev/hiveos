@@ -59,6 +59,21 @@
 		group?.current[0]?.name && group.current[0]?.createdById === userId ? true : false
 	);
 
+	// Get all member IDs from the group
+	let groupMemberIds = $derived(allGroupMembers?.current?.map((member) => member.userId) ?? []);
+
+	// Group-wide stats - get all items where viewMode is 'shared'
+	// This represents items visible to the entire group
+	let groupShoppingList = $derived(
+		z && z.current && groupId
+			? new Query(z.current.query.shoppingList.where('viewMode', 'shared'))
+			: null
+	);
+	let groupEvents = $derived(
+		z && z.current && groupId ? new Query(z.current.query.events.where('viewMode', 'shared')) : null
+	);
+
+	// User-specific queries (keep for other uses if needed)
 	let allShoppingList = $derived(
 		z && z.current ? new Query(z.current.query.shoppingList.where('assignedToId', userId)) : null
 	);
@@ -99,7 +114,8 @@
 
 		// Determine group type based on subscription
 		const groupType = currentTier === 'family' ? 'family' : 'individual';
-		const maxMembers = currentTier === 'family' ? 6 : 99; // Family: 6, Individual: many
+		// Individual groups have no member limit (null), Family groups limited to 6
+		const maxMembers = currentTier === 'family' ? 6 : null;
 
 		z?.current.mutate.userGroups.insert({
 			id,
@@ -151,15 +167,13 @@
 				z?.current.mutate.userGroupMembers.delete({ id: memberId });
 			}
 
-			// Update user's active group and subscription tier
-			// Note: This keeps subscription active but removes group access
-			// User should cancel subscription separately via /account/subscription
+			// Update user's active group only
+			// Note: Subscription tier is completely decoupled from groups
+			// Users keep their paid subscription even after deleting a group
 			z?.current.mutate.user.update({
 				id: userId,
-				active_group_id: null,
-				subscription_tier: 'free'
-				// Keep subscription_status, subscription_id, etc. for billing continuity
-				// User can cancel via subscription management page
+				active_group_id: null
+				// DO NOT change subscription_tier - it's independent of group membership
 			});
 		}
 	}
@@ -167,21 +181,66 @@
 		event.preventDefault();
 		const form = event.target as HTMLFormElement;
 		const email = form.email.value;
-		if (email && group?.current[0]) {
-			const id = nanoid();
-			z?.current.mutate.userGroupRequests.insert({
-				id,
-				email: email,
-				userGroupId: group.current[0].id,
-				status: false,
-				sentByEmail: userEmail,
-				groupName: group.current[0].name
-			});
+
+		if (!email || !group?.current[0]) return;
+
+		// Check if group is at capacity (only applies to groups with maxMembers set, like family groups)
+		const currentGroup = group.current[0];
+		if (currentGroup.maxMembers !== null) {
+			const currentMemberCount = allGroupMembers?.current?.length ?? 0;
+			// Account for the pending invitation (+1)
+			if (currentMemberCount >= currentGroup.maxMembers) {
+				alert(
+					`This group is at full capacity (${currentGroup.maxMembers} members). Remove a member before inviting new ones.`
+				);
+				return;
+			}
 		}
+
+		// Check if the invited user exists and has a paid subscription
+		const invitedUser = z?.current
+			? new Query(z.current.query.user.where('email', email)).current[0]
+			: null;
+
+		// Only paid users (individual or family tier) can be invited to groups
+		if (invitedUser) {
+			const tier = invitedUser.subscription_tier;
+			if (tier !== 'individual' && tier !== 'family') {
+				alert(
+					'Only paid users can be invited to groups. The invited user must upgrade to an Individual ($5/mo) or Family plan first.'
+				);
+				return;
+			}
+		} else {
+			// User doesn't exist yet - they'll need to sign up with a paid plan
+			// We can still send the invite, but they'll need to upgrade when accepting
+			console.log('Inviting non-existent user:', email, '- they must sign up with a paid plan');
+		}
+
+		const id = nanoid();
+		z?.current.mutate.userGroupRequests.insert({
+			id,
+			email: email,
+			userGroupId: group.current[0].id,
+			status: false,
+			sentByEmail: userEmail,
+			groupName: group.current[0].name
+		});
+
 		form.reset();
 	}
 	function acceptRequest(event: Event) {
 		event.preventDefault();
+
+		// Check if user has a paid subscription before accepting
+		const currentTier = user?.current?.[0]?.subscription_tier;
+		if (currentTier !== 'individual' && currentTier !== 'family') {
+			alert(
+				'You must have a paid subscription (Individual $5/mo or Family plan) to join a group. Please upgrade your account first.'
+			);
+			return;
+		}
+
 		const target = event?.target as HTMLElement;
 		const requestId = target?.closest('li')?.dataset.id;
 		if (requestId && userGroupRequests && userGroupRequests.current) {
@@ -244,6 +303,25 @@
 			await goto('/account/login', { replaceState: true, noScroll: true });
 		} catch (error) {
 			console.error('Logout failed:', error);
+		}
+	}
+
+	async function handleLogoutAllDevices() {
+		if (
+			!confirm(
+				'This will sign you out of all other devices and browsers. Your current session will remain active. Continue?'
+			)
+		) {
+			return;
+		}
+
+		try {
+			// Use Better Auth's built-in revokeOtherSessions
+			await authClient.revokeOtherSessions();
+			alert('Successfully logged out of all other devices.');
+		} catch (error) {
+			console.error('Logout all devices failed:', error);
+			alert('An error occurred. Please try again.');
 		}
 	}
 
@@ -560,6 +638,14 @@
 							{/if}
 						</div>
 					{/if}
+					<div class="subscription-actions">
+						<a href="/account/subscription" class="secondary-button">Manage Subscription</a>
+						{#if user?.current[0]?.subscription_tier === 'individual'}
+							<a href="/account/upgrade?from=individual" class="upgrade-link-button">
+								Upgrade to Family
+							</a>
+						{/if}
+					</div>
 				{/if}
 			</div>
 		</div>
@@ -674,6 +760,12 @@
 				<div class="card requests-card">
 					<h2 class="card-title">Pending Invitations</h2>
 					<p class="card-description">You have been invited to join the following groups:</p>
+					{#if user?.current[0]?.subscription_tier !== 'individual' && user?.current[0]?.subscription_tier !== 'family'}
+						<div class="info-banner">
+							<strong>Upgrade Required:</strong> You must have an Individual ($5/mo) or Family plan to
+							accept group invitations.
+						</div>
+					{/if}
 					<ul class="requests-list">
 						{#each userGroupRequests.current as request}
 							<li data-id={request.id} class="request-item">
@@ -705,60 +797,51 @@
 			</div>
 		{/if}
 
-		<!-- Group Admin Card -->
+		<!-- Group Stats Card (Admin View) -->
 		{#if showDeleteGroup}
-			<div class="card members-card">
+			<div class="card group-stats-card">
 				<div class="card-header">
-					<h2 class="card-title">Group Members</h2>
+					<h2 class="card-title">Group Statistics</h2>
 					<a href="/account/groups" class="manage-group-link">Manage Group →</a>
 				</div>
-				<ul class="members-list">
-					{#each allGroupMembers?.current ?? [] as member}
-						<li class="member-item">
-							<span class="member-avatar">{getName(member.userId).charAt(0).toUpperCase()}</span>
-							<span class="member-name">{getName(member.userId)}</span>
-						</li>
-					{/each}
-				</ul>
-			</div>
-
-			<div class="card invite-card">
-				<h2 class="card-title">Invite Members</h2>
-				<p class="card-description">Invite others to join your group by email.</p>
-				<form onsubmit={inviteMember} class="invite-form">
-					<div class="input-group">
-						<label for="email">Email Address</label>
-						<input
-							type="email"
-							id="email"
-							name="email"
-							placeholder="colleague@example.com"
-							required
-						/>
+				<p class="card-description">Overview of your group's activity and members.</p>
+				<div class="stats-grid">
+					<div class="stat-box">
+						<div class="stat-info">
+							<span class="stat-number">{allGroupMembers?.current?.length ?? 0}</span>
+							<span class="stat-label">Members</span>
+						</div>
 					</div>
-					<button class="primary-button" type="submit">Send Invitation</button>
-				</form>
-			</div>
-
-			<div class="card danger-card">
-				<h2 class="card-title danger-title">Danger Zone</h2>
-				<p class="card-description">
-					Deleting your group is permanent and cannot be undone. All group members will be removed.
-				</p>
-				<form onsubmit={deleteGroup}>
-					<button class="danger-button" type="submit">Delete Group</button>
-				</form>
+					<div class="stat-box">
+						<div class="stat-info">
+							<span class="stat-number">{groupEvents?.current?.length ?? 0}</span>
+							<span class="stat-label">Events</span>
+						</div>
+					</div>
+					<div class="stat-box">
+						<div class="stat-info">
+							<span class="stat-number">{groupShoppingList?.current?.length ?? 0}</span>
+							<span class="stat-label">Shopping Items</span>
+						</div>
+					</div>
+				</div>
 			</div>
 		{/if}
 
-		<!-- Logout Card -->
-		<div class="card logout-card">
+		<!-- Session Card -->
+		<div class="card session-card">
 			<h2 class="card-title">Session</h2>
-			<p class="card-description">Sign out of your account on this device.</p>
-			<button onclick={handleLogout} class="logout-button">
-				<LogoutIcon />
-				<span>Logout</span>
-			</button>
+			<p class="card-description">Manage your active sessions and devices.</p>
+			<div class="session-actions">
+				<button onclick={handleLogout} class="logout-button">
+					<LogoutIcon />
+					<span>Logout This Device</span>
+				</button>
+				<button onclick={handleLogoutAllDevices} class="logout-all-button">
+					<span>🔒</span>
+					<span>Logout All Devices</span>
+				</button>
+			</div>
 		</div>
 	</div>
 </div>
@@ -820,6 +903,22 @@
 		color: var(--grey);
 		margin-bottom: 1.5rem;
 		line-height: 1.5;
+	}
+
+	.info-banner {
+		padding: 0.875rem 1rem;
+		background: rgba(255, 212, 0, 0.1);
+		border-left: 3px solid var(--primary);
+		border-radius: 6px;
+		font-size: 0.9rem;
+		color: var(--textColor);
+		margin-bottom: 1rem;
+		line-height: 1.5;
+	}
+
+	.info-banner strong {
+		color: var(--textColor);
+		font-weight: 600;
 	}
 
 	/* Subscription Card Styles */
@@ -1107,8 +1206,7 @@
 	}
 
 	/* Forms */
-	.group-form,
-	.invite-form {
+	.group-form {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
@@ -1279,83 +1377,8 @@
 		transform: translateY(-1px);
 	}
 
-	/* Members List */
-	.members-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.member-item {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		padding: 0.75rem;
-		background: var(--backgroundGrey);
-		border-radius: 8px;
-		transition: background 0.2s ease;
-	}
-
-	.member-item:hover {
-		background: var(--lineColor);
-	}
-
-	.member-avatar {
-		width: 40px;
-		height: 40px;
-		border-radius: 50%;
-		background: var(--primary);
-		color: var(--buttonTextColor);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-weight: 700;
-		font-size: 1.1rem;
-	}
-
-	.member-name {
-		font-weight: 600;
-		color: var(--textColor);
-	}
-
-	/* Danger Zone */
-	.danger-card {
-		border-color: rgba(202, 46, 85, 0.3);
-	}
-
-	.danger-title {
-		color: var(--danger);
-	}
-
-	.danger-button {
-		width: 100%;
-		padding: 0.875rem 1.5rem;
-		background: var(--danger);
-		color: white;
-		border: none;
-		border-radius: 8px;
-		font-size: 1rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		box-shadow: var(--level-1);
-	}
-
-	.danger-button:hover {
-		background: #a02445;
-		transform: translateY(-1px);
-		box-shadow: var(--level-2);
-	}
-
-	.danger-button:active {
-		transform: translateY(0);
-	}
-
-	/* Logout Card */
-	.logout-card {
+	/* Session Card */
+	.session-card {
 		background: var(--backgroundGrey);
 	}
 
@@ -1415,6 +1438,120 @@
 		color: var(--primary);
 	}
 
+	/* Group Stats Card */
+	.group-stats-card {
+		grid-column: span 1;
+	}
+
+	.stats-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 1rem;
+		margin-top: 1rem;
+	}
+
+	.stat-box {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 1.5rem 1rem;
+		background: var(--backgroundGrey);
+		border-radius: 8px;
+		transition: all 0.2s;
+		border: 1px solid transparent;
+	}
+
+	.stat-box:hover {
+		transform: translateY(-2px);
+		border-color: var(--primary);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	}
+
+	.stat-info {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+	}
+
+	.stat-number {
+		font-size: 2rem;
+		font-weight: 700;
+		color: var(--textColor);
+		line-height: 1;
+		margin-bottom: 0.5rem;
+	}
+
+	.stat-label {
+		font-size: 0.9rem;
+		color: var(--grey);
+		font-weight: 500;
+	}
+
+	/* Session Actions */
+	.session-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		margin-top: 1rem;
+	}
+
+	.logout-all-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.875rem 1.5rem;
+		background: var(--backgroundGrey);
+		color: var(--textColor);
+		border: 1px solid var(--lineColor);
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		width: 100%;
+	}
+
+	.logout-all-button:hover {
+		background: var(--level-2);
+		border-color: var(--danger);
+		color: var(--danger);
+	}
+
+	.logout-all-button span:first-child {
+		font-size: 1.2rem;
+	}
+
+	/* Subscription Actions */
+	.subscription-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		margin-top: 1rem;
+	}
+
+	.secondary-button {
+		display: inline-block;
+		text-align: center;
+		padding: 0.875rem 1.5rem;
+		background: var(--backgroundGrey);
+		color: var(--textColor);
+		border: 1px solid var(--lineColor);
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 600;
+		text-decoration: none;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.secondary-button:hover {
+		background: var(--level-2);
+		border-color: var(--primary);
+		color: var(--primary);
+	}
+
 	/* Responsive adjustments */
 	@media (max-width: 768px) {
 		.page-title {
@@ -1422,6 +1559,10 @@
 		}
 
 		.cards-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.stats-grid {
 			grid-template-columns: 1fr;
 		}
 

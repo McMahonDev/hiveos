@@ -1,7 +1,16 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { Query } from 'zero-svelte';
 
 	const { data } = $props();
+	const z = data.z;
+	let userId = $derived(data.id);
+
+	const user = $derived(
+		z && z.current ? new Query(z.current.query.user.where('id', userId)) : null
+	);
+
+	const currentTier = $derived(user?.current?.[0]?.subscription_tier || 'free');
 
 	const pricingTiers = [
 		{
@@ -62,8 +71,25 @@
 		}
 	];
 
+	// Filter tiers based on current subscription
+	const visibleTiers = $derived(
+		pricingTiers
+			.filter((tier) => {
+				// If user is on individual or family, hide free tier
+				if (currentTier === 'individual' || currentTier === 'family') {
+					return tier.id !== 'free';
+				}
+				return true;
+			})
+			.map((tier) => ({
+				...tier,
+				buttonText: tier.id === currentTier ? 'Current Plan' : tier.buttonText,
+				buttonDisabled: tier.id === currentTier
+			}))
+	);
+
 	async function handleUpgrade(tierId: string) {
-		if (tierId === 'free') return;
+		if (tierId === 'free' || tierId === currentTier) return;
 
 		// Mock checkout redirect - in production this would create a Stripe session
 		await goto(`/api/mock-checkout?session=cs_mock_${tierId}&tier=${tierId}`);
@@ -77,7 +103,7 @@
 	</div>
 
 	<div class="pricing-grid">
-		{#each pricingTiers as tier}
+		{#each visibleTiers as tier}
 			<div
 				class="pricing-card"
 				class:featured={tier.featured}
