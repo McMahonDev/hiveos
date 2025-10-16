@@ -115,11 +115,7 @@ export const actions: Actions = {
 			const groupId = accessCodeRecord.groupId;
 
 			// Get group details
-			const [group] = await db
-				.select()
-				.from(userGroups)
-				.where(eq(userGroups.id, groupId))
-				.limit(1);
+			const [group] = await db.select().from(userGroups).where(eq(userGroups.id, groupId)).limit(1);
 
 			if (!group) {
 				return fail(404, { error: 'Group not found' });
@@ -147,10 +143,7 @@ export const actions: Actions = {
 				.where(eq(user.id, userId));
 
 			// Decrement uses remaining if applicable
-			if (
-				accessCodeRecord.usesRemaining !== null &&
-				accessCodeRecord.usesRemaining !== undefined
-			) {
+			if (accessCodeRecord.usesRemaining !== null && accessCodeRecord.usesRemaining !== undefined) {
 				await db
 					.update(accessCodes)
 					.set({

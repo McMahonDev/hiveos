@@ -236,10 +236,7 @@
 			<div class="card access-codes-card">
 				<div class="card-header">
 					<h2 class="card-title">Access Codes</h2>
-					<button
-						class="primary-button"
-						onclick={() => (showCodeGenerator = !showCodeGenerator)}
-					>
+					<button class="primary-button" onclick={() => (showCodeGenerator = !showCodeGenerator)}>
 						{showCodeGenerator ? 'Cancel' : '+ Generate Code'}
 					</button>
 				</div>
@@ -285,9 +282,7 @@
 							</div>
 						</div>
 
-						<button class="primary-button" onclick={generateAccessCode}>
-							Generate Code
-						</button>
+						<button class="primary-button" onclick={generateAccessCode}> Generate Code </button>
 					</div>
 				{/if}
 
@@ -339,10 +334,7 @@
 											</td>
 											<td>{formatDate(code.createdAt)}</td>
 											<td>
-												<button
-													class="delete-button"
-													onclick={() => deleteAccessCode(code.id)}
-												>
+												<button class="delete-button" onclick={() => deleteAccessCode(code.id)}>
 													Delete
 												</button>
 											</td>

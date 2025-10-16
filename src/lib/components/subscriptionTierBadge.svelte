@@ -159,7 +159,9 @@
 		border-radius: 8px;
 		text-align: center;
 		font-weight: 600;
-		transition: transform 0.2s, box-shadow 0.2s;
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
 	}
 
 	.upgrade-button:hover {

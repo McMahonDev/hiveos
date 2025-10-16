@@ -211,9 +211,7 @@
 					disabled={isLoading}
 					on:blur={validateAccessCodeIfProvided}
 				/>
-				<p class="input-hint">
-					Have a family or team access code? Enter it to join automatically.
-				</p>
+				<p class="input-hint">Have a family or team access code? Enter it to join automatically.</p>
 				{#if validatedCodeData}
 					<p class="input-success">
 						✓ Valid code! You'll be added to "{validatedCodeData.groupName}"
