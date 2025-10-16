@@ -261,6 +261,15 @@
 		gap: 20px;
 		/* height: calc(100dvh - var(--headerHeight) - var(--footerHeight)); */
 		/* min-height: calc(100vh - var(--headerHeight)); */
+
+		/* Single column centered layout when not authenticated */
+		&:not(:has(aside)) {
+			grid-template-columns: 1fr;
+			max-width: 600px;
+			margin: 0 auto;
+			gap: 0;
+		}
+
 		@media screen and (max-width: 690px) {
 			grid-template-columns: 1fr;
 			grid-template-rows: auto 1fr;
