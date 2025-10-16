@@ -366,52 +366,74 @@ export type AccessCode = Row<typeof schema.tables.accessCodes>;
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	const isUser = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'user'>) =>
 		cmp('id', '=', authData.sub);
-	
+
 	const isEventsCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'events'>) =>
 		cmp('createdById', '=', authData.sub);
 	const isEventsAssignedTo = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'events'>) =>
 		cmp('assignedToId', '=', authData.groupId ?? '__never__');
 
 	// Explicit OR: allow if user created the event OR the event is assigned to the user (personal) OR assigned to their group (shared)
-	const canViewOrMutateEvents = (authData: AuthData, { or, cmp }: ExpressionBuilder<Schema, 'events'>) =>
+	const canViewOrMutateEvents = (
+		authData: AuthData,
+		{ or, cmp }: ExpressionBuilder<Schema, 'events'>
+	) =>
 		or(
 			cmp('createdById', '=', authData.sub),
 			cmp('assignedToId', '=', authData.sub), // Personal mode items
 			authData.groupId ? cmp('assignedToId', '=', authData.groupId) : cmp('id', '=', '__never__') // Shared mode items
 		);
 
-	const isShoppingListCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
-		cmp('createdById', '=', authData.sub);
-	const canViewOrMutateShoppingList = (authData: AuthData, { or, cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
+	const isShoppingListCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'shoppingList'>
+	) => cmp('createdById', '=', authData.sub);
+	const canViewOrMutateShoppingList = (
+		authData: AuthData,
+		{ or, cmp }: ExpressionBuilder<Schema, 'shoppingList'>
+	) =>
 		or(
 			cmp('createdById', '=', authData.sub),
 			cmp('assignedToId', '=', authData.sub), // Personal mode items
 			authData.groupId ? cmp('assignedToId', '=', authData.groupId) : cmp('id', '=', '__never__') // Shared mode items
 		);
 
-	const isUserGroupCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroups'>) =>
-		cmp('createdById', '=', authData.sub);
-	const isUserGroupMember = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>) =>
-		cmp('userId', '=', authData.sub);
+	const isUserGroupCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'userGroups'>
+	) => cmp('createdById', '=', authData.sub);
+	const isUserGroupMember = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>
+	) => cmp('userId', '=', authData.sub);
 
-	const canViewUserGroupMembers = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>) =>
-		cmp('userGroupCreatorId', '=', authData.sub);
+	const canViewUserGroupMembers = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>
+	) => cmp('userGroupCreatorId', '=', authData.sub);
 
 	// Custom lists permissions - user must be creator OR assigned to it
-	const isCustomListCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'customLists'>) =>
-		cmp('createdById', '=', authData.sub);
+	const isCustomListCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'customLists'>
+	) => cmp('createdById', '=', authData.sub);
 
 	// Custom list items - must have access to parent list
-	const isCustomListItemCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'customListItems'>) =>
-		cmp('createdById', '=', authData.sub);
+	const isCustomListItemCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'customListItems'>
+	) => cmp('createdById', '=', authData.sub);
 
 	// ViewModeCategories - user must be the owner
-	const isViewModeCategoryOwner = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'viewModeCategories'>) =>
-		cmp('userId', '=', authData.sub);
+	const isViewModeCategoryOwner = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'viewModeCategories'>
+	) => cmp('userId', '=', authData.sub);
 
 	// AccessCodes - created by admins, viewable by group members
-	const isAccessCodeCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'accessCodes'>) =>
-		cmp('createdById', '=', authData.sub);
+	const isAccessCodeCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'accessCodes'>
+	) => cmp('createdById', '=', authData.sub);
 
 	return {
 		// Application tables

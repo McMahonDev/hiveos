@@ -1,11 +1,13 @@
 # Group & Subscription Tier Schema Updates
 
 ## Overview
+
 Updated database schemas to support tiered subscriptions and group access codes system.
 
 ## Subscription Tiers
 
 ### Tier Types
+
 - `free` - Default tier, solo user, limited features
 - `individual` - $5/month, unlimited data, can collaborate with other paid users
 - `family_member` - Member of a family plan
@@ -16,23 +18,31 @@ Updated database schemas to support tiered subscriptions and group access codes 
 ## Schema Changes
 
 ### User Table
+
 Added to `user` table:
+
 - `subscription_tier` (text, NOT NULL, default: 'free') - User's subscription level
 - `active_group_id` (text, nullable) - Reference to the group user is currently in (users can only join one group)
 
 ### UserGroups Table
+
 Added to `userGroups` table:
+
 - `groupType` (text) - Type of group: 'family', 'team', etc.
 - `maxMembers` (integer) - Maximum number of members allowed in the group
 - `createdAt` (timestamp) - When the group was created
 
 ### UserGroupMembers Table
+
 Added to `userGroupMembers` table:
+
 - `isAdmin` (boolean, default: false) - Whether this member has admin privileges (multiple admins allowed)
 - `joinedAt` (timestamp) - When the member joined the group
 
 ### AccessCodes Table (NEW)
+
 New table for managing group invitation codes:
+
 - `id` (text, PRIMARY KEY) - Unique identifier
 - `code` (text, UNIQUE, NOT NULL) - The actual access code (e.g., "FAMILY-2024-XYZ")
 - `groupId` (text, NOT NULL) - Reference to userGroups table
@@ -45,23 +55,27 @@ New table for managing group invitation codes:
 ## Business Logic
 
 ### Group Membership
+
 - Users can only be in **one group at a time** (tracked via `active_group_id`)
 - Groups can have **multiple admins** (tracked via `isAdmin` in `userGroupMembers`)
 - Default creator is always an admin
 - Admins cannot see payment information (exception noted in requirements)
 
 ### Data Separation
+
 - When joining a group, user's existing data stays in their personal/custom views
 - Group data is in a separate shared view accessible to all group members
 - Personal data remains private even after joining a group
 
 ### Tier Restrictions
+
 - **Free tier**: Can't interact with other users, data limits, single device
 - **Individual tier ($5)**: Can interact with other paid users
 - **Family tier ($20)**: Up to 6 accounts, access via codes
 - **Free users in groups**: Get full features except admin features
 
 ### Access Codes
+
 - Created by group admins
 - Can be single-use or multi-use
 - Optional expiration dates
@@ -70,9 +84,10 @@ New table for managing group invitation codes:
 ## Permissions
 
 ### AccessCodes Permissions
+
 - **Select**: ANYONE_CAN (needed for signup flow to validate codes)
 - **Insert**: Only code creator/admin
-- **Update**: Only code creator/admin  
+- **Update**: Only code creator/admin
 - **Delete**: Only code creator/admin
 
 ## Migration Details
@@ -80,6 +95,7 @@ New table for managing group invitation codes:
 **Migration file**: `drizzle/0012_oval_quasar.sql`
 
 Key migration steps:
+
 1. Created `accessCodes` table with unique constraint on `code`
 2. Added `subscription_tier` to user with default 'free'
 3. Added `active_group_id` to user
