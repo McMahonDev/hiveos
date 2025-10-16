@@ -49,13 +49,18 @@ export const shoppingList = pgTable('shoppingList', {
 export const userGroups = pgTable('userGroups', {
 	id: text('id').primaryKey(),
 	name: text('name'),
-	createdById: text('createdById')
+	createdById: text('createdById'),
+	groupType: text('groupType'), // 'family', 'team', etc.
+	maxMembers: integer('maxMembers'), // Maximum number of members allowed
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
 });
 export const userGroupMembers = pgTable('userGroupMembers', {
 	id: text('id').primaryKey(),
 	userId: text('userId'),
 	userGroupId: text('userGroupId'),
-	userGroupCreatorId: text('userGroupCreatorId')
+	userGroupCreatorId: text('userGroupCreatorId'),
+	isAdmin: boolean('isAdmin').$defaultFn(() => false),
+	joinedAt: timestamp('joinedAt').$defaultFn(() => new Date())
 });
 
 // --- UserGroupRequests Table ---
@@ -90,6 +95,17 @@ export const viewModeCategories = pgTable('viewModeCategories', {
 	id: text('id').primaryKey(),
 	name: text('name'),
 	userId: text('userId'),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
+});
+
+export const accessCodes = pgTable('accessCodes', {
+	id: text('id').primaryKey(),
+	code: text('code').notNull().unique(),
+	groupId: text('groupId').notNull(),
+	createdById: text('createdById').notNull(),
+	usesRemaining: integer('usesRemaining'),
+	maxUses: integer('maxUses'),
+	expiresAt: timestamp('expiresAt'),
 	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
 });
 
@@ -189,6 +205,17 @@ export const customListItemsRelations = relations(customListItems, ({ one }) => 
 export const viewModeCategoriesRelations = relations(viewModeCategories, ({ one }) => ({
 	user: one(user, {
 		fields: [viewModeCategories.userId],
+		references: [user.id]
+	})
+}));
+
+export const accessCodesRelations = relations(accessCodes, ({ one }) => ({
+	group: one(userGroups, {
+		fields: [accessCodes.groupId],
+		references: [userGroups.id]
+	}),
+	createdBy: one(user, {
+		fields: [accessCodes.createdById],
 		references: [user.id]
 	})
 }));

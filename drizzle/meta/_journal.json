@@ -85,6 +85,13 @@
       "when": 1760125890707,
       "tag": "0011_third_king_cobra",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1760573913042,
+      "tag": "0012_oval_quasar",
+      "breakpoints": true
     }
   ]
 }

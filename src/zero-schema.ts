@@ -26,7 +26,9 @@ const user = table('user')
 		email_verified: boolean(), // Database uses snake_case
 		image: string().optional(),
 		created_at: number(), // Database uses snake_case
-		updated_at: number() // Database uses snake_case
+		updated_at: number(), // Database uses snake_case
+		subscription_tier: string(), // Database uses snake_case, values: 'free', 'individual', 'family_member', 'family_admin', 'team_member', 'team_admin'
+		active_group_id: string().optional() // Database uses snake_case
 	})
 	.primaryKey('id');
 
@@ -119,7 +121,10 @@ const userGroups = table('userGroups')
 	.columns({
 		id: string(),
 		name: string(),
-		createdById: string()
+		createdById: string(),
+		groupType: string(), // 'family', 'team', etc.
+		maxMembers: number(), // Maximum number of members allowed
+		createdAt: number() // Timestamp when group was created
 	})
 	.primaryKey('id');
 
@@ -128,7 +133,9 @@ const userGroupMembers = table('userGroupMembers')
 		id: string(),
 		userId: string(),
 		userGroupId: string(),
-		userGroupCreatorId: string()
+		userGroupCreatorId: string(),
+		isAdmin: boolean(), // Whether this member has admin privileges
+		joinedAt: number() // Timestamp when member joined
 	})
 	.primaryKey('id');
 
@@ -171,6 +178,19 @@ const viewModeCategories = table('viewModeCategories')
 		name: string(),
 		userId: string(),
 		createdAt: number()
+	})
+	.primaryKey('id');
+
+const accessCodes = table('accessCodes')
+	.columns({
+		id: string(),
+		code: string(), // The actual access code (e.g., "FAMILY-2024-XYZ")
+		groupId: string(), // Reference to userGroups
+		createdById: string(), // Admin who created the code
+		usesRemaining: number().optional(), // Null = unlimited, number = limited uses
+		maxUses: number().optional(), // Maximum uses allowed (for tracking)
+		expiresAt: number().optional(), // Timestamp when code expires (optional)
+		createdAt: number() // When the code was created
 	})
 	.primaryKey('id');
 
@@ -282,6 +302,19 @@ const viewModeCategoriesRelationships = relationships(viewModeCategories, ({ one
 	})
 }));
 
+const accessCodesRelationships = relationships(accessCodes, ({ one }) => ({
+	group: one({
+		sourceField: ['groupId'],
+		destSchema: userGroups,
+		destField: ['id']
+	}),
+	createdBy: one({
+		sourceField: ['createdById'],
+		destSchema: user,
+		destField: ['id']
+	})
+}));
+
 export const schema = createSchema({
 	tables: [
 		user,
@@ -296,7 +329,8 @@ export const schema = createSchema({
 		userGroupRequests,
 		customLists,
 		customListItems,
-		viewModeCategories
+		viewModeCategories,
+		accessCodes
 	],
 	relationships: [
 		taskRelationships,
@@ -308,7 +342,8 @@ export const schema = createSchema({
 		accountRelationships,
 		customListRelationships,
 		customListItemRelationships,
-		viewModeCategoriesRelationships
+		viewModeCategoriesRelationships,
+		accessCodesRelationships
 	]
 });
 
@@ -326,6 +361,7 @@ export type UserGroupRequest = Row<typeof schema.tables.userGroupRequests>;
 export type CustomList = Row<typeof schema.tables.customLists>;
 export type CustomListItem = Row<typeof schema.tables.customListItems>;
 export type ViewModeCategory = Row<typeof schema.tables.viewModeCategories>;
+export type AccessCode = Row<typeof schema.tables.accessCodes>;
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	const isUser = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'user'>) =>
@@ -372,6 +408,10 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	// ViewModeCategories - user must be the owner
 	const isViewModeCategoryOwner = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'viewModeCategories'>) =>
 		cmp('userId', '=', authData.sub);
+
+	// AccessCodes - created by admins, viewable by group members
+	const isAccessCodeCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'accessCodes'>) =>
+		cmp('createdById', '=', authData.sub);
 
 	return {
 		// Application tables
@@ -472,6 +512,17 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 					postMutation: [isViewModeCategoryOwner]
 				},
 				delete: [isViewModeCategoryOwner]
+			}
+		},
+		accessCodes: {
+			row: {
+				select: ANYONE_CAN, // Anyone can view codes (needed for signup flow)
+				insert: [isAccessCodeCreator], // Only creator/admin can create
+				update: {
+					preMutation: [isAccessCodeCreator], // Only creator/admin can update
+					postMutation: [isAccessCodeCreator]
+				},
+				delete: [isAccessCodeCreator] // Only creator/admin can delete
 			}
 		}
 	};
