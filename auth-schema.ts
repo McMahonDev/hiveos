@@ -16,8 +16,14 @@ export const user = pgTable('user', {
 		.notNull(),
 	subscriptionTier: text('subscription_tier')
 		.$defaultFn(() => 'free')
-		.notNull(),
-	activeGroupId: text('active_group_id')
+		.notNull(), // 'free', 'individual' ($5), 'family' ($20)
+	activeGroupId: text('active_group_id'),
+	// Subscription metadata for payment tracking
+	subscriptionStatus: text('subscription_status'), // 'active', 'canceled', 'past_due', 'trialing', null
+	subscriptionId: text('subscription_id'), // Stripe subscription ID
+	stripeCustomerId: text('stripe_customer_id'), // Stripe customer ID
+	currentPeriodEnd: timestamp('current_period_end'), // When current billing period ends
+	cancelAtPeriodEnd: boolean('cancel_at_period_end').$defaultFn(() => false) // Whether subscription cancels at period end
 });
 
 export const session = pgTable('session', {

@@ -187,7 +187,7 @@
 <div class="groups-container">
 	<div class="page-header">
 		<h1 class="page-title">Group Management</h1>
-		<a href="/settings" class="back-link">← Back to Settings</a>
+		<a href="/account" class="back-link">← Back to Settings</a>
 	</div>
 
 	{#if successMessage}

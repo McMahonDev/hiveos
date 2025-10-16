@@ -27,8 +27,14 @@ const user = table('user')
 		image: string().optional(),
 		created_at: number(), // Database uses snake_case
 		updated_at: number(), // Database uses snake_case
-		subscription_tier: string(), // Database uses snake_case, values: 'free', 'individual', 'family_member', 'family_admin', 'team_member', 'team_admin'
-		active_group_id: string().optional() // Database uses snake_case
+		subscription_tier: string(), // Database uses snake_case, values: 'free', 'individual' ($5), 'family' ($20)
+		active_group_id: string().optional(), // Database uses snake_case
+		// Subscription metadata for payment tracking
+		subscription_status: string().optional(), // 'active', 'canceled', 'past_due', 'trialing', null
+		subscription_id: string().optional(), // Stripe subscription ID
+		stripe_customer_id: string().optional(), // Stripe customer ID
+		current_period_end: number().optional(), // When current billing period ends (timestamp)
+		cancel_at_period_end: boolean() // Whether subscription cancels at period end
 	})
 	.primaryKey('id');
 

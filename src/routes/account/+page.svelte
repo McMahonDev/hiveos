@@ -5,10 +5,13 @@
 	import { authClient } from '$lib/auth/client';
 	import LogoutIcon from '$lib/static/icons/logoutIcon.svelte';
 	import SubscriptionTierBadge from '$lib/components/subscriptionTierBadge.svelte';
+	import SubscriptionUpgradeModal from '$lib/components/subscriptionUpgradeModal.svelte';
 
 	const { data } = $props();
 	const z = data.z;
 	let userId = $derived(data.id);
+	let showFamilyPaymentModal = $state(false);
+	let pendingGroupName = $state('');
 
 	let isEditingProfile = $state(false);
 	let editName = $state('');
@@ -18,6 +21,14 @@
 	let verificationMessage = $state('');
 	let verificationError = $state('');
 	let isSendingVerification = $state(false);
+
+	// Access code state
+	let accessCodeInput = $state('');
+	let accessCodeValidating = $state(false);
+	let accessCodeError = $state('');
+	let accessCodeSuccess = $state('');
+	let validatedAccessCodeId = $state('');
+	let validatedGroupName = $state('');
 
 	let userGroupMembers = $derived(
 		z && z.current ? new Query(z.current.query.userGroupMembers.where('userId', userId)) : null
@@ -54,57 +65,83 @@
 	let allEvents = $derived(
 		z && z.current ? new Query(z.current.query.events.where('assignedToId', userId)) : null
 	);
+
 	function createGroup(event: Event) {
 		event.preventDefault();
 		const form = event.target as HTMLFormElement;
 		const name = form.groupName.value;
-		if (name) {
-			const id = nanoid();
-			z?.current.mutate.userGroups.insert({
-				id,
-				name: name,
-				createdById: userId,
-				groupType: 'family', // Default to family type
-				maxMembers: 6, // Default family plan limit
-				createdAt: Date.now()
-			});
-			z?.current.mutate.userGroupMembers.insert({
-				id: nanoid(),
-				userId: userId,
-				userGroupId: id,
-				userGroupCreatorId: userId,
-				isAdmin: true, // Creator is always admin
-				joinedAt: Date.now()
-			});
 
-			// Update user's active group and subscription tier
-			z?.current.mutate.user.update({
-				id: userId,
-				active_group_id: id,
-				subscription_tier: 'family_admin'
-			});
+		if (!name) return;
 
-			groupId = id;
-
-			form.reset();
-
-			// update all data to new group
-
-			allEvents?.current.forEach((event) => {
-				z?.current.mutate.events.update({
-					id: event.id,
-					assignedToId: groupId
-				});
-			});
-
-			allShoppingList?.current.forEach((item) => {
-				z?.current.mutate.shoppingList.update({
-					id: item.id,
-					assignedToId: groupId
-				});
-			});
+		// Check if user has any paid subscription
+		const currentTier = user?.current?.[0]?.subscription_tier;
+		if (currentTier === 'individual' || currentTier === 'family') {
+			// Already paid, create group immediately
+			actuallyCreateGroup(name);
+		} else {
+			// Free user - need to upgrade to individual first ($5)
+			pendingGroupName = name;
+			showFamilyPaymentModal = true;
 		}
+
+		form.reset();
 	}
+
+	async function handleFamilyPaymentConfirm() {
+		// Redirect to mock checkout for individual plan
+		// Note: Group creation happens AFTER upgrade, not automatically
+		await goto('/api/mock-checkout?session=cs_mock_individual&tier=individual');
+	}
+
+	function actuallyCreateGroup(name: string) {
+		const currentTier = user?.current?.[0]?.subscription_tier;
+		const id = nanoid();
+
+		// Determine group type based on subscription
+		const groupType = currentTier === 'family' ? 'family' : 'individual';
+		const maxMembers = currentTier === 'family' ? 6 : 99; // Family: 6, Individual: many
+
+		z?.current.mutate.userGroups.insert({
+			id,
+			name: name,
+			createdById: userId,
+			groupType: groupType,
+			maxMembers: maxMembers,
+			createdAt: Date.now()
+		});
+		z?.current.mutate.userGroupMembers.insert({
+			id: nanoid(),
+			userId: userId,
+			userGroupId: id,
+			userGroupCreatorId: userId,
+			isAdmin: true, // Creator is always admin
+			joinedAt: Date.now()
+		});
+
+		// Update user's active group (don't change subscription tier)
+		z?.current.mutate.user.update({
+			id: userId,
+			active_group_id: id
+		});
+
+		groupId = id;
+
+		// update all data to new group
+		allEvents?.current.forEach((event) => {
+			z?.current.mutate.events.update({
+				id: event.id,
+				assignedToId: groupId
+			});
+		});
+
+		allShoppingList?.current.forEach((item) => {
+			z?.current.mutate.shoppingList.update({
+				id: item.id,
+				assignedToId: groupId
+			});
+		});
+	}
+
 	function deleteGroup(event: Event) {
 		event.preventDefault();
 		if (group?.current[0]?.id) {
@@ -115,10 +152,14 @@
 			}
 
 			// Update user's active group and subscription tier
+			// Note: This keeps subscription active but removes group access
+			// User should cancel subscription separately via /account/subscription
 			z?.current.mutate.user.update({
 				id: userId,
 				active_group_id: null,
 				subscription_tier: 'free'
+				// Keep subscription_status, subscription_id, etc. for billing continuity
+				// User can cancel via subscription management page
 			});
 		}
 	}
@@ -290,6 +331,108 @@
 			isSendingVerification = false;
 		}
 	}
+
+	async function validateAccessCode() {
+		accessCodeError = '';
+		accessCodeSuccess = '';
+		validatedAccessCodeId = '';
+		validatedGroupName = '';
+
+		if (!accessCodeInput.trim()) {
+			accessCodeError = 'Please enter an access code';
+			return;
+		}
+
+		accessCodeValidating = true;
+
+		try {
+			const formData = new FormData();
+			formData.append('code', accessCodeInput.trim());
+
+			const response = await fetch('?/validateAccessCode', {
+				method: 'POST',
+				body: formData
+			});
+
+			const result = await response.json();
+
+			if (result.type === 'success' && result.data?.success) {
+				accessCodeSuccess = `✓ Valid code! Group: ${result.data.groupName}`;
+				validatedAccessCodeId = result.data.accessCodeId;
+				validatedGroupName = result.data.groupName;
+			} else if (result.type === 'failure') {
+				accessCodeError = result.data?.error || 'Invalid access code';
+			}
+		} catch (error) {
+			console.error('Error validating access code:', error);
+			accessCodeError = 'An error occurred. Please try again.';
+		} finally {
+			accessCodeValidating = false;
+		}
+	}
+
+	async function joinWithAccessCode(event: Event) {
+		event.preventDefault();
+
+		if (!validatedAccessCodeId) {
+			accessCodeError = 'Please validate the access code first';
+			return;
+		}
+
+		accessCodeValidating = true;
+		accessCodeError = '';
+
+		try {
+			const formData = new FormData();
+			formData.append('userId', userId);
+			formData.append('accessCodeId', validatedAccessCodeId);
+
+			const response = await fetch('?/joinWithAccessCode', {
+				method: 'POST',
+				body: formData
+			});
+
+			const result = await response.json();
+
+			if (result.type === 'success' && result.data?.success) {
+				accessCodeSuccess = result.data.message || 'Successfully joined group!';
+				accessCodeInput = '';
+				validatedAccessCodeId = '';
+
+				// Refresh the page to show new group
+				await invalidateAll();
+
+				// Clear success message after a delay
+				setTimeout(() => {
+					accessCodeSuccess = '';
+				}, 5000);
+			} else if (result.type === 'failure') {
+				accessCodeError = result.data?.error || 'Failed to join group';
+			}
+		} catch (error) {
+			console.error('Error joining with access code:', error);
+			accessCodeError = 'An error occurred. Please try again.';
+		} finally {
+			accessCodeValidating = false;
+		}
+	}
+
+	// Check for subscription success
+	$effect(() => {
+		if (typeof window !== 'undefined') {
+			const params = new URLSearchParams(window.location.search);
+			const success = params.get('success');
+
+			if (success === 'subscription_activated') {
+				// Payment successful - user can now create groups
+				// They need to enter group name again (better UX)
+				pendingGroupName = '';
+
+				// Clean URL
+				window.history.replaceState({}, '', '/account');
+			}
+		}
+	});
 </script>
 
 <div class="account-container">
@@ -384,9 +527,92 @@
 
 		<!-- Subscription Tier Card -->
 		<div class="card subscription-card">
-			<h2 class="card-title">Subscription Tier</h2>
-			<SubscriptionTierBadge user={user?.current[0] ?? null} showUpgradeButton={true} />
+			<h2 class="card-title">Subscription</h2>
+			<div class="subscription-info">
+				<div class="current-tier">
+					<span class="tier-label">Current Plan:</span>
+					<span class="tier-value">
+						{#if user?.current[0]?.subscription_tier === 'individual'}
+							Individual ($5/month)
+						{:else if user?.current[0]?.subscription_tier === 'family'}
+							Family Plan ($20/month)
+						{:else}
+							Free
+						{/if}
+					</span>
+				</div>
+				{#if user?.current[0]?.subscription_tier === 'free'}
+					<p class="upgrade-prompt-text">
+						Upgrade to unlock collaboration features, unlimited storage, and group management.
+					</p>
+					<a href="/account/upgrade" class="upgrade-link-button"> View Upgrade Options </a>
+				{:else}
+					<p class="paid-tier-info">
+						Thank you for supporting HiveOS! You have access to all premium features.
+					</p>
+					{#if user?.current[0]?.subscription_status === 'active'}
+						<div class="subscription-status">
+							<span class="status-badge active">Active</span>
+							{#if user?.current[0]?.current_period_end}
+								<span class="renewal-date">
+									Renews {new Date(user.current[0].current_period_end).toLocaleDateString()}
+								</span>
+							{/if}
+						</div>
+					{/if}
+				{/if}
+			</div>
 		</div>
+
+		<!-- Access Code Card (only for free users not in a group) -->
+		{#if user?.current[0]?.subscription_tier === 'free' && !group?.current[0]?.name}
+			<div class="card access-code-card">
+				<h2 class="card-title">Join with Access Code</h2>
+				<p class="card-description">
+					Have an access code from a family or team? Enter it below to join their group for free!
+				</p>
+
+				{#if accessCodeSuccess}
+					<div class="alert alert-success">{accessCodeSuccess}</div>
+				{/if}
+				{#if accessCodeError}
+					<div class="alert alert-error">{accessCodeError}</div>
+				{/if}
+
+				<form onsubmit={joinWithAccessCode} class="access-code-form">
+					<div class="input-group">
+						<label for="accessCode">Access Code</label>
+						<div class="access-code-input-wrapper">
+							<input
+								type="text"
+								id="accessCode"
+								bind:value={accessCodeInput}
+								onblur={validateAccessCode}
+								placeholder="FAMILY-2024-XXXX"
+								disabled={accessCodeValidating}
+								class:validated={validatedAccessCodeId}
+								class:error={accessCodeError}
+							/>
+							{#if accessCodeValidating}
+								<span class="validation-spinner">⏳</span>
+							{:else if validatedAccessCodeId}
+								<span class="validation-check">✓</span>
+							{/if}
+						</div>
+						{#if validatedGroupName}
+							<span class="validation-message success">Will join: {validatedGroupName}</span>
+						{/if}
+					</div>
+					<button
+						class="primary-button"
+						type="submit"
+						disabled={!validatedAccessCodeId || accessCodeValidating}
+					>
+						{accessCodeValidating ? 'Joining...' : 'Join Group'}
+					</button>
+				</form>
+			</div>
+		{/if}
 
 		<!-- Email Verification Card (only show if email is not verified) -->
 		{#if !user?.current[0]?.email_verified}
@@ -415,23 +641,33 @@
 
 		<!-- Group Management Card -->
 		{#if !group?.current[0]?.name}
-			<div class="card group-card">
-				<h2 class="card-title">Create a Group</h2>
-				<p class="card-description">Groups allow you to share tasks and collaborate with others.</p>
-				<form onsubmit={createGroup} class="group-form">
-					<div class="input-group">
-						<label for="groupName">Group Name</label>
-						<input
-							type="text"
-							id="groupName"
-							name="groupName"
-							placeholder="Enter group name"
-							required
-						/>
-					</div>
-					<button class="primary-button" type="submit">Create Group</button>
-				</form>
-			</div>
+			{#if user?.current[0]?.subscription_tier === 'individual' || user?.current[0]?.subscription_tier === 'family'}
+				<!-- Paid users can create groups -->
+				<div class="card group-card">
+					<h2 class="card-title">Create a Group</h2>
+					<p class="card-description">
+						{#if user?.current[0]?.subscription_tier === 'family'}
+							Create a family group with up to 6 members. Generate access codes for family members
+							to join for free.
+						{:else}
+							Create a group and collaborate with other Individual tier users.
+						{/if}
+					</p>
+					<form onsubmit={createGroup} class="group-form">
+						<div class="input-group">
+							<label for="groupName">Group Name</label>
+							<input
+								type="text"
+								id="groupName"
+								name="groupName"
+								placeholder="Enter group name"
+								required
+							/>
+						</div>
+						<button class="primary-button" type="submit">Create Group</button>
+					</form>
+				</div>
+			{/if}
 
 			<!-- Pending Requests Card -->
 			{#if userGroupRequests?.current && userGroupRequests.current.length > 0}
@@ -459,7 +695,11 @@
 			<div class="card group-member-card">
 				<h2 class="card-title">Your Group</h2>
 				<p class="card-description">You are a member of <strong>{group.current[0].name}</strong></p>
-				<a href="/settings/groups" class="primary-button" style="display: inline-block; text-decoration: none; text-align: center;">
+				<a
+					href="/account/groups"
+					class="primary-button"
+					style="display: inline-block; text-decoration: none; text-align: center;"
+				>
 					View Group Details
 				</a>
 			</div>
@@ -470,7 +710,7 @@
 			<div class="card members-card">
 				<div class="card-header">
 					<h2 class="card-title">Group Members</h2>
-					<a href="/settings/groups" class="manage-group-link">Manage Group →</a>
+					<a href="/account/groups" class="manage-group-link">Manage Group →</a>
 				</div>
 				<ul class="members-list">
 					{#each allGroupMembers?.current ?? [] as member}
@@ -523,6 +763,13 @@
 	</div>
 </div>
 
+<SubscriptionUpgradeModal
+	bind:show={showFamilyPaymentModal}
+	planType="family"
+	onClose={() => (showFamilyPaymentModal = false)}
+	onConfirm={handleFamilyPaymentConfirm}
+/>
+
 <style>
 	.account-container {
 		max-width: 1200px;
@@ -573,6 +820,150 @@
 		color: var(--grey);
 		margin-bottom: 1.5rem;
 		line-height: 1.5;
+	}
+
+	/* Subscription Card Styles */
+	.subscription-info {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.current-tier {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1rem;
+		background: var(--backgroundGrey);
+		border-radius: 8px;
+	}
+
+	.tier-label {
+		font-weight: 600;
+		color: var(--grey);
+		font-size: 0.95rem;
+	}
+
+	.tier-value {
+		font-weight: 700;
+		color: var(--textColor);
+		font-size: 1.1rem;
+	}
+
+	.upgrade-prompt-text {
+		margin: 0;
+		color: var(--grey);
+		font-size: 0.95rem;
+		line-height: 1.6;
+	}
+
+	.upgrade-link-button {
+		display: block;
+		text-align: center;
+		padding: 0.875rem 1.5rem;
+		background: var(--primary);
+		color: var(--buttonTextColor);
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition: all 0.2s ease;
+		box-shadow: var(--level-1);
+	}
+
+	.upgrade-link-button:hover {
+		background: #e6c000;
+		transform: translateY(-1px);
+		box-shadow: var(--level-2);
+	}
+
+	.paid-tier-info {
+		margin: 0;
+		color: var(--grey);
+		font-size: 0.95rem;
+		line-height: 1.6;
+	}
+
+	.subscription-status {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.75rem;
+		background: var(--backgroundGrey);
+		border-radius: 8px;
+	}
+
+	.status-badge {
+		padding: 0.25rem 0.75rem;
+		border-radius: 20px;
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+
+	.status-badge.active {
+		background: rgba(116, 200, 88, 0.15);
+		color: var(--green);
+		border: 1px solid rgba(116, 200, 88, 0.3);
+	}
+
+	.renewal-date {
+		font-size: 0.9rem;
+		color: var(--grey);
+	}
+
+	/* Access Code Card */
+	.access-code-card {
+		border: 2px solid #667eea;
+		background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+	}
+
+	.access-code-form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.access-code-input-wrapper {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+
+	.access-code-input-wrapper input {
+		flex: 1;
+		padding-right: 2.5rem;
+	}
+
+	.access-code-input-wrapper input.validated {
+		border-color: var(--green);
+		background: rgba(116, 200, 88, 0.05);
+	}
+
+	.access-code-input-wrapper input.error {
+		border-color: var(--danger);
+		background: rgba(202, 46, 85, 0.05);
+	}
+
+	.validation-spinner,
+	.validation-check {
+		position: absolute;
+		right: 1rem;
+		font-size: 1.2rem;
+	}
+
+	.validation-check {
+		color: var(--green);
+		font-weight: bold;
+	}
+
+	.validation-message {
+		font-size: 0.85rem;
+		margin-top: -0.25rem;
+	}
+
+	.validation-message.success {
+		color: var(--green);
+		font-weight: 600;
 	}
 
 	/* Profile Card */
