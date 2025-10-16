@@ -76,6 +76,14 @@
 				isAdmin: true, // Creator is always admin
 				joinedAt: Date.now()
 			});
+
+			// Update user's active group and subscription tier
+			z?.current.mutate.user.update({
+				id: userId,
+				active_group_id: id,
+				subscription_tier: 'family_admin'
+			});
+
 			groupId = id;
 
 			form.reset();
@@ -105,6 +113,13 @@
 			if (memberId) {
 				z?.current.mutate.userGroupMembers.delete({ id: memberId });
 			}
+
+			// Update user's active group and subscription tier
+			z?.current.mutate.user.update({
+				id: userId,
+				active_group_id: null,
+				subscription_tier: 'free'
+			});
 		}
 	}
 	function inviteMember(event: Event) {
@@ -439,12 +454,24 @@
 					</ul>
 				</div>
 			{/if}
+		{:else if group?.current[0]?.name && !showDeleteGroup}
+			<!-- Group Member Card (Non-Admin) -->
+			<div class="card group-member-card">
+				<h2 class="card-title">Your Group</h2>
+				<p class="card-description">You are a member of <strong>{group.current[0].name}</strong></p>
+				<a href="/settings/groups" class="primary-button" style="display: inline-block; text-decoration: none; text-align: center;">
+					View Group Details
+				</a>
+			</div>
 		{/if}
 
 		<!-- Group Admin Card -->
 		{#if showDeleteGroup}
 			<div class="card members-card">
-				<h2 class="card-title">Group Members</h2>
+				<div class="card-header">
+					<h2 class="card-title">Group Members</h2>
+					<a href="/settings/groups" class="manage-group-link">Manage Group →</a>
+				</div>
 				<ul class="members-list">
 					{#each allGroupMembers?.current ?? [] as member}
 						<li class="member-item">
@@ -968,6 +995,33 @@
 
 	.logout-button:active {
 		transform: translateY(0);
+	}
+
+	/* Group Management Link */
+	.manage-group-link {
+		color: var(--primary);
+		text-decoration: none;
+		font-weight: 600;
+		font-size: 0.95rem;
+		transition: color 0.2s;
+		white-space: nowrap;
+	}
+
+	.manage-group-link:hover {
+		color: #e6c000;
+		text-decoration: underline;
+	}
+
+	.group-member-card {
+		text-align: center;
+	}
+
+	.group-member-card .card-description {
+		margin-bottom: 1.5rem;
+	}
+
+	.group-member-card strong {
+		color: var(--primary);
 	}
 
 	/* Responsive adjustments */

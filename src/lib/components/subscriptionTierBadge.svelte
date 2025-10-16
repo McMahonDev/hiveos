@@ -75,6 +75,7 @@
 	const tier = $derived(user?.subscription_tier || 'free');
 	const info = $derived(tierInfo[tier] || tierInfo.free);
 	const isFreeTier = $derived(tier === 'free');
+	const isAdmin = $derived(tier === 'family_admin' || tier === 'team_admin');
 </script>
 
 <div class="tier-badge" style="background-color: {info.bgColor}; border-color: {info.color};">
@@ -91,6 +92,12 @@
 	{#if showUpgradeButton && isFreeTier}
 		<div class="tier-actions">
 			<a href="/settings/subscription" class="upgrade-button"> Upgrade Plan </a>
+		</div>
+	{/if}
+
+	{#if isAdmin}
+		<div class="tier-actions">
+			<a href="/settings/groups" class="manage-button"> Manage Group & Access Codes </a>
 		</div>
 	{/if}
 </div>
@@ -167,5 +174,25 @@
 	.upgrade-button:hover {
 		transform: translateY(-2px);
 		box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+	}
+
+	.manage-button {
+		display: inline-block;
+		width: 100%;
+		padding: 0.75rem 1.5rem;
+		background: linear-gradient(135deg, #ffd400 0%, #ff9800 100%);
+		color: #000;
+		text-decoration: none;
+		border-radius: 8px;
+		text-align: center;
+		font-weight: 600;
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
+	}
+
+	.manage-button:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 4px 12px rgba(255, 212, 0, 0.4);
 	}
 </style>
