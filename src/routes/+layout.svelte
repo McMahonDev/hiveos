@@ -22,7 +22,9 @@
 	let inGroup = $derived(data.groupId !== data.id);
 	let menu = $state<HTMLElement | null>(null);
 	let createListModalOpen = $state(false);
-	let selectedListType = $state<'basic' | 'shopping' | 'events' | 'tasks'>('basic');
+	let selectedListType = $state<
+		'basic' | 'shopping' | 'events' | 'tasks' | 'recipe' | 'messages' | 'contacts' | 'bookmarks'
+	>('basic');
 
 	let customLists = $state<Query<any, any, any> | undefined>(undefined);
 
@@ -223,6 +225,67 @@
 									<div class="option-text">
 										<strong>Task List</strong>
 										<small>Sortable tasks with drag & drop</small>
+									</div>
+								</div>
+							</label>
+
+							<label class="list-type-option">
+								<input type="radio" name="list-type" value="recipe" bind:group={selectedListType} />
+								<div class="option-content">
+									<span class="option-icon">📖</span>
+									<div class="option-text">
+										<strong>Recipe Box</strong>
+										<small>Ingredients, instructions & cooking times</small>
+									</div>
+								</div>
+							</label>
+
+							{#if inGroup}
+								<label class="list-type-option">
+									<input
+										type="radio"
+										name="list-type"
+										value="messages"
+										bind:group={selectedListType}
+									/>
+									<div class="option-content">
+										<span class="option-icon">💬</span>
+										<div class="option-text">
+											<strong>Messages</strong>
+											<small>Notes, reminders & communication</small>
+										</div>
+									</div>
+								</label>
+							{/if}
+
+							<label class="list-type-option">
+								<input
+									type="radio"
+									name="list-type"
+									value="contacts"
+									bind:group={selectedListType}
+								/>
+								<div class="option-content">
+									<span class="option-icon">👥</span>
+									<div class="option-text">
+										<strong>Contacts</strong>
+										<small>Phone, email & address book</small>
+									</div>
+								</div>
+							</label>
+
+							<label class="list-type-option">
+								<input
+									type="radio"
+									name="list-type"
+									value="bookmarks"
+									bind:group={selectedListType}
+								/>
+								<div class="option-content">
+									<span class="option-icon">🔖</span>
+									<div class="option-text">
+										<strong>Bookmarks</strong>
+										<small>Save and organize links</small>
 									</div>
 								</div>
 							</label>

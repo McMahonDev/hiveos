@@ -79,7 +79,7 @@ export const customLists = pgTable('customLists', {
 	createdById: text('createdById'),
 	createdAt: timestamp('createdAt').$defaultFn(() => new Date()),
 	viewMode: text('viewMode'),
-	listType: text('listType') // 'basic', 'shopping', 'events', 'tasks'
+	listType: text('listType') // 'basic', 'shopping', 'events', 'tasks', 'recipe', 'messages', 'contacts', 'bookmarks'
 });
 
 export const customListItems = pgTable('customListItems', {
@@ -102,7 +102,23 @@ export const customListItems = pgTable('customListItems', {
 	description: text('description'),
 	allDay: boolean('allDay'),
 	// Task list fields
-	sortOrder: integer('sortOrder')
+	sortOrder: integer('sortOrder'),
+	// Recipe fields
+	ingredients: text('ingredients'),
+	instructions: text('instructions'),
+	servings: integer('servings'),
+	prepTime: text('prepTime'),
+	cookTime: text('cookTime'),
+	// Messages/Notes fields
+	messageText: text('messageText'),
+	priority: text('priority'),
+	// Contacts fields
+	phone: text('phone'),
+	email: text('email'),
+	address: text('address'),
+	// Bookmarks fields
+	url: text('url'),
+	tags: text('tags')
 });
 
 export const viewModeCategories = pgTable('viewModeCategories', {

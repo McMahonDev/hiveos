@@ -163,7 +163,7 @@ const customLists = table('customLists')
 		createdById: string(),
 		createdAt: number(),
 		viewMode: string(), // 'personal', 'shared', or custom category ID
-		listType: string() // 'basic', 'shopping', 'events', 'tasks'
+		listType: string() // 'basic', 'shopping', 'events', 'tasks', 'recipe', 'messages', 'contacts', 'bookmarks'
 	})
 	.primaryKey('id');
 
@@ -188,7 +188,23 @@ const customListItems = table('customListItems')
 		description: string().optional(),
 		allDay: boolean().optional(),
 		// Task list fields
-		sortOrder: number().optional()
+		sortOrder: number().optional(),
+		// Recipe fields
+		ingredients: string().optional(), // JSON array or newline-separated
+		instructions: string().optional(), // Full recipe instructions
+		servings: number().optional(),
+		prepTime: string().optional(), // e.g., "15 mins"
+		cookTime: string().optional(), // e.g., "30 mins"
+		// Messages/Notes fields
+		messageText: string().optional(), // Full message content
+		priority: string().optional(), // 'low', 'medium', 'high', 'urgent'
+		// Contacts fields
+		phone: string().optional(),
+		email: string().optional(),
+		address: string().optional(),
+		// Bookmarks fields
+		url: string().optional(),
+		tags: string().optional() // Comma-separated tags
 	})
 	.primaryKey('id');
 
