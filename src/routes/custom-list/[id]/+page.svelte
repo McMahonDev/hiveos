@@ -70,7 +70,7 @@
 			const query = z.current.query.customListItems
 				.where('customListId', listId)
 				.where('viewMode', viewModeState.currentMode);
-			
+
 			// For task lists, order by sortOrder
 			if (listType === 'tasks') {
 				customListItems = new Query(query.orderBy('sortOrder', 'asc'));
@@ -103,7 +103,7 @@
 
 	let savedStores = $derived.by(() => {
 		if (listType !== 'shopping') return [];
-		
+
 		const storesSet = new Set<string>();
 		localStorageStores.forEach((store) => {
 			if (store && store.trim()) storesSet.add(store.trim());
@@ -202,9 +202,46 @@
 			itemData.allDay = allDayChecked;
 		} else if (listType === 'tasks') {
 			// Get the highest sortOrder and add 1
-			const maxOrder = customListItems?.current?.reduce((max: number, item: any) => 
-				Math.max(max, item.sortOrder || 0), 0) || 0;
+			const maxOrder =
+				customListItems?.current?.reduce(
+					(max: number, item: any) => Math.max(max, item.sortOrder || 0),
+					0
+				) || 0;
 			itemData.sortOrder = maxOrder + 1;
+		} else if (listType === 'recipe') {
+			let ingredients = formData.get('ingredients') as string;
+			let instructions = formData.get('instructions') as string;
+			let servings = formData.get('servings') as string;
+			let prepTime = formData.get('prepTime') as string;
+			let cookTime = formData.get('cookTime') as string;
+
+			itemData.ingredients = ingredients || undefined;
+			itemData.instructions = instructions || undefined;
+			itemData.servings = servings ? parseInt(servings) : undefined;
+			itemData.prepTime = prepTime || undefined;
+			itemData.cookTime = cookTime || undefined;
+		} else if (listType === 'messages') {
+			let messageText = formData.get('messageText') as string;
+			let priority = formData.get('priority') as string;
+
+			itemData.messageText = messageText || undefined;
+			itemData.priority = priority || 'medium';
+		} else if (listType === 'contacts') {
+			let phone = formData.get('phone') as string;
+			let email = formData.get('email') as string;
+			let address = formData.get('address') as string;
+
+			itemData.phone = phone || undefined;
+			itemData.email = email || undefined;
+			itemData.address = address || undefined;
+		} else if (listType === 'bookmarks') {
+			let url = formData.get('url') as string;
+			let tags = formData.get('tags') as string;
+			let description = formData.get('description') as string;
+
+			itemData.url = url || undefined;
+			itemData.tags = tags || undefined;
+			itemData.description = description || undefined;
 		}
 
 		z?.current.mutate.customListItems.insert(itemData);
@@ -292,7 +329,9 @@
 		e.preventDefault();
 		if (!draggedItem || draggedItem.id === targetItem.id) return;
 
-		const items = customListItems?.current || [];
+		const items = customListItems?.current;
+		if (!items || !Array.isArray(items)) return;
+
 		const draggedIndex = items.findIndex((i: any) => i.id === draggedItem.id);
 		const targetIndex = items.findIndex((i: any) => i.id === targetItem.id);
 
@@ -344,13 +383,17 @@
 		{#if customListItems?.current && Array.isArray(customListItems.current)}
 			<div class="list-items" class:task-list={listType === 'tasks'}>
 				{#each customListItems.current as item (item.id)}
-					<div 
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+					<div
 						class="list-item"
 						class:draggable={listType === 'tasks'}
 						draggable={listType === 'tasks'}
 						ondragstart={(e) => handleDragStart(e, item)}
 						ondragover={handleDragOver}
 						ondrop={(e) => handleDrop(e, item)}
+						role={listType === 'tasks' ? 'button' : undefined}
+						tabindex={listType === 'tasks' ? 0 : undefined}
 					>
 						{#if editingItemId === item.id}
 							<div class="item-content editing">
@@ -372,18 +415,18 @@
 							{#if listType === 'tasks'}
 								<span class="drag-handle">☰</span>
 							{/if}
-							
+
 							{#if listType === 'basic' || listType === 'shopping' || listType === 'tasks'}
-								<input 
-									type="checkbox" 
-									checked={item.status} 
+								<input
+									type="checkbox"
+									checked={item.status}
 									onchange={() => toggleItemStatus(item.id)}
 								/>
 							{/if}
 
 							<div class="item-content">
 								<p class="item-name" class:completed={item.status}>{item.name}</p>
-								
+
 								{#if listType === 'shopping' && item.store}
 									<span class="item-store">📍 {item.store}</span>
 								{/if}
@@ -404,6 +447,95 @@
 										{/if}
 										{#if item.description}
 											<p class="event-description">{item.description}</p>
+										{/if}
+									</div>
+								{/if}
+
+								{#if listType === 'recipe'}
+									<div class="recipe-details">
+										{#if item.servings}
+											<span class="recipe-servings">🍽️ Serves {item.servings}</span>
+										{/if}
+										{#if item.prepTime}
+											<span class="recipe-time">⏱️ Prep: {item.prepTime}</span>
+										{/if}
+										{#if item.cookTime}
+											<span class="recipe-time">🔥 Cook: {item.cookTime}</span>
+										{/if}
+										{#if item.ingredients}
+											<details class="recipe-section">
+												<summary>Ingredients</summary>
+												<pre class="recipe-text">{item.ingredients}</pre>
+											</details>
+										{/if}
+										{#if item.instructions}
+											<details class="recipe-section">
+												<summary>Instructions</summary>
+												<pre class="recipe-text">{item.instructions}</pre>
+											</details>
+										{/if}
+									</div>
+								{/if}
+
+								{#if listType === 'messages'}
+									<div class="message-details">
+										{#if item.messageText}
+											<p class="message-text">{item.messageText}</p>
+										{/if}
+										{#if item.priority}
+											<span class="message-priority priority-{item.priority}">{item.priority}</span>
+										{/if}
+										{#if item.tags}
+											<div class="message-tags">
+												{#each item.tags.split(',').map((t: string) => t.trim()) as tag}
+													<span class="tag">{tag}</span>
+												{/each}
+											</div>
+										{/if}
+									</div>
+								{/if}
+
+								{#if listType === 'contacts'}
+									<div class="contact-details">
+										{#if item.phone}
+											<span class="contact-info">📱 {item.phone}</span>
+										{/if}
+										{#if item.email}
+											<span class="contact-info">✉️ {item.email}</span>
+										{/if}
+										{#if item.address}
+											<span class="contact-info">🏠 {item.address}</span>
+										{/if}
+										{#if item.company}
+											<span class="contact-info">🏢 {item.company}</span>
+										{/if}
+										{#if item.notes}
+											<p class="contact-notes">{item.notes}</p>
+										{/if}
+									</div>
+								{/if}
+
+								{#if listType === 'bookmarks'}
+									<div class="bookmark-details">
+										{#if item.url}
+											<a
+												href={item.url}
+												target="_blank"
+												rel="noopener noreferrer"
+												class="bookmark-url"
+											>
+												🔗 {item.url}
+											</a>
+										{/if}
+										{#if item.description}
+											<p class="bookmark-description">{item.description}</p>
+										{/if}
+										{#if item.tags}
+											<div class="bookmark-tags">
+												{#each item.tags.split(',').map((t: string) => t.trim()) as tag}
+													<span class="tag">{tag}</span>
+												{/each}
+											</div>
 										{/if}
 									</div>
 								{/if}
@@ -428,7 +560,11 @@
 </section>
 
 {#if modal}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="modal-overlay" onclick={() => (modal = false)}>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="modal-content" onclick={(e) => e.stopPropagation()}>
 			<div class="modal-header">
 				<h2>Add an item</h2>
@@ -437,16 +573,16 @@
 				</button>
 			</div>
 
-			<form onsubmit={onsubmit}>
+			<form {onsubmit}>
 				<label for="name">
 					{listType === 'events' ? 'Event Name' : 'Item Name'}
-					<input 
-						type="text" 
-						id="name" 
-						name="name" 
+					<input
+						type="text"
+						id="name"
+						name="name"
 						list={listType === 'shopping' ? 'items-list' : undefined}
 						autocomplete="off"
-						required 
+						required
 					/>
 				</label>
 
@@ -518,12 +654,118 @@
 
 					<label for="location">
 						Location (optional)
-						<input type="text" id="location" name="location" placeholder="e.g., Conference Room A" />
+						<input
+							type="text"
+							id="location"
+							name="location"
+							placeholder="e.g., Conference Room A"
+						/>
 					</label>
 
 					<label for="description">
 						Description (optional)
-						<textarea id="description" name="description" rows="3" placeholder="Add details about this event..."></textarea>
+						<textarea
+							id="description"
+							name="description"
+							rows="3"
+							placeholder="Add details about this event..."
+						></textarea>
+					</label>
+				{:else if listType === 'recipe'}
+					<label for="ingredients">
+						Ingredients *
+						<textarea
+							id="ingredients"
+							name="ingredients"
+							rows="5"
+							placeholder="Enter each ingredient on a new line&#10;e.g.&#10;2 cups flour&#10;1 tsp salt&#10;3 eggs"
+							required
+						></textarea>
+					</label>
+
+					<label for="instructions">
+						Instructions *
+						<textarea
+							id="instructions"
+							name="instructions"
+							rows="6"
+							placeholder="Step-by-step cooking instructions..."
+							required
+						></textarea>
+					</label>
+
+					<div class="recipe-metadata">
+						<label for="servings">
+							Servings
+							<input type="number" id="servings" name="servings" min="1" placeholder="4" />
+						</label>
+
+						<label for="prepTime">
+							Prep Time
+							<input type="text" id="prepTime" name="prepTime" placeholder="15 mins" />
+						</label>
+
+						<label for="cookTime">
+							Cook Time
+							<input type="text" id="cookTime" name="cookTime" placeholder="30 mins" />
+						</label>
+					</div>
+				{:else if listType === 'messages'}
+					<label for="messageText">
+						Message *
+						<textarea
+							id="messageText"
+							name="messageText"
+							rows="4"
+							placeholder="Write your message or note here..."
+							required
+						></textarea>
+					</label>
+
+					<label for="priority">
+						Priority
+						<select id="priority" name="priority">
+							<option value="low">Low</option>
+							<option value="medium" selected>Medium</option>
+							<option value="high">High</option>
+							<option value="urgent">Urgent</option>
+						</select>
+					</label>
+				{:else if listType === 'contacts'}
+					<label for="phone">
+						Phone
+						<input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567" />
+					</label>
+
+					<label for="email">
+						Email
+						<input type="email" id="email" name="email" placeholder="contact@example.com" />
+					</label>
+
+					<label for="address">
+						Address
+						<textarea id="address" name="address" rows="3" placeholder="Street, City, State, ZIP"
+						></textarea>
+					</label>
+				{:else if listType === 'bookmarks'}
+					<label for="url">
+						URL *
+						<input type="url" id="url" name="url" placeholder="https://example.com" required />
+					</label>
+
+					<label for="description">
+						Description (optional)
+						<textarea
+							id="description"
+							name="description"
+							rows="2"
+							placeholder="What is this bookmark for?"
+						></textarea>
+					</label>
+
+					<label for="tags">
+						Tags (optional)
+						<input type="text" id="tags" name="tags" placeholder="work, reference, tutorial" />
 					</label>
 				{/if}
 
@@ -658,7 +900,7 @@
 				}
 			}
 
-			input[type="checkbox"] {
+			input[type='checkbox'] {
 				width: 20px;
 				height: 20px;
 				cursor: pointer;
@@ -721,6 +963,159 @@
 						font-size: 0.875rem;
 						line-height: 1.4;
 					}
+				}
+
+				.recipe-details {
+					display: flex;
+					flex-direction: column;
+					gap: 10px;
+					font-size: 0.875rem;
+
+					.recipe-servings,
+					.recipe-time {
+						padding: 4px 8px;
+						background: rgba(255, 152, 0, 0.08);
+						border-radius: 4px;
+						display: inline-block;
+						margin-right: 8px;
+					}
+
+					.recipe-section {
+						margin-top: 8px;
+
+						summary {
+							cursor: pointer;
+							font-weight: 600;
+							padding: 6px 0;
+							user-select: none;
+
+							&:hover {
+								color: #007bff;
+							}
+						}
+
+						.recipe-text {
+							margin: 8px 0 0 0;
+							padding: 12px;
+							background: rgba(0, 0, 0, 0.02);
+							border-radius: 4px;
+							white-space: pre-wrap;
+							font-family: inherit;
+							line-height: 1.6;
+						}
+					}
+				}
+
+				.message-details {
+					display: flex;
+					flex-direction: column;
+					gap: 8px;
+					font-size: 0.875rem;
+
+					.message-text {
+						margin: 0;
+						padding: 10px;
+						background: rgba(0, 0, 0, 0.02);
+						border-radius: 4px;
+						line-height: 1.5;
+					}
+
+					.message-priority {
+						display: inline-block;
+						padding: 4px 10px;
+						border-radius: 12px;
+						font-size: 0.75rem;
+						font-weight: 600;
+						text-transform: uppercase;
+
+						&.priority-low {
+							background: #e3f2fd;
+							color: #1976d2;
+						}
+
+						&.priority-medium {
+							background: #fff3e0;
+							color: #f57c00;
+						}
+
+						&.priority-high {
+							background: #fce4ec;
+							color: #c2185b;
+						}
+
+						&.priority-urgent {
+							background: #ffebee;
+							color: #d32f2f;
+						}
+					}
+
+					.message-tags {
+						display: flex;
+						flex-wrap: wrap;
+						gap: 6px;
+					}
+				}
+
+				.contact-details {
+					display: flex;
+					flex-direction: column;
+					gap: 6px;
+					font-size: 0.875rem;
+
+					.contact-info {
+						display: flex;
+						align-items: center;
+						gap: 6px;
+					}
+
+					.contact-notes {
+						margin: 6px 0 0 0;
+						padding: 8px;
+						background: rgba(0, 0, 0, 0.02);
+						border-radius: 4px;
+						font-size: 0.875rem;
+						line-height: 1.4;
+						font-style: italic;
+					}
+				}
+
+				.bookmark-details {
+					display: flex;
+					flex-direction: column;
+					gap: 8px;
+					font-size: 0.875rem;
+
+					.bookmark-url {
+						color: #007bff;
+						text-decoration: none;
+						word-break: break-all;
+
+						&:hover {
+							text-decoration: underline;
+						}
+					}
+
+					.bookmark-description {
+						margin: 0;
+						color: var(--color-tertiary, #666);
+						line-height: 1.4;
+					}
+
+					.bookmark-tags {
+						display: flex;
+						flex-wrap: wrap;
+						gap: 6px;
+					}
+				}
+
+				.tag {
+					display: inline-block;
+					padding: 3px 8px;
+					background: rgba(76, 175, 80, 0.12);
+					color: #2e7d32;
+					border-radius: 12px;
+					font-size: 0.75rem;
+					font-weight: 500;
 				}
 
 				.edit-input {
@@ -877,7 +1272,7 @@
 		align-items: center;
 		gap: 8px;
 
-		input[type="checkbox"] {
+		input[type='checkbox'] {
 			width: 18px;
 			height: 18px;
 			margin: 0;
@@ -916,7 +1311,7 @@
 				background: var(--level-2);
 			}
 
-			input[type="radio"] {
+			input[type='radio'] {
 				width: 18px;
 				height: 18px;
 				cursor: pointer;
@@ -997,7 +1392,17 @@
 		}
 	}
 
-	button[type="submit"] {
+	.recipe-metadata {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+		gap: 15px;
+
+		label {
+			margin: 0;
+		}
+	}
+
+	button[type='submit'] {
 		padding: 12px;
 		background: #007bff;
 		color: white;

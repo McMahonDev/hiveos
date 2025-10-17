@@ -29,6 +29,14 @@
 				return '📅';
 			case 'tasks':
 				return '✓';
+			case 'recipe':
+				return '🍳';
+			case 'messages':
+				return '💬';
+			case 'contacts':
+				return '👤';
+			case 'bookmarks':
+				return '🔖';
 			default:
 				return '📝';
 		}
@@ -42,6 +50,14 @@
 				return 'Events';
 			case 'tasks':
 				return 'Task List';
+			case 'recipe':
+				return 'Recipe Box';
+			case 'messages':
+				return 'Messages';
+			case 'contacts':
+				return 'Contacts';
+			case 'bookmarks':
+				return 'Bookmarks';
 			default:
 				return 'List';
 		}
