@@ -1,17 +1,11 @@
 <script lang="ts">
 	import { Query } from 'zero-svelte';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
-	import { viewPreferencesState } from '$lib/utils/viewPreferences.svelte';
 
 	let { data } = $props();
 
 	const z = data.z;
 	const id = data.id;
-
-	// Initialize preferences from localStorage
-	$effect(() => {
-		viewPreferencesState.init();
-	});
 
 	// Query custom categories
 	let customCategories = $state<Query<any, any, any> | undefined>(undefined);
@@ -21,15 +15,6 @@
 			customCategories = new Query(
 				z.current.query.viewModeCategories.where('userId', id).orderBy('createdAt', 'asc')
 			);
-		}
-	});
-
-	// Add custom categories to preferences when they load
-	$effect(() => {
-		if (customCategories?.current && Array.isArray(customCategories.current)) {
-			customCategories.current.forEach((cat: any) => {
-				viewPreferencesState.ensureViewMode(cat.id);
-			});
 		}
 	});
 
@@ -53,15 +38,23 @@
 		}
 		return modes;
 	});
+
+	// Query list counts for each view mode
+	function getListCount(viewMode: string): number {
+		if (!z?.current) return 0;
+		const lists = new Query(
+			z.current.query.customLists.where('createdById', id).where('viewMode', viewMode)
+		);
+		return lists.current?.length || 0;
+	}
 </script>
 
 {#if data.auth}
 	<div class="settings-container">
 		<div class="header">
-			<h1>View Settings</h1>
+			<h1>Settings</h1>
 			<p class="subtitle">
-				Customize which lists appear in each view mode. Hide lists you don't need in specific
-				contexts.
+				Manage your view modes and lists. Create custom lists for each view to organize your work.
 			</p>
 		</div>
 
@@ -75,56 +68,47 @@
 						{/if}
 					</div>
 
-					<div class="settings-list">
-						<label class="setting-item">
-							<div class="setting-info">
-								<span class="setting-name">Events & My Day</span>
-								<span class="setting-description"
-									>Show events and My Day in {getViewName(viewMode)}</span
-								>
-							</div>
-							<label class="toggle-switch">
-								<input
-									type="checkbox"
-									checked={viewPreferencesState.preferences[viewMode]?.showEvents ?? true}
-									onchange={() => viewPreferencesState.toggleSetting(viewMode, 'showEvents')}
-								/>
-								<span class="slider"></span>
-							</label>
-						</label>
+					<div class="view-stats">
+						<div class="stat-item">
+							<span class="stat-number">{getListCount(viewMode)}</span>
+							<span class="stat-label">Lists</span>
+						</div>
+					</div>
 
-						<label class="setting-item">
-							<div class="setting-info">
-								<span class="setting-name">Shopping List</span>
-								<span class="setting-description"
-									>Show shopping list in {getViewName(viewMode)}</span
-								>
-							</div>
-							<label class="toggle-switch">
-								<input
-									type="checkbox"
-									checked={viewPreferencesState.preferences[viewMode]?.showShoppingList ?? true}
-									onchange={() => viewPreferencesState.toggleSetting(viewMode, 'showShoppingList')}
-								/>
-								<span class="slider"></span>
-							</label>
-						</label>
+					<div class="view-description">
+						<p>
+							{#if viewMode === 'personal'}
+								Your personal lists. Only you can see these.
+							{:else if viewMode === 'shared'}
+								Shared lists with your group. All group members can see and edit these.
+							{:else}
+								Custom view mode for organizing specific types of work.
+							{/if}
+						</p>
 					</div>
 				</div>
 			{/each}
 		</div>
 
 		<div class="info-box">
-			<h3>ℹ️ About View Settings</h3>
+			<h3>ℹ️ About Lists & View Modes</h3>
 			<p>
-				These settings control which default lists (Events and Shopping List) appear in your sidebar
-				for each view mode. Your custom lists will always appear in the view where they were
-				created.
+				<strong>View Modes</strong> help you organize your work into different contexts. Switch between
+				them using the dropdown in the header.
 			</p>
 			<p>
-				<strong>Example:</strong> You might want to hide the Shopping List in your "Work" view since
-				it's not relevant to work tasks. Disabling Events will also hide My Day since it depends on events.
+				<strong>Lists</strong> are always tied to a specific view mode. When you create a list, it appears
+				only in the current view mode.
 			</p>
+			<p>
+				<strong>List Types:</strong>
+			</p>
+			<ul>
+				<li><strong>📝 Basic List</strong> - Simple checklist for any purpose</li>
+				<li><strong>🛒 Shopping List</strong> - Track items organized by store</li>
+				<li><strong>📅 Events</strong> - Schedule with dates, times, and locations</li>
+				<li><strong>✓ Task List</strong> - Sortable tasks with drag & drop ordering</li>
+			</ul>
 		</div>
 	</div>
 {:else}
@@ -158,7 +142,7 @@
 
 	.settings-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 		gap: 28px;
 		margin-bottom: 40px;
 	}
@@ -182,13 +166,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 24px;
-		padding-bottom: 20px;
+		margin-bottom: 20px;
+		padding-bottom: 16px;
 		border-bottom: 3px solid #f5f5f5;
 	}
 
 	.view-header h2 {
-		font-size: 1.75rem;
+		font-size: 1.5rem;
 		margin: 0;
 		color: #1a1a1a;
 		font-weight: 700;
@@ -206,99 +190,43 @@
 		box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
 	}
 
-	.settings-list {
+	.view-stats {
 		display: flex;
-		flex-direction: column;
-		gap: 12px;
+		gap: 20px;
+		margin-bottom: 16px;
 	}
 
-	.setting-item {
+	.stat-item {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
-		justify-content: space-between;
-		padding: 20px;
-		background-color: #fafafa;
-		border: 2px solid transparent;
-		border-radius: 12px;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		width: 100%;
-	}
-
-	.setting-item:hover {
-		background-color: #f0f0f0;
-		border-color: #e0e0e0;
-	}
-
-	.setting-info {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
+		padding: 12px 20px;
+		background: #fafafa;
+		border-radius: 8px;
 		flex: 1;
 	}
 
-	.setting-name {
+	.stat-number {
+		font-size: 2rem;
 		font-weight: 700;
-		font-size: 1.05rem;
-		color: #1a1a1a;
-		letter-spacing: -0.02em;
+		color: var(--primary);
+		line-height: 1;
 	}
 
-	.setting-description {
-		font-size: 0.9rem;
+	.stat-label {
+		font-size: 0.875rem;
 		color: #666;
-		line-height: 1.4;
+		margin-top: 4px;
 	}
 
-	/* Toggle Switch */
-	.toggle-switch {
-		position: relative;
-		display: inline-block;
-		width: 56px;
-		height: 32px;
-		flex-shrink: 0;
-		margin-left: 12px;
-	}
+	.view-description {
+		color: #666;
+		font-size: 0.95rem;
+		line-height: 1.5;
 
-	.toggle-switch input {
-		opacity: 0;
-		width: 0;
-		height: 0;
-	}
-
-	.slider {
-		position: absolute;
-		cursor: pointer;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background-color: #d0d0d0;
-		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-		border-radius: 32px;
-		box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider:before {
-		position: absolute;
-		content: '';
-		height: 24px;
-		width: 24px;
-		left: 4px;
-		bottom: 4px;
-		background-color: white;
-		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-		border-radius: 50%;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-	}
-
-	input:checked + .slider {
-		background-color: var(--primary);
-		box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
-	}
-
-	input:checked + .slider:before {
-		transform: translateX(24px);
+		p {
+			margin: 0;
+		}
 	}
 
 	.info-box {
@@ -321,6 +249,17 @@
 		color: #444;
 		line-height: 1.7;
 		font-size: 0.95rem;
+	}
+
+	.info-box ul {
+		margin: 12px 0 0 0;
+		padding-left: 24px;
+		color: #444;
+	}
+
+	.info-box li {
+		margin: 8px 0;
+		line-height: 1.6;
 	}
 
 	.info-box p:last-child {

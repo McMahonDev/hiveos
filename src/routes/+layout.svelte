@@ -22,6 +22,7 @@
 	let inGroup = $derived(data.groupId !== data.id);
 	let menu = $state<HTMLElement | null>(null);
 	let createListModalOpen = $state(false);
+	let selectedListType = $state<'basic' | 'shopping' | 'events' | 'tasks'>('basic');
 
 	let customLists = $state<Query<any, any, any> | undefined>(undefined);
 
@@ -93,10 +94,12 @@
 				name: listName as string,
 				createdById: data.id,
 				createdAt: Date.now(),
-				viewMode: viewModeState.currentMode
+				viewMode: viewModeState.currentMode,
+				listType: selectedListType
 			})
 			.then(() => {
 				(e.target as HTMLFormElement).reset();
+				selectedListType = 'basic'; // Reset to default
 				goto(`/custom-list/${id}`);
 			})
 			.catch((err) => {
@@ -135,13 +138,6 @@
 		<aside bind:this={menu} class:menuOpen>
 			<ul>
 				<li><a onclick={() => (menuOpen = false)} href="/">Dashboard</a></li>
-				{#if viewPreferencesState.shouldShowList(viewModeState.currentMode, 'events')}
-					<li><a onclick={() => (menuOpen = false)} href="/my-day">My Day</a></li>
-					<li><a onclick={() => (menuOpen = false)} href="/events">Events</a></li>
-				{/if}
-				{#if viewPreferencesState.shouldShowList(viewModeState.currentMode, 'shoppingList')}
-					<li><a onclick={() => (menuOpen = false)} href="/shopping-list">Shopping List</a></li>
-				{/if}
 				{#if customLists}
 					{#if customLists?.current && Array.isArray(customLists.current)}
 						{#each customLists.current as list (list.id)}
@@ -164,12 +160,80 @@
 		</aside>
 		{#if createListModalOpen}
 			<div class="create-list-modal">
-				<form onsubmit={createList}>
-					<label for="list-name">List Name:</label>
-					<input type="text" id="list-name" name="list-name" required />
-					<button type="submit">Create</button>
-					<button type="button" onclick={() => (createListModalOpen = false)}>Cancel</button>
-				</form>
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="modal-backdrop" onclick={() => (createListModalOpen = false)}></div>
+				<div class="modal-box">
+					<h2>Create New List</h2>
+					<form onsubmit={createList}>
+						<label for="list-name">List Name:</label>
+						<input type="text" id="list-name" name="list-name" required />
+
+						<fieldset class="list-type-selection">
+							<legend>Choose List Type:</legend>
+
+							<label class="list-type-option">
+								<input
+									type="radio"
+									name="list-type"
+									value="basic"
+									bind:group={selectedListType}
+									checked
+								/>
+								<div class="option-content">
+									<span class="option-icon">📝</span>
+									<div class="option-text">
+										<strong>Basic List</strong>
+										<small>Simple checklist for any purpose</small>
+									</div>
+								</div>
+							</label>
+
+							<label class="list-type-option">
+								<input
+									type="radio"
+									name="list-type"
+									value="shopping"
+									bind:group={selectedListType}
+								/>
+								<div class="option-content">
+									<span class="option-icon">🛒</span>
+									<div class="option-text">
+										<strong>Shopping List</strong>
+										<small>Track items by store</small>
+									</div>
+								</div>
+							</label>
+
+							<label class="list-type-option">
+								<input type="radio" name="list-type" value="events" bind:group={selectedListType} />
+								<div class="option-content">
+									<span class="option-icon">📅</span>
+									<div class="option-text">
+										<strong>Events</strong>
+										<small>Schedule with dates & times</small>
+									</div>
+								</div>
+							</label>
+
+							<label class="list-type-option">
+								<input type="radio" name="list-type" value="tasks" bind:group={selectedListType} />
+								<div class="option-content">
+									<span class="option-icon">✓</span>
+									<div class="option-text">
+										<strong>Task List</strong>
+										<small>Sortable tasks with drag & drop</small>
+									</div>
+								</div>
+							</label>
+						</fieldset>
+
+						<div class="modal-buttons">
+							<button type="submit">Create</button>
+							<button type="button" onclick={() => (createListModalOpen = false)}>Cancel</button>
+						</div>
+					</form>
+				</div>
 			</div>
 		{/if}
 	{/if}
@@ -261,6 +325,15 @@
 		gap: 20px;
 		/* height: calc(100dvh - var(--headerHeight) - var(--footerHeight)); */
 		/* min-height: calc(100vh - var(--headerHeight)); */
+
+		/* Single column centered layout when not authenticated */
+		&:not(:has(aside)) {
+			grid-template-columns: 1fr;
+			max-width: 600px;
+			margin: 0 auto;
+			gap: 0;
+		}
+
 		@media screen and (max-width: 690px) {
 			grid-template-columns: 1fr;
 			grid-template-rows: auto 1fr;
@@ -394,46 +467,165 @@
 
 	.create-list-modal {
 		position: fixed;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		background-color: var(--background);
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 10000;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		padding: 20px;
-		border-radius: 10px;
-		box-shadow: var(--level-3);
-		z-index: 1000;
+
+		.modal-backdrop {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(0, 0, 0, 0.5);
+			backdrop-filter: blur(2px);
+		}
+
+		.modal-box {
+			position: relative;
+			background-color: var(--background);
+			padding: 30px;
+			border-radius: 10px;
+			box-shadow: var(--level-3);
+			z-index: 10001;
+			max-width: 500px;
+			width: 100%;
+			max-height: 90vh;
+			overflow-y: auto;
+		}
+
+		h2 {
+			margin-top: 0;
+			margin-bottom: 20px;
+			color: var(--textColor);
+		}
 
 		form {
 			display: flex;
 			flex-direction: column;
-			gap: 10px;
+			gap: 20px;
 
-			label {
+			label:not(.list-type-option) {
 				font-weight: bold;
+				color: var(--textColor);
 			}
 
-			input {
+			input[type='text'] {
 				padding: 10px;
 				border: 1px solid #ccc;
 				border-radius: 5px;
 				font-size: 1rem;
 			}
 
+			.list-type-selection {
+				border: 1px solid rgba(0, 0, 0, 0.1);
+				border-radius: 8px;
+				padding: 15px;
+				display: flex;
+				flex-direction: column;
+				gap: 10px;
+
+				legend {
+					font-weight: bold;
+					padding: 0 8px;
+					color: var(--textColor);
+				}
+
+				.list-type-option {
+					display: flex;
+					align-items: center;
+					padding: 12px;
+					border: 2px solid rgba(0, 0, 0, 0.1);
+					border-radius: 8px;
+					cursor: pointer;
+					transition: all 0.2s ease;
+
+					&:has(input:checked) {
+						border-color: var(--primary);
+						background-color: rgba(255, 208, 0, 0.1);
+					}
+
+					&:hover {
+						background-color: rgba(0, 0, 0, 0.02);
+					}
+
+					input[type='radio'] {
+						margin-right: 12px;
+						cursor: pointer;
+					}
+
+					.option-content {
+						display: flex;
+						align-items: center;
+						gap: 12px;
+						flex: 1;
+					}
+
+					.option-icon {
+						font-size: 1.5rem;
+					}
+
+					.option-text {
+						display: flex;
+						flex-direction: column;
+						gap: 2px;
+
+						strong {
+							color: var(--textColor);
+							font-size: 1rem;
+						}
+
+						small {
+							color: var(--color-tertiary, #666);
+							font-size: 0.875rem;
+						}
+					}
+				}
+			}
+
+			.modal-buttons {
+				display: flex;
+				gap: 10px;
+				margin-top: 10px;
+			}
+
 			button {
-				padding: 10px;
+				flex: 1;
+				padding: 12px;
 				border: none;
 				border-radius: 5px;
 				cursor: pointer;
 				font-size: 1rem;
+				font-weight: 600;
+				transition: all 0.2s ease;
 
-				&:first-of-type {
+				&[type='submit'] {
 					background-color: var(--primary);
 					color: #000;
+
+					&:hover {
+						transform: translateY(-1px);
+						box-shadow: var(--level-2);
+					}
 				}
 
-				&:last-of-type {
+				&[type='button'] {
 					background-color: #ccc;
 					color: #000;
+
+					&:hover {
+						background-color: #b8b8b8;
+					}
+				}
+
+				&:active {
+					transform: translateY(0);
 				}
 			}
 		}

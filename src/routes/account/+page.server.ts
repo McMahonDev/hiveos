@@ -1,25 +1,9 @@
-import { redirect, fail, type Actions } from '@sveltejs/kit';
-import { auth } from '$lib/auth/auth';
+import { fail, type Actions } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { accessCodes, userGroups, userGroupMembers, user } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-
-/** @type {import('./$types').PageServerLoad} */
-export async function load({ request }) {
-	// Check if the user is already logged in using Better Auth
-	const session = await auth.api.getSession({
-		headers: request.headers
-	});
-
-	// If user is already logged in, redirect to home page
-	if (session) {
-		throw redirect(302, '/');
-	}
-
-	// Return empty object if not logged in
-	return {};
-}
+import { sendGroupJoinNotification } from '$lib/server/email';
 
 export const actions: Actions = {
 	validateAccessCode: async ({ request }) => {
@@ -83,7 +67,8 @@ export const actions: Actions = {
 				success: true,
 				accessCodeId: accessCodeRecord.id,
 				groupName: group.name,
-				groupType: group.groupType
+				groupType: group.groupType,
+				groupId: group.id
 			};
 		} catch (error) {
 			console.error('Error validating access code:', error);
@@ -91,7 +76,7 @@ export const actions: Actions = {
 		}
 	},
 
-	enrollUserInGroup: async ({ request }) => {
+	joinWithAccessCode: async ({ request }) => {
 		const data = await request.formData();
 		const userId = data.get('userId')?.toString();
 		const accessCodeId = data.get('accessCodeId')?.toString();
@@ -114,11 +99,27 @@ export const actions: Actions = {
 
 			const groupId = accessCodeRecord.groupId;
 
+			// Check if user is already in this group
+			const [existingMembership] = await db
+				.select()
+				.from(userGroupMembers)
+				.where(eq(userGroupMembers.userId, userId))
+				.limit(1);
+
 			// Get group details
 			const [group] = await db.select().from(userGroups).where(eq(userGroups.id, groupId)).limit(1);
 
 			if (!group) {
 				return fail(404, { error: 'Group not found' });
+			}
+
+			// If user is already in a different group, remove them first
+			if (existingMembership && existingMembership.userGroupId !== groupId) {
+				// Remove from old group
+				await db.delete(userGroupMembers).where(eq(userGroupMembers.userId, userId));
+			} else if (existingMembership && existingMembership.userGroupId === groupId) {
+				// Already in this group
+				return fail(400, { error: 'You are already a member of this group' });
 			}
 
 			// Add user to group
@@ -132,8 +133,6 @@ export const actions: Actions = {
 			});
 
 			// Update user's active group
-			// Note: User keeps their own subscription tier (free)
-			// They get access to the family group but remain "free" tier personally
 			await db
 				.update(user)
 				.set({
@@ -151,14 +150,41 @@ export const actions: Actions = {
 					.where(eq(accessCodes.id, accessCodeId));
 			}
 
+			// Get the new user's info for email notification
+			const [newUser] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
+
+			// Get group creator's info to send notification
+			const creatorId = group.createdById;
+			const creator = creatorId
+				? (await db.select().from(user).where(eq(user.id, creatorId)).limit(1))[0]
+				: null;
+
+			// Send email notification to group creator/admin
+			if (creator && newUser && creator.email && newUser.email && group.name) {
+				try {
+					await sendGroupJoinNotification({
+						adminEmail: creator.email,
+						adminName: creator.name || 'Admin',
+						newMemberName: newUser.name || 'New Member',
+						newMemberEmail: newUser.email,
+						groupName: group.name
+					});
+					console.log(`📧 Email notification sent to ${creator.email}`);
+				} catch (emailError) {
+					// Don't fail the whole action if email fails
+					console.error('❌ Failed to send email notification:', emailError);
+				}
+			}
+
 			return {
 				success: true,
+				message: `Successfully joined ${group.name}!`,
 				groupId: groupId,
 				groupName: group.name
 			};
 		} catch (error) {
-			console.error('Error enrolling user in group:', error);
-			return fail(500, { error: 'Failed to enroll user in group' });
+			console.error('❌ Error joining group with access code:', error);
+			return fail(500, { error: 'Failed to join group' });
 		}
 	}
 };

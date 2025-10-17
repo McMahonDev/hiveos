@@ -7,14 +7,57 @@
 	let email = '';
 	let password = '';
 	let confirmPassword = '';
+	let accessCode = '';
 	let error = '';
 	let isLoading = false;
 	let registrationSuccess = false;
 	let registeredEmail = '';
+	let validatedAccessCode = false;
+	let accessCodeError = '';
+	let validatedCodeData: { accessCodeId: string; groupName: string; groupType: string } | null =
+		null;
+
+	async function validateAccessCodeIfProvided() {
+		if (!accessCode.trim()) {
+			validatedAccessCode = false;
+			validatedCodeData = null;
+			accessCodeError = '';
+			return true;
+		}
+
+		try {
+			const formData = new FormData();
+			formData.append('code', accessCode.trim());
+
+			const response = await fetch('?/validateAccessCode', {
+				method: 'POST',
+				body: formData
+			});
+
+			const result = await response.json();
+
+			if (result.type === 'success' && result.data) {
+				validatedAccessCode = true;
+				validatedCodeData = result.data;
+				accessCodeError = '';
+				return true;
+			} else if (result.type === 'failure') {
+				accessCodeError = result.data?.error || 'Invalid access code';
+				validatedAccessCode = false;
+				validatedCodeData = null;
+				return false;
+			}
+		} catch (e) {
+			console.error('Access code validation error:', e);
+			accessCodeError = 'Failed to validate access code';
+			return false;
+		}
+	}
 
 	async function handleSignup() {
 		error = '';
 		registrationSuccess = false;
+		accessCodeError = '';
 
 		// Validate passwords match
 		if (password !== confirmPassword) {
@@ -26,6 +69,14 @@
 		if (password.length < 6) {
 			error = 'Password must be at least 6 characters long.';
 			return;
+		}
+
+		// Validate access code if provided
+		if (accessCode.trim()) {
+			const isCodeValid = await validateAccessCodeIfProvided();
+			if (!isCodeValid) {
+				return; // Stop if access code is invalid
+			}
 		}
 
 		isLoading = true;
@@ -41,6 +92,30 @@
 			if (err) {
 				error = err.message ?? 'An unknown error occurred.';
 			} else {
+				// If access code was provided and validated, enroll user in group
+				if (validatedCodeData && data?.user?.id) {
+					try {
+						const enrollFormData = new FormData();
+						enrollFormData.append('userId', data.user.id);
+						enrollFormData.append('accessCodeId', validatedCodeData.accessCodeId);
+
+						const enrollResponse = await fetch('?/enrollUserInGroup', {
+							method: 'POST',
+							body: enrollFormData
+						});
+
+						const enrollResult = await enrollResponse.json();
+
+						if (enrollResult.type !== 'success') {
+							console.error('Failed to enroll user in group:', enrollResult);
+							// Don't fail the whole signup, just log it
+						}
+					} catch (enrollError) {
+						console.error('Error enrolling user in group:', enrollError);
+						// Don't fail the whole signup
+					}
+				}
+
 				// With email verification enabled, show success message instead of auto-login
 				registrationSuccess = true;
 				registeredEmail = email;
@@ -50,6 +125,8 @@
 				email = '';
 				password = '';
 				confirmPassword = '';
+				accessCode = '';
+				validatedCodeData = null;
 			}
 		} catch (e) {
 			console.error('Sign up error:', e);
@@ -125,6 +202,26 @@
 				/>
 			</div>
 
+			<div class="auth-input-group">
+				<input
+					class="auth-input"
+					type="text"
+					bind:value={accessCode}
+					placeholder="Access Code (Optional)"
+					disabled={isLoading}
+					on:blur={validateAccessCodeIfProvided}
+				/>
+				<p class="input-hint">Have a family or team access code? Enter it to join automatically.</p>
+				{#if validatedCodeData}
+					<p class="input-success">
+						✓ Valid code! You'll be added to "{validatedCodeData.groupName}"
+					</p>
+				{/if}
+				{#if accessCodeError}
+					<p class="input-error">{accessCodeError}</p>
+				{/if}
+			</div>
+
 			<button class="auth-button" type="submit" disabled={isLoading}>
 				{#if isLoading}
 					<span class="loading-spinner"></span>
@@ -193,5 +290,27 @@
 
 	.auth-link {
 		margin-top: 1.5rem;
+	}
+
+	.input-hint {
+		font-size: 0.85rem;
+		color: #666;
+		margin-top: 0.25rem;
+		margin-bottom: 0;
+	}
+
+	.input-error {
+		font-size: 0.85rem;
+		color: #d32f2f;
+		margin-top: 0.25rem;
+		margin-bottom: 0;
+	}
+
+	.input-success {
+		font-size: 0.85rem;
+		color: #2e7d32;
+		margin-top: 0.25rem;
+		margin-bottom: 0;
+		font-weight: 500;
 	}
 </style>
