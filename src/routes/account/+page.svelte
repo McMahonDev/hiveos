@@ -80,6 +80,8 @@
 	let allEvents = $derived(
 		z && z.current ? new Query(z.current.query.events.where('assignedToId', userId)) : null
 	);
+	const userData = $derived(user?.current?.[0]);
+	const cancelAtPeriodEnd = $derived(userData?.cancel_at_period_end);
 
 	function createGroup(event: Event) {
 		event.preventDefault();
@@ -628,12 +630,38 @@
 					<p class="paid-tier-info">
 						Thank you for supporting HiveOS! You have access to all premium features.
 					</p>
-					{#if user?.current[0]?.subscription_status === 'active'}
+					{#if user?.current[0]?.subscription_status === 'active' && !cancelAtPeriodEnd}
 						<div class="subscription-status">
 							<span class="status-badge active">Active</span>
 							{#if user?.current[0]?.current_period_end}
 								<span class="renewal-date">
 									Renews {new Date(user.current[0].current_period_end).toLocaleDateString()}
+								</span>
+							{/if}
+						</div>
+					{:else if user?.current[0]?.subscription_status === 'canceling' || cancelAtPeriodEnd}
+						<div class="subscription-status">
+							<span
+								class="status-badge canceling"
+								style="background:rgba(255,212,0,0.15);color:#e6c000;border:1px solid rgba(255,212,0,0.3);"
+								>Canceling</span
+							>
+							{#if user?.current[0]?.current_period_end}
+								<span class="renewal-date">
+									Ends {new Date(user.current[0].current_period_end).toLocaleDateString()}
+								</span>
+							{/if}
+						</div>
+					{:else}
+						<div class="subscription-status">
+							<span
+								class="status-badge"
+								style="background:var(--backgroundGrey);color:var(--grey);border:1px solid var(--lineColor);"
+								>Inactive</span
+							>
+							{#if user?.current[0]?.current_period_end}
+								<span class="renewal-date">
+									Ends {new Date(user.current[0].current_period_end).toLocaleDateString()}
 								</span>
 							{/if}
 						</div>
@@ -812,7 +840,7 @@
 							<span class="stat-label">Members</span>
 						</div>
 					</div>
-					<div class="stat-box">
+					<!-- <div class="stat-box">
 						<div class="stat-info">
 							<span class="stat-number">{groupEvents?.current?.length ?? 0}</span>
 							<span class="stat-label">Events</span>
@@ -823,7 +851,7 @@
 							<span class="stat-number">{groupShoppingList?.current?.length ?? 0}</span>
 							<span class="stat-label">Shopping Items</span>
 						</div>
-					</div>
+					</div> -->
 				</div>
 			</div>
 		{/if}
@@ -1445,7 +1473,7 @@
 
 	.stats-grid {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		/* grid-template-columns: repeat(3, 1fr); */
 		gap: 1rem;
 		margin-top: 1rem;
 	}
