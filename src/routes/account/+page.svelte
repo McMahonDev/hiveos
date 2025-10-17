@@ -29,6 +29,8 @@
 	let accessCodeSuccess = $state('');
 	let validatedAccessCodeId = $state('');
 	let validatedGroupName = $state('');
+	let validatedGroupId = $state('');
+	let validationTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	let userGroupMembers = $derived(
 		z && z.current ? new Query(z.current.query.userGroupMembers.where('userId', userId)) : null
@@ -412,14 +414,36 @@
 		}
 	}
 
-	async function validateAccessCode() {
+	function validateAccessCode() {
+		// Clear any existing timeout
+		if (validationTimeout) {
+			clearTimeout(validationTimeout);
+		}
+
+		// Reset validation state immediately if input is empty
+		if (!accessCodeInput.trim()) {
+			accessCodeError = '';
+			accessCodeSuccess = '';
+			validatedAccessCodeId = '';
+			validatedGroupName = '';
+			validatedGroupId = '';
+			return;
+		}
+
+		// Debounce validation - wait 500ms after user stops typing
+		validationTimeout = setTimeout(() => {
+			performValidation();
+		}, 500);
+	}
+
+	async function performValidation() {
 		accessCodeError = '';
 		accessCodeSuccess = '';
 		validatedAccessCodeId = '';
 		validatedGroupName = '';
+		validatedGroupId = '';
 
 		if (!accessCodeInput.trim()) {
-			accessCodeError = 'Please enter an access code';
 			return;
 		}
 
@@ -436,12 +460,34 @@
 
 			const result = await response.json();
 
-			if (result.type === 'success' && result.data?.success) {
-				accessCodeSuccess = `✓ Valid code! Group: ${result.data.groupName}`;
-				validatedAccessCodeId = result.data.accessCodeId;
-				validatedGroupName = result.data.groupName;
+			// Parse the data if it's a string
+			let data = result.data;
+			if (typeof data === 'string') {
+				try {
+					data = JSON.parse(data);
+				} catch (e) {
+					console.error('Failed to parse data:', e);
+				}
+			}
+
+			// Handle array response format from SvelteKit
+			if (Array.isArray(data)) {
+				// data[1] = success (boolean), data[2] = accessCodeId, data[3] = groupName, data[5] = groupId
+				if (data[1] === true) {
+					accessCodeSuccess = `✓ Valid code! Group: ${data[3]}`;
+					validatedAccessCodeId = data[2];
+					validatedGroupName = data[3];
+					validatedGroupId = data[5];
+				} else {
+					accessCodeError = 'Invalid access code';
+				}
+			} else if (result.type === 'success' && data?.success) {
+				accessCodeSuccess = `✓ Valid code! Group: ${data.groupName}`;
+				validatedAccessCodeId = data.accessCodeId;
+				validatedGroupName = data.groupName;
+				validatedGroupId = data.groupId;
 			} else if (result.type === 'failure') {
-				accessCodeError = result.data?.error || 'Invalid access code';
+				accessCodeError = data?.error || 'Invalid access code';
 			}
 		} catch (error) {
 			console.error('Error validating access code:', error);
@@ -474,10 +520,63 @@
 
 			const result = await response.json();
 
-			if (result.type === 'success' && result.data?.success) {
-				accessCodeSuccess = result.data.message || 'Successfully joined group!';
+			// Parse the data if it's a string
+			let data = result.data;
+			if (typeof data === 'string') {
+				try {
+					data = JSON.parse(data);
+				} catch (e) {
+					console.error('Failed to parse join data:', e);
+				}
+			}
+
+			// Handle array response format
+			let success = false;
+			let newGroupId = '';
+			let message = '';
+
+			if (Array.isArray(data)) {
+				// Array format: [0: metadata, 1: success, 2: message, 3: groupId, 4: groupName]
+				success = data[1] === true;
+				message = data[2];
+				newGroupId = data[3];
+			} else if (data?.success) {
+				success = true;
+				newGroupId = data.groupId;
+				message = data.message;
+			}
+
+			if (result.type === 'success' && success) {
+				// Update Zero cache directly with the new group membership
+
+				// Query the group to get creator info
+				const targetGroup = z?.current
+					? new Query(z.current.query.userGroups.where('id', newGroupId)).current[0]
+					: null;
+
+				const creatorId = targetGroup?.createdById || userId;
+
+				// Add user to group in Zero
+				z?.current.mutate.userGroupMembers.insert({
+					id: nanoid(),
+					userId: userId,
+					userGroupId: newGroupId,
+					userGroupCreatorId: creatorId,
+					isAdmin: false,
+					joinedAt: Date.now()
+				});
+
+				// Update user's active group in Zero
+				z?.current.mutate.user.update({
+					id: userId,
+					active_group_id: newGroupId
+				});
+
+				accessCodeSuccess = message || 'Successfully joined group!';
 				accessCodeInput = '';
 				validatedAccessCodeId = '';
+				validatedGroupName = '';
+				validatedGroupId = '';
 
 				// Refresh the page to show new group
 				await invalidateAll();
@@ -487,7 +586,10 @@
 					accessCodeSuccess = '';
 				}, 5000);
 			} else if (result.type === 'failure') {
-				accessCodeError = result.data?.error || 'Failed to join group';
+				console.error('❌ Join failed:', data);
+				// Handle array format for errors too
+				const errorMsg = Array.isArray(data) ? data[1] : data?.error || 'Failed to join group';
+				accessCodeError = errorMsg;
 			}
 		} catch (error) {
 			console.error('Error joining with access code:', error);
@@ -678,12 +780,16 @@
 			</div>
 		</div>
 
-		<!-- Access Code Card (only for free users not in a group) -->
-		{#if user?.current[0]?.subscription_tier === 'free' && !group?.current[0]?.name}
+		<!-- Access Code Card (for users not in a group) -->
+		{#if !groupId && (user?.current[0]?.subscription_tier === 'free' || user?.current[0]?.subscription_tier === 'individual')}
 			<div class="card access-code-card">
 				<h2 class="card-title">Join with Access Code</h2>
 				<p class="card-description">
-					Have an access code from a family or team? Enter it below to join their group for free!
+					{#if user?.current[0]?.subscription_tier === 'free'}
+						Have an access code from a family group? Enter it below to join for free!
+					{:else}
+						Have an access code? Enter it below to join a group.
+					{/if}
 				</p>
 
 				{#if accessCodeSuccess}
@@ -701,7 +807,8 @@
 								type="text"
 								id="accessCode"
 								bind:value={accessCodeInput}
-								onblur={validateAccessCode}
+								oninput={validateAccessCode}
+								onpaste={validateAccessCode}
 								placeholder="FAMILY-2024-XXXX"
 								disabled={accessCodeValidating}
 								class:validated={validatedAccessCodeId}

@@ -1,8 +1,8 @@
-import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "../server/db/index.ts";
-import { schema } from "../combinedSchema.ts";
-import nodemailer from "nodemailer";
+import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { db } from '../server/db/index.ts';
+import { schema } from '../combinedSchema.ts';
+import nodemailer from 'nodemailer';
 
 // SMTP Configuration from environment variables
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.example.com';
@@ -11,78 +11,107 @@ const SMTP_USER = process.env.SMTP_USER || '';
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD || '';
 const SMTP_FROM = process.env.SMTP_FROM || 'HiveOS <noreply@hiveos.app>';
 
+// Development email override - redirect all emails to this address in dev
+const DEV_EMAIL_OVERRIDE = process.env.DEV_EMAIL_OVERRIDE || '';
+const IS_DEVELOPMENT = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+
 // Create reusable transporter object using SMTP transport
 const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  secure: SMTP_PORT === 465, // true for 465, false for other ports
-  auth: {
-    user: SMTP_USER,
-    pass: SMTP_PASSWORD,
-  },
+	host: SMTP_HOST,
+	port: SMTP_PORT,
+	secure: SMTP_PORT === 465, // true for 465, false for other ports
+	auth: {
+		user: SMTP_USER,
+		pass: SMTP_PASSWORD
+	}
 });
 
 // Email sending function using nodemailer
-async function sendEmail({ to, subject, text, html }: { 
-  to: string; 
-  subject: string; 
-  text: string; 
-  html?: string; 
+async function sendEmail({
+	to,
+	subject,
+	text,
+	html
+}: {
+	to: string;
+	subject: string;
+	text: string;
+	html?: string;
 }) {
-  console.log('=== sendEmail CALLED ===');
-  console.log('To:', to);
-  console.log('Subject:', subject);
-  console.log('SMTP_USER configured:', !!SMTP_USER);
-  console.log('SMTP_PASSWORD configured:', !!SMTP_PASSWORD);
-  console.log('SMTP_HOST:', SMTP_HOST);
-  console.log('SMTP_PORT:', SMTP_PORT);
-  
-  try {
-    // For development without SMTP configured, just log
-    if (!SMTP_USER || !SMTP_PASSWORD) {
-      console.log('--- EMAIL TO SEND (SMTP not configured) ---');
-      console.log(`To: ${to}`);
-      console.log(`Subject: ${subject}`);
-      console.log(`Text: ${text}`);
-      console.log('--- END EMAIL ---');
-      return Promise.resolve();
-    }
+	// In development, redirect all emails to DEV_EMAIL_OVERRIDE if configured
+	const originalTo = to;
+	if (IS_DEVELOPMENT && DEV_EMAIL_OVERRIDE) {
+		to = DEV_EMAIL_OVERRIDE;
+		console.log(`🔀 DEV MODE: Redirecting email from ${originalTo} to ${to}`);
 
-    console.log('Attempting to send email via SMTP...');
-    // Send mail with defined transport object
-    const info = await transporter.sendMail({
-      from: SMTP_FROM,
-      to,
-      subject,
-      text,
-      html,
-    });
+		// Prepend original recipient info to subject and content
+		subject = `[DEV - To: ${originalTo}] ${subject}`;
+		text = `ORIGINAL RECIPIENT: ${originalTo}\n\n${text}`;
+		if (html) {
+			html = `<div style="background: #fff3cd; border: 2px solid #ffc107; padding: 12px; margin-bottom: 16px; border-radius: 4px;">
+        <strong>🔧 DEVELOPMENT MODE</strong><br>
+        Original recipient: <strong>${originalTo}</strong>
+      </div>${html}`;
+		}
+	}
 
-    console.log('✅ Email sent successfully:', info.messageId);
-    return info;
-  } catch (error) {
-    console.error('❌ Error sending email:', error);
-    throw error;
-  }
+	console.log('=== sendEmail CALLED ===');
+	console.log('To:', to);
+	console.log('Subject:', subject);
+	console.log('SMTP_USER configured:', !!SMTP_USER);
+	console.log('SMTP_PASSWORD configured:', !!SMTP_PASSWORD);
+	console.log('SMTP_HOST:', SMTP_HOST);
+	console.log('SMTP_PORT:', SMTP_PORT);
+
+	try {
+		// For development without SMTP configured, just log
+		if (!SMTP_USER || !SMTP_PASSWORD) {
+			console.log('--- EMAIL TO SEND (SMTP not configured) ---');
+			console.log(`To: ${to}`);
+			console.log(`Subject: ${subject}`);
+			console.log(`Text: ${text}`);
+			console.log('--- END EMAIL ---');
+			return Promise.resolve();
+		}
+
+		console.log('Attempting to send email via SMTP...');
+		// Send mail with defined transport object
+		const info = await transporter.sendMail({
+			from: SMTP_FROM,
+			to,
+			subject,
+			text,
+			html
+		});
+
+		console.log('✅ Email sent successfully:', info.messageId);
+		return info;
+	} catch (error) {
+		console.error('❌ Error sending email:', error);
+		throw error;
+	}
 }
 
 export const auth = betterAuth({
-  database: drizzleAdapter(db, {
-    provider: "pg", // or "pg" or "mysql"
-    schema: schema
-  }), 
- 
-  emailAndPassword: { 
-    enabled: true,
-    requireEmailVerification: true, // Require email verification before login
-    autoSignIn: false, // Don't auto sign in after registration
-    sendResetPassword: async ({ user, url, token }: { user: any; url: string; token: string }, request?: any) => {
-      console.log('🔔 sendResetPassword triggered for:', user.email);
-      await sendEmail({
-        to: user.email,
-        subject: "Reset your password - HiveOS",
-        text: `Click the link to reset your password: ${url}`,
-        html: `
+	database: drizzleAdapter(db, {
+		provider: 'pg', // or "pg" or "mysql"
+		schema: schema
+	}),
+
+	emailAndPassword: {
+		enabled: true,
+		requireEmailVerification: true, // Require email verification before login
+		autoSignIn: false, // Don't auto sign in after registration
+		sendResetPassword: async (
+			{ user, url, token }: { user: any; url: string; token: string },
+			request?: any
+		) => {
+			console.log('🔔 sendResetPassword triggered for:', user.email);
+			await sendEmail({
+				to: user.email,
+				subject: 'Reset your password - HiveOS',
+				text: `Click the link to reset your password: ${url}`,
+				html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #1a1f51;">Reset Your Password</h2>
             <p>We received a request to reset your password for your HiveOS account.</p>
@@ -92,20 +121,23 @@ export const auth = betterAuth({
             <p>This link will expire in 24 hours for security reasons.</p>
             <p style="color: #666; font-size: 14px;">If the button above doesn't work, copy and paste this link into your browser: ${url}</p>
           </div>
-        `,
-      });
-    },
-  },
-  
-  emailVerification: {
-    sendOnSignUp: true, // Automatically send verification email on signup
-    sendVerificationEmail: async ({ user, url, token }: { user: any; url: string; token: string }, request?: any) => {
-      console.log('🔔 sendVerificationEmail triggered for:', user.email);
-      await sendEmail({
-        to: user.email,
-        subject: "Verify your email - HiveOS",
-        text: `Welcome to HiveOS! Please verify your email address by clicking this link: ${url}`,
-        html: `
+        `
+			});
+		}
+	},
+
+	emailVerification: {
+		sendOnSignUp: true, // Automatically send verification email on signup
+		sendVerificationEmail: async (
+			{ user, url, token }: { user: any; url: string; token: string },
+			request?: any
+		) => {
+			console.log('🔔 sendVerificationEmail triggered for:', user.email);
+			await sendEmail({
+				to: user.email,
+				subject: 'Verify your email - HiveOS',
+				text: `Welcome to HiveOS! Please verify your email address by clicking this link: ${url}`,
+				html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #1a1f51;">Welcome to HiveOS!</h2>
             <p>Thank you for signing up. To complete your registration, please verify your email address.</p>
@@ -115,13 +147,12 @@ export const auth = betterAuth({
             <p>This link will expire in 24 hours for security reasons.</p>
             <p style="color: #666; font-size: 14px;">If the button above doesn't work, copy and paste this link into your browser: ${url}</p>
           </div>
-        `,
-      });
-    },
-  },
-  advanced:{
-    cookiePrefix: "hiveos", // Prefix for cookies
-  },
-  trustedOrigins: ["http://localhost:5173", "http://localhost:5174"]
-  
+        `
+			});
+		}
+	},
+	advanced: {
+		cookiePrefix: 'hiveos' // Prefix for cookies
+	},
+	trustedOrigins: ['http://localhost:5173', 'http://localhost:5174']
 });

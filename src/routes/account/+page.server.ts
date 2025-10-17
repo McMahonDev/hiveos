@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import { accessCodes, userGroups, userGroupMembers, user } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { sendGroupJoinNotification } from '$lib/server/email';
 
 export const actions: Actions = {
 	validateAccessCode: async ({ request }) => {
@@ -66,7 +67,8 @@ export const actions: Actions = {
 				success: true,
 				accessCodeId: accessCodeRecord.id,
 				groupName: group.name,
-				groupType: group.groupType
+				groupType: group.groupType,
+				groupId: group.id
 			};
 		} catch (error) {
 			console.error('Error validating access code:', error);
@@ -148,6 +150,32 @@ export const actions: Actions = {
 					.where(eq(accessCodes.id, accessCodeId));
 			}
 
+			// Get the new user's info for email notification
+			const [newUser] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
+
+			// Get group creator's info to send notification
+			const creatorId = group.createdById;
+			const creator = creatorId
+				? (await db.select().from(user).where(eq(user.id, creatorId)).limit(1))[0]
+				: null;
+
+			// Send email notification to group creator/admin
+			if (creator && newUser && creator.email && newUser.email && group.name) {
+				try {
+					await sendGroupJoinNotification({
+						adminEmail: creator.email,
+						adminName: creator.name || 'Admin',
+						newMemberName: newUser.name || 'New Member',
+						newMemberEmail: newUser.email,
+						groupName: group.name
+					});
+					console.log(`📧 Email notification sent to ${creator.email}`);
+				} catch (emailError) {
+					// Don't fail the whole action if email fails
+					console.error('❌ Failed to send email notification:', emailError);
+				}
+			}
+
 			return {
 				success: true,
 				message: `Successfully joined ${group.name}!`,
@@ -155,7 +183,7 @@ export const actions: Actions = {
 				groupName: group.name
 			};
 		} catch (error) {
-			console.error('Error joining group with access code:', error);
+			console.error('❌ Error joining group with access code:', error);
 			return fail(500, { error: 'Failed to join group' });
 		}
 	}

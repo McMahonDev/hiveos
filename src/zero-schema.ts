@@ -162,7 +162,8 @@ const customLists = table('customLists')
 		name: string(),
 		createdById: string(),
 		createdAt: number(),
-		viewMode: string() // 'personal', 'shared', or custom category ID
+		viewMode: string(), // 'personal', 'shared', or custom category ID
+		listType: string() // 'basic', 'shopping', 'events', 'tasks'
 	})
 	.primaryKey('id');
 
@@ -174,7 +175,20 @@ const customListItems = table('customListItems')
 		createdById: string(),
 		customListId: string(),
 		createdAt: number(),
-		viewMode: string() // 'personal', 'shared', or custom category ID
+		viewMode: string(), // 'personal', 'shared', or custom category ID
+		// Shopping list fields
+		store: string().optional(),
+		// Events fields
+		date: string().optional(),
+		time: string().optional(),
+		endDate: string().optional(),
+		endTime: string().optional(),
+		timezone: string().optional(),
+		location: string().optional(),
+		description: string().optional(),
+		allDay: boolean().optional(),
+		// Task list fields
+		sortOrder: number().optional()
 	})
 	.primaryKey('id');
 
