@@ -140,6 +140,15 @@
 		<aside bind:this={menu} class:menuOpen>
 			<ul>
 				<li><a onclick={() => (menuOpen = false)} href="/">Dashboard</a></li>
+
+				<!-- Show My Day link if there are event-type lists -->
+				{#if customLists?.current && Array.isArray(customLists.current)}
+					{@const hasEventLists = customLists.current.some((list) => list.listType === 'events')}
+					{#if hasEventLists}
+						<li><a onclick={() => (menuOpen = false)} href="/my-day">My Day</a></li>
+					{/if}
+				{/if}
+
 				{#if customLists}
 					{#if customLists?.current && Array.isArray(customLists.current)}
 						{#each customLists.current as list (list.id)}
