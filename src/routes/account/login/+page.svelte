@@ -10,9 +10,13 @@
 	let error = '';
 	let successMessage = '';
 	let isLoading = false;
+	let needsVerification = false;
+	let verificationEmail = '';
+	let isResendingVerification = false;
+	let resendSuccess = false;
 
 	onMount(() => {
-		// Check for success message from password reset
+		// Check for success message from password reset or email verification
 		const urlParams = new URLSearchParams(window.location.search);
 		const message = urlParams.get('message');
 		if (message) {
@@ -25,6 +29,8 @@
 	async function handleLogin() {
 		error = '';
 		successMessage = '';
+		needsVerification = false;
+		resendSuccess = false;
 		isLoading = true;
 
 		try {
@@ -35,7 +41,19 @@
 
 			if (err) {
 				console.error('Login error:', err);
-				error = err.message ?? 'An unknown error occurred.';
+
+				// Check if error is due to unverified email
+				if (
+					err.message?.toLowerCase().includes('verify') ||
+					err.message?.toLowerCase().includes('verification')
+				) {
+					needsVerification = true;
+					verificationEmail = email;
+					error =
+						'Please verify your email address before logging in. Check your inbox for the verification link.';
+				} else {
+					error = err.message ?? 'An unknown error occurred.';
+				}
 			} else {
 				// Update user state immediately for instant UI update
 				user.auth = true;
@@ -48,6 +66,32 @@
 			error = 'Login failed. Please try again.';
 		} finally {
 			isLoading = false;
+		}
+	}
+
+	async function resendVerification() {
+		if (!verificationEmail) return;
+
+		isResendingVerification = true;
+		resendSuccess = false;
+
+		try {
+			const response = await authClient.sendVerificationEmail({
+				email: verificationEmail,
+				callbackURL: '/account/verify-email'
+			});
+
+			if (response.error) {
+				error = response.error.message || 'Failed to resend verification email.';
+			} else {
+				resendSuccess = true;
+				error = '';
+			}
+		} catch (e) {
+			console.error('Resend verification error:', e);
+			error = 'Failed to resend verification email. Please try again.';
+		} finally {
+			isResendingVerification = false;
 		}
 	}
 </script>
@@ -94,10 +138,74 @@
 	</form>
 
 	{#if error}
-		<div class="auth-error">{error}</div>
+		<div class="auth-error">
+			{error}
+			{#if needsVerification && verificationEmail}
+				{#if resendSuccess}
+					<div class="verification-success">
+						✓ Verification email sent! Please check your inbox.
+					</div>
+				{:else}
+					<button
+						class="resend-verification-button"
+						on:click={resendVerification}
+						disabled={isResendingVerification}
+						type="button"
+					>
+						{#if isResendingVerification}
+							<span class="loading-spinner small"></span>
+						{/if}
+						{isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
+					</button>
+				{/if}
+			{/if}
+		</div>
 	{/if}
 
 	<div class="auth-link">
 		Don't have an account? <a href="/account/register">Sign up</a>
 	</div>
 </div>
+
+<style>
+	.resend-verification-button {
+		margin-top: 1rem;
+		padding: 0.5rem 1rem;
+		background-color: #ffd400;
+		color: #000;
+		border: none;
+		border-radius: 8px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: background-color 0.2s;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		justify-content: center;
+		width: 100%;
+	}
+
+	.resend-verification-button:hover:not(:disabled) {
+		background-color: #ffdf3d;
+	}
+
+	.resend-verification-button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.loading-spinner.small {
+		width: 16px;
+		height: 16px;
+		border-width: 2px;
+	}
+
+	.verification-success {
+		margin-top: 1rem;
+		padding: 0.75rem;
+		background-color: #e8f5e9;
+		color: #2e7d32;
+		border-radius: 8px;
+		font-weight: 500;
+	}
+</style>

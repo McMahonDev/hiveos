@@ -1,212 +1,251 @@
 <script lang="ts">
 	import { Query } from 'zero-svelte';
 	import NewTab from '$lib/static/icons/newTab.svelte';
-
-	import EventsList from '$lib/components/eventsList.svelte';
-	import ShoppingList from '$lib/components/shoppingList.svelte';
-	import { isPast } from '$lib/utils/isPast';
-	import { isToday } from '$lib/utils/isToday';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
-	import { viewPreferencesState } from '$lib/utils/viewPreferences.svelte';
 
 	let { data } = $props();
-	let shortlist: boolean = true;
-
 	let z = data.z;
 
-	// Query events and shopping list filtered by current view mode
-	let events = $state<Query<any, any, any> | null>(null);
-	let shoppingList = $state<Query<any, any, any> | null>(null);
+	// Query custom lists for current view mode
+	let customLists = $state<Query<any, any, any> | null>(null);
 
 	$effect(() => {
 		if (z?.current) {
-			// In personal mode, only show items assigned to the user
-			// In shared/other modes, show items assigned to the group
-			const assignedId = viewModeState.currentMode === 'personal' ? data.id : data.groupId;
-
-			events = new Query(
-				z.current.query.events
-					.where('assignedToId', assignedId)
-					.where('viewMode', viewModeState.currentMode)
-			);
-
-			shoppingList = new Query(
-				z.current.query.shoppingList
-					.where('assignedToId', assignedId)
+			customLists = new Query(
+				z.current.query.customLists
+					.where('createdById', data.id)
 					.where('viewMode', viewModeState.currentMode)
 			);
 		} else {
-			events = null;
-			shoppingList = null;
+			customLists = null;
 		}
 	});
 
-	let shoppingListCount = $state(0);
-	let eventNumber = $state(0);
-	$effect(() => {
-		eventNumber = events?.current && Array.isArray(events.current) ? events.current.length : 0;
-		shoppingListCount =
-			shoppingList?.current && Array.isArray(shoppingList.current)
-				? shoppingList.current.length
-				: 0;
-	});
-
-	function getEventsString(): string {
-		// calculate how many past due events, future events and events today
-		let pastDue = 0;
-		let future = 0;
-		let today = 0;
-
-		const eventsList = events?.current && Array.isArray(events.current) ? events.current : [];
-		for (const event of eventsList) {
-			if (isPast(event.date, event.time)) {
-				pastDue++;
-			} else if (isToday(event.date, event.time)) {
-				today++;
-			} else {
-				future++;
-			}
+	function getListIcon(listType: string): string {
+		switch (listType) {
+			case 'shopping':
+				return '🛒';
+			case 'events':
+				return '📅';
+			case 'tasks':
+				return '✓';
+			case 'recipe':
+				return '🍳';
+			case 'messages':
+				return '💬';
+			case 'contacts':
+				return '👤';
+			case 'bookmarks':
+				return '🔖';
+			default:
+				return '📝';
 		}
-
-		return `You have ${future} upcoming events, ${today} happening today, and ${pastDue} past due events.`;
 	}
 
-	function getShoppingListString(): string {
-		// lets break it down by stores
-		const itemsByStore = new Map<string, number>();
-		const shopList =
-			shoppingList?.current && Array.isArray(shoppingList.current) ? shoppingList.current : [];
-
-		for (const item of shopList) {
-			const store = item.store || 'any store';
-			itemsByStore.set(store, (itemsByStore.get(store) || 0) + 1);
+	function getListTypeName(listType: string): string {
+		switch (listType) {
+			case 'shopping':
+				return 'Shopping List';
+			case 'events':
+				return 'Events';
+			case 'tasks':
+				return 'Task List';
+			case 'recipe':
+				return 'Recipe Box';
+			case 'messages':
+				return 'Messages';
+			case 'contacts':
+				return 'Contacts';
+			case 'bookmarks':
+				return 'Bookmarks';
+			default:
+				return 'List';
 		}
+	}
 
-		// create a string from the map
-		let shoppingListCount = shopList.length;
-		if (shoppingListCount === 0) {
-			return 'No items in your shopping list.';
-		}
-
-		const itemsList = Array.from(itemsByStore.entries())
-			.map(([store, count]) => `${count} item${count > 1 ? 's' : ''} to get from ${store}`)
-			.join(', ');
-
-		return `You have ${shoppingListCount} item${shoppingListCount > 1 ? 's' : ''} in your shopping list: ${itemsList}.`;
+	// Query items count for each list
+	function getItemCount(listId: string): number {
+		if (!z?.current) return 0;
+		const items = new Query(
+			z.current.query.customListItems
+				.where('customListId', listId)
+				.where('viewMode', viewModeState.currentMode)
+		);
+		return items.current?.length || 0;
 	}
 </script>
 
 <div class="container">
-	<h1>Welcome{data.name ? `, ${data.name}` : ''}!</h1>
-
-	{#if viewPreferencesState.shouldShowList(viewModeState.currentMode, 'events')}
-		<a class="card events" href="/events">
-			<div>
-				<h2>Events</h2>
-				<NewTab />
-				<p>
-					{eventNumber === 0 ? 'No upcoming events.' : getEventsString()}
-				</p>
-			</div>
-
-			{#if eventNumber > 0}
-				<EventsList {data} {shortlist} />
+	<div class="header">
+		<h1>Welcome{data.name ? `, ${data.name}` : ''}!</h1>
+		<p class="subtitle">
+			{#if customLists?.current && customLists.current.length > 0}
+				You have {customLists.current.length} list{customLists.current.length !== 1 ? 's' : ''} in {viewModeState.currentMode ===
+				'personal'
+					? 'Personal'
+					: 'Shared'} mode.
+			{:else}
+				Click "+ Create List" in the sidebar to get started.
 			{/if}
-		</a>
-	{/if}
+		</p>
+	</div>
 
-	{#if viewPreferencesState.shouldShowList(viewModeState.currentMode, 'shoppingList')}
-		<a class="card shoppingList" href="/shopping-list">
-			<div>
-				<h2>Shopping List</h2>
-				<NewTab />
-				<p>
-					{shoppingListCount === 0 ? 'No items in your shopping list.' : getShoppingListString()}
-				</p>
-			</div>
-			{#if shoppingListCount > 0}
-				<ShoppingList {data} {shortlist} />
-			{/if}
-		</a>
+	{#if customLists?.current && Array.isArray(customLists.current) && customLists.current.length > 0}
+		<div class="lists-grid">
+			{#each customLists.current as list (list.id)}
+				<a class="card list-card" href={`/custom-list/${list.id}`}>
+					<div class="card-header">
+						<span class="list-icon">{getListIcon(list.listType)}</span>
+						<div class="list-info">
+							<h2>{list.name}</h2>
+							<span class="list-type">{getListTypeName(list.listType)}</span>
+						</div>
+						<NewTab />
+					</div>
+					<div class="card-footer">
+						<span class="item-count">{getItemCount(list.id)} items</span>
+					</div>
+				</a>
+			{/each}
+		</div>
+	{:else if customLists?.current !== undefined}
+		<div class="empty-state">
+			<div class="empty-icon">📋</div>
+			<h2>No lists yet</h2>
+			<p>Create your first list to get started!</p>
+			<p class="hint">Click the "+ Create List" button in the sidebar</p>
+		</div>
 	{/if}
 </div>
 
 <style>
 	.container {
+		display: flex;
+		flex-direction: column;
+		gap: 30px;
+	}
+
+	.header {
+		text-align: center;
+
+		h1 {
+			font-size: 2rem;
+			margin: 0 0 10px 0;
+		}
+
+		.subtitle {
+			color: var(--color-tertiary, #666);
+			font-size: 1rem;
+			margin: 0;
+		}
+	}
+
+	.lists-grid {
 		display: grid;
-		grid-template-columns: 1fr;
-		grid-template-rows: auto;
+		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 		gap: 20px;
 
-		@media screen and (min-width: 740px) {
-			grid-template-columns: 1fr 1fr;
-			grid-template-rows: auto auto;
-			.events {
-				grid-column: 1 / 2;
-				grid-row: 2 / 3;
-			}
-			.shoppingList {
-				grid-column: 2 / 3;
-				grid-row: 2 / 3;
-			}
-			h1 {
-				grid-column: 1 / -1;
-				grid-row: 1 / 2;
-			}
+		@media screen and (max-width: 640px) {
+			grid-template-columns: 1fr;
 		}
-		.card {
-			padding: 20px;
-			background-color: var(--background);
-			border: 1px solid var(--border);
-			border-radius: 5px;
-			box-shadow: var(--level-3);
-			div {
-				display: grid;
-				grid-template-columns: 1fr auto;
-				align-items: center;
-			}
-		}
-	}
-	h1 {
-		font-size: 1.25rem;
-		text-align: center;
-	}
-	/* h2 {
-		font-size: 1.2rem;
-		margin-bottom: 10px;
-	} */
-	a.card {
-		text-decoration: none;
-		color: inherit;
-	}
-	h1 {
-		font-size: 1.25rem;
-		text-align: center;
-	}
-	/* h2 {
-		font-size: 1.2rem;
-		margin-bottom: 10px;
-	} */
-	a.card {
-		text-decoration: none;
-		color: inherit;
 	}
 
-	a {
-		text-decoration: underline;
+	.card {
+		padding: 20px;
+		background-color: var(--level-2);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		box-shadow: var(--level-1);
+		transition: all 0.2s ease;
+		text-decoration: none;
 		color: inherit;
-	}
-	@container (max-width: 690px) {
-		.container {
-			grid-template-columns: 1fr;
-			grid-template-rows: auto auto auto;
-			.events {
-				grid-column: 1 / 2;
-				grid-row: 2 / 3;
+		display: flex;
+		flex-direction: column;
+		gap: 15px;
+
+		&:hover {
+			box-shadow: var(--level-3);
+			transform: translateY(-2px);
+		}
+
+		.card-header {
+			display: flex;
+			align-items: flex-start;
+			gap: 12px;
+
+			.list-icon {
+				font-size: 2rem;
+				flex-shrink: 0;
 			}
-			.shoppingList {
-				grid-column: 1 / 2;
-				grid-row: 3 / 4;
+
+			.list-info {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+
+				h2 {
+					margin: 0;
+					font-size: 1.25rem;
+					font-weight: 600;
+					color: var(--textColor);
+				}
+
+				.list-type {
+					font-size: 0.875rem;
+					color: var(--color-tertiary, #666);
+					font-weight: 500;
+				}
+			}
+
+			:global(svg) {
+				flex-shrink: 0;
+				margin-top: 4px;
+			}
+		}
+
+		.card-footer {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding-top: 12px;
+			border-top: 1px solid rgba(0, 0, 0, 0.1);
+
+			.item-count {
+				font-size: 0.875rem;
+				color: var(--color-tertiary, #666);
+				font-weight: 500;
+			}
+		}
+	}
+
+	.empty-state {
+		text-align: center;
+		padding: 60px 20px;
+
+		.empty-icon {
+			font-size: 4rem;
+			margin-bottom: 20px;
+			opacity: 0.5;
+		}
+
+		h2 {
+			margin: 0 0 10px 0;
+			font-size: 1.5rem;
+			color: var(--textColor);
+		}
+
+		p {
+			color: var(--color-tertiary, #666);
+			margin: 5px 0;
+
+			&.hint {
+				font-size: 0.875rem;
+				margin-top: 20px;
+				padding: 12px 20px;
+				background: rgba(0, 0, 0, 0.03);
+				border-radius: 8px;
+				display: inline-block;
 			}
 		}
 	}

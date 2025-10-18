@@ -26,7 +26,15 @@ const user = table('user')
 		email_verified: boolean(), // Database uses snake_case
 		image: string().optional(),
 		created_at: number(), // Database uses snake_case
-		updated_at: number() // Database uses snake_case
+		updated_at: number(), // Database uses snake_case
+		subscription_tier: string(), // Database uses snake_case, values: 'free', 'individual' ($5), 'family' ($20)
+		active_group_id: string().optional(), // Database uses snake_case
+		// Subscription metadata for payment tracking
+		subscription_status: string().optional(), // 'active', 'canceled', 'past_due', 'trialing', null
+		subscription_id: string().optional(), // Stripe subscription ID
+		stripe_customer_id: string().optional(), // Stripe customer ID
+		current_period_end: number().optional(), // When current billing period ends (timestamp)
+		cancel_at_period_end: boolean() // Whether subscription cancels at period end
 	})
 	.primaryKey('id');
 
@@ -119,7 +127,10 @@ const userGroups = table('userGroups')
 	.columns({
 		id: string(),
 		name: string(),
-		createdById: string()
+		createdById: string(),
+		groupType: string(), // 'family', 'team', etc.
+		maxMembers: number().optional(), // Maximum number of members (null = unlimited for individual groups, 6 for family)
+		createdAt: number() // Timestamp when group was created
 	})
 	.primaryKey('id');
 
@@ -128,7 +139,9 @@ const userGroupMembers = table('userGroupMembers')
 		id: string(),
 		userId: string(),
 		userGroupId: string(),
-		userGroupCreatorId: string()
+		userGroupCreatorId: string(),
+		isAdmin: boolean(), // Whether this member has admin privileges
+		joinedAt: number() // Timestamp when member joined
 	})
 	.primaryKey('id');
 
@@ -149,7 +162,8 @@ const customLists = table('customLists')
 		name: string(),
 		createdById: string(),
 		createdAt: number(),
-		viewMode: string() // 'personal', 'shared', or custom category ID
+		viewMode: string(), // 'personal', 'shared', or custom category ID
+		listType: string() // 'basic', 'shopping', 'events', 'tasks', 'recipe', 'messages', 'contacts', 'bookmarks'
 	})
 	.primaryKey('id');
 
@@ -161,7 +175,36 @@ const customListItems = table('customListItems')
 		createdById: string(),
 		customListId: string(),
 		createdAt: number(),
-		viewMode: string() // 'personal', 'shared', or custom category ID
+		viewMode: string(), // 'personal', 'shared', or custom category ID
+		// Shopping list fields
+		store: string().optional(),
+		// Events fields
+		date: string().optional(),
+		time: string().optional(),
+		endDate: string().optional(),
+		endTime: string().optional(),
+		timezone: string().optional(),
+		location: string().optional(),
+		description: string().optional(),
+		allDay: boolean().optional(),
+		// Task list fields
+		sortOrder: number().optional(),
+		// Recipe fields
+		ingredients: string().optional(), // JSON array or newline-separated
+		instructions: string().optional(), // Full recipe instructions
+		servings: number().optional(),
+		prepTime: string().optional(), // e.g., "15 mins"
+		cookTime: string().optional(), // e.g., "30 mins"
+		// Messages/Notes fields
+		messageText: string().optional(), // Full message content
+		priority: string().optional(), // 'low', 'medium', 'high', 'urgent'
+		// Contacts fields
+		phone: string().optional(),
+		email: string().optional(),
+		address: string().optional(),
+		// Bookmarks fields
+		url: string().optional(),
+		tags: string().optional() // Comma-separated tags
 	})
 	.primaryKey('id');
 
@@ -171,6 +214,19 @@ const viewModeCategories = table('viewModeCategories')
 		name: string(),
 		userId: string(),
 		createdAt: number()
+	})
+	.primaryKey('id');
+
+const accessCodes = table('accessCodes')
+	.columns({
+		id: string(),
+		code: string(), // The actual access code (e.g., "FAMILY-2024-XYZ")
+		groupId: string(), // Reference to userGroups
+		createdById: string(), // Admin who created the code
+		usesRemaining: number().optional(), // Null = unlimited, number = limited uses
+		maxUses: number().optional(), // Maximum uses allowed (for tracking)
+		expiresAt: number().optional(), // Timestamp when code expires (optional)
+		createdAt: number() // When the code was created
 	})
 	.primaryKey('id');
 
@@ -282,6 +338,19 @@ const viewModeCategoriesRelationships = relationships(viewModeCategories, ({ one
 	})
 }));
 
+const accessCodesRelationships = relationships(accessCodes, ({ one }) => ({
+	group: one({
+		sourceField: ['groupId'],
+		destSchema: userGroups,
+		destField: ['id']
+	}),
+	createdBy: one({
+		sourceField: ['createdById'],
+		destSchema: user,
+		destField: ['id']
+	})
+}));
+
 export const schema = createSchema({
 	tables: [
 		user,
@@ -296,7 +365,8 @@ export const schema = createSchema({
 		userGroupRequests,
 		customLists,
 		customListItems,
-		viewModeCategories
+		viewModeCategories,
+		accessCodes
 	],
 	relationships: [
 		taskRelationships,
@@ -308,7 +378,8 @@ export const schema = createSchema({
 		accountRelationships,
 		customListRelationships,
 		customListItemRelationships,
-		viewModeCategoriesRelationships
+		viewModeCategoriesRelationships,
+		accessCodesRelationships
 	]
 });
 
@@ -326,52 +397,79 @@ export type UserGroupRequest = Row<typeof schema.tables.userGroupRequests>;
 export type CustomList = Row<typeof schema.tables.customLists>;
 export type CustomListItem = Row<typeof schema.tables.customListItems>;
 export type ViewModeCategory = Row<typeof schema.tables.viewModeCategories>;
+export type AccessCode = Row<typeof schema.tables.accessCodes>;
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	const isUser = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'user'>) =>
 		cmp('id', '=', authData.sub);
-	
+
 	const isEventsCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'events'>) =>
 		cmp('createdById', '=', authData.sub);
 	const isEventsAssignedTo = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'events'>) =>
 		cmp('assignedToId', '=', authData.groupId ?? '__never__');
 
 	// Explicit OR: allow if user created the event OR the event is assigned to the user (personal) OR assigned to their group (shared)
-	const canViewOrMutateEvents = (authData: AuthData, { or, cmp }: ExpressionBuilder<Schema, 'events'>) =>
+	const canViewOrMutateEvents = (
+		authData: AuthData,
+		{ or, cmp }: ExpressionBuilder<Schema, 'events'>
+	) =>
 		or(
 			cmp('createdById', '=', authData.sub),
 			cmp('assignedToId', '=', authData.sub), // Personal mode items
 			authData.groupId ? cmp('assignedToId', '=', authData.groupId) : cmp('id', '=', '__never__') // Shared mode items
 		);
 
-	const isShoppingListCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
-		cmp('createdById', '=', authData.sub);
-	const canViewOrMutateShoppingList = (authData: AuthData, { or, cmp }: ExpressionBuilder<Schema, 'shoppingList'>) =>
+	const isShoppingListCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'shoppingList'>
+	) => cmp('createdById', '=', authData.sub);
+	const canViewOrMutateShoppingList = (
+		authData: AuthData,
+		{ or, cmp }: ExpressionBuilder<Schema, 'shoppingList'>
+	) =>
 		or(
 			cmp('createdById', '=', authData.sub),
 			cmp('assignedToId', '=', authData.sub), // Personal mode items
 			authData.groupId ? cmp('assignedToId', '=', authData.groupId) : cmp('id', '=', '__never__') // Shared mode items
 		);
 
-	const isUserGroupCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroups'>) =>
-		cmp('createdById', '=', authData.sub);
-	const isUserGroupMember = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>) =>
-		cmp('userId', '=', authData.sub);
+	const isUserGroupCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'userGroups'>
+	) => cmp('createdById', '=', authData.sub);
+	const isUserGroupMember = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>
+	) => cmp('userId', '=', authData.sub);
 
-	const canViewUserGroupMembers = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>) =>
-		cmp('userGroupCreatorId', '=', authData.sub);
+	const canViewUserGroupMembers = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>
+	) => cmp('userGroupCreatorId', '=', authData.sub);
 
 	// Custom lists permissions - user must be creator OR assigned to it
-	const isCustomListCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'customLists'>) =>
-		cmp('createdById', '=', authData.sub);
+	const isCustomListCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'customLists'>
+	) => cmp('createdById', '=', authData.sub);
 
 	// Custom list items - must have access to parent list
-	const isCustomListItemCreator = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'customListItems'>) =>
-		cmp('createdById', '=', authData.sub);
+	const isCustomListItemCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'customListItems'>
+	) => cmp('createdById', '=', authData.sub);
 
 	// ViewModeCategories - user must be the owner
-	const isViewModeCategoryOwner = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'viewModeCategories'>) =>
-		cmp('userId', '=', authData.sub);
+	const isViewModeCategoryOwner = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'viewModeCategories'>
+	) => cmp('userId', '=', authData.sub);
+
+	// AccessCodes - created by admins, viewable by group members
+	const isAccessCodeCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'accessCodes'>
+	) => cmp('createdById', '=', authData.sub);
 
 	return {
 		// Application tables
@@ -472,6 +570,17 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 					postMutation: [isViewModeCategoryOwner]
 				},
 				delete: [isViewModeCategoryOwner]
+			}
+		},
+		accessCodes: {
+			row: {
+				select: ANYONE_CAN, // Anyone can view codes (needed for signup flow)
+				insert: [isAccessCodeCreator], // Only creator/admin can create
+				update: {
+					preMutation: [isAccessCodeCreator], // Only creator/admin can update
+					postMutation: [isAccessCodeCreator]
+				},
+				delete: [isAccessCodeCreator] // Only creator/admin can delete
 			}
 		}
 	};
