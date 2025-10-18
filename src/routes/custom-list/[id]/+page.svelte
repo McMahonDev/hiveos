@@ -127,6 +127,40 @@
 		}
 	});
 
+	// Group shopping items by store
+	let groupedShoppingItems = $derived.by(() => {
+		if (
+			listType !== 'shopping' ||
+			!customListItems?.current ||
+			!Array.isArray(customListItems.current)
+		) {
+			return [];
+		}
+
+		const items = customListItems.current;
+		const storeMap = new Map<string, any[]>();
+
+		items.forEach((item) => {
+			const store = item.store?.trim() || 'Any Store';
+			if (!storeMap.has(store)) {
+				storeMap.set(store, []);
+			}
+			storeMap.get(store)!.push(item);
+		});
+
+		// Convert to array and sort stores (Any Store first, then alphabetically)
+		return Array.from(storeMap.entries())
+			.sort(([storeA], [storeB]) => {
+				if (storeA === 'Any Store') return -1;
+				if (storeB === 'Any Store') return 1;
+				return storeA.toLowerCase().localeCompare(storeB.toLowerCase());
+			})
+			.map(([store, items]) => ({
+				store,
+				items: items.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+			}));
+	});
+
 	function getTimeZoneAbbreviation(): string {
 		const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 		const shortName = new Date()
@@ -148,6 +182,27 @@
 		if (storeName && storeName.trim() && !localStorageStores.includes(storeName)) {
 			localStorageStores = [...localStorageStores, storeName];
 			localStorage.setItem('shopping-stores', JSON.stringify(localStorageStores));
+		}
+	}
+
+	function isLocalStorageOnly(storeName: string): boolean {
+		if (!customListItems?.current || !Array.isArray(customListItems.current)) {
+			return localStorageStores.includes(storeName);
+		}
+
+		const isInDB = customListItems.current.some(
+			(item: any) => item.store && item.store.trim() === storeName
+		);
+
+		return !isInDB && localStorageStores.includes(storeName);
+	}
+
+	function removeStore(storeName: string) {
+		localStorageStores = localStorageStores.filter((s) => s !== storeName);
+		localStorage.setItem('shopping-stores', JSON.stringify(localStorageStores));
+
+		if (selectedStore === storeName) {
+			selectedStore = '';
 		}
 	}
 
@@ -272,15 +327,26 @@
 
 	let editingItemId = $state<string | null>(null);
 	let editName = $state('');
+	let editModal = $state(false);
+	let editingItem = $state<any>(null);
 
 	function startEdit(item: any) {
-		editingItemId = item.id;
-		editName = item.name;
+		// For basic lists, use inline editing
+		if (listType === 'basic') {
+			editingItemId = item.id;
+			editName = item.name;
+		} else {
+			// For other types, use modal editing
+			editingItem = { ...item };
+			editModal = true;
+		}
 	}
 
 	function cancelEdit() {
 		editingItemId = null;
 		editName = '';
+		editModal = false;
+		editingItem = null;
 	}
 
 	function saveEdit(id: string) {
@@ -291,6 +357,52 @@
 			});
 		}
 		cancelEdit();
+	}
+
+	async function saveEditModal() {
+		if (!editingItem || !z?.current) return;
+
+		const updateData: any = {
+			id: editingItem.id,
+			name: editingItem.name
+		};
+
+		// Add type-specific fields
+		if (listType === 'shopping') {
+			updateData.store = editingItem.store || null;
+		} else if (listType === 'events') {
+			updateData.date = editingItem.date || null;
+			updateData.time = editingItem.allDay ? '' : editingItem.time || null;
+			updateData.endTime = editingItem.allDay ? null : editingItem.endTime || null;
+			updateData.location = editingItem.location || null;
+			updateData.description = editingItem.description || null;
+			updateData.allDay = editingItem.allDay || false;
+		} else if (listType === 'recipe') {
+			updateData.ingredients = editingItem.ingredients || null;
+			updateData.instructions = editingItem.instructions || null;
+			updateData.servings = editingItem.servings ? Number(editingItem.servings) : null;
+			updateData.prepTime = editingItem.prepTime || null;
+			updateData.cookTime = editingItem.cookTime || null;
+		} else if (listType === 'messages') {
+			updateData.messageText = editingItem.messageText || null;
+			updateData.priority = editingItem.priority || null;
+			updateData.tags = editingItem.tags || null;
+		} else if (listType === 'contacts') {
+			updateData.phone = editingItem.phone || null;
+			updateData.email = editingItem.email || null;
+			updateData.address = editingItem.address || null;
+		} else if (listType === 'bookmarks') {
+			updateData.url = editingItem.url || null;
+			updateData.description = editingItem.description || null;
+			updateData.tags = editingItem.tags || null;
+		}
+
+		try {
+			await z.current.mutate.customListItems.update(updateData);
+			cancelEdit();
+		} catch (error) {
+			console.error('Failed to update item:', error);
+		}
 	}
 
 	function handleKeydown(event: KeyboardEvent, id: string) {
@@ -381,178 +493,237 @@
 
 	<div class="list-container">
 		{#if customListItems?.current && Array.isArray(customListItems.current)}
-			<div class="list-items" class:task-list={listType === 'tasks'}>
-				{#each customListItems.current as item (item.id)}
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-					<div
-						class="list-item"
-						class:draggable={listType === 'tasks'}
-						draggable={listType === 'tasks'}
-						ondragstart={(e) => handleDragStart(e, item)}
-						ondragover={handleDragOver}
-						ondrop={(e) => handleDrop(e, item)}
-						role={listType === 'tasks' ? 'button' : undefined}
-						tabindex={listType === 'tasks' ? 0 : undefined}
-					>
-						{#if editingItemId === item.id}
-							<div class="item-content editing">
-								<input
-									type="text"
-									class="edit-input"
-									bind:value={editName}
-									placeholder="Item name"
-									onkeydown={(e) => handleKeydown(e, item.id)}
-								/>
-							</div>
-							<div class="edit-actions">
-								<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
-									Save
-								</button>
-								<button class="cancel-item" onclick={cancelEdit} title="Cancel"> Cancel </button>
-							</div>
-						{:else}
-							{#if listType === 'tasks'}
-								<span class="drag-handle">☰</span>
-							{/if}
-
-							{#if listType === 'basic' || listType === 'shopping' || listType === 'tasks'}
-								<input
-									type="checkbox"
-									checked={item.status}
-									onchange={() => toggleItemStatus(item.id)}
-								/>
-							{/if}
-
-							<div class="item-content">
-								<p class="item-name" class:completed={item.status}>{item.name}</p>
-
-								{#if listType === 'shopping' && item.store}
-									<span class="item-store">📍 {item.store}</span>
-								{/if}
-
-								{#if listType === 'events'}
-									<div class="event-details">
-										{#if item.date}
-											<span class="event-date">📅 {new Date(item.date).toLocaleDateString()}</span>
-										{/if}
-										{#if !item.allDay && item.time}
-											<span class="event-time">🕐 {formatTime(item.time, item.timezone)}</span>
-										{/if}
-										{#if item.allDay}
-											<span class="event-all-day">All Day</span>
-										{/if}
-										{#if item.location}
-											<span class="event-location">📍 {item.location}</span>
-										{/if}
-										{#if item.description}
-											<p class="event-description">{item.description}</p>
-										{/if}
-									</div>
-								{/if}
-
-								{#if listType === 'recipe'}
-									<div class="recipe-details">
-										{#if item.servings}
-											<span class="recipe-servings">🍽️ Serves {item.servings}</span>
-										{/if}
-										{#if item.prepTime}
-											<span class="recipe-time">⏱️ Prep: {item.prepTime}</span>
-										{/if}
-										{#if item.cookTime}
-											<span class="recipe-time">🔥 Cook: {item.cookTime}</span>
-										{/if}
-										{#if item.ingredients}
-											<details class="recipe-section">
-												<summary>Ingredients</summary>
-												<pre class="recipe-text">{item.ingredients}</pre>
-											</details>
-										{/if}
-										{#if item.instructions}
-											<details class="recipe-section">
-												<summary>Instructions</summary>
-												<pre class="recipe-text">{item.instructions}</pre>
-											</details>
-										{/if}
-									</div>
-								{/if}
-
-								{#if listType === 'messages'}
-									<div class="message-details">
-										{#if item.messageText}
-											<p class="message-text">{item.messageText}</p>
-										{/if}
-										{#if item.priority}
-											<span class="message-priority priority-{item.priority}">{item.priority}</span>
-										{/if}
-										{#if item.tags}
-											<div class="message-tags">
-												{#each item.tags.split(',').map((t: string) => t.trim()) as tag}
-													<span class="tag">{tag}</span>
-												{/each}
-											</div>
-										{/if}
-									</div>
-								{/if}
-
-								{#if listType === 'contacts'}
-									<div class="contact-details">
-										{#if item.phone}
-											<span class="contact-info">📱 {item.phone}</span>
-										{/if}
-										{#if item.email}
-											<span class="contact-info">✉️ {item.email}</span>
-										{/if}
-										{#if item.address}
-											<span class="contact-info">🏠 {item.address}</span>
-										{/if}
-										{#if item.company}
-											<span class="contact-info">🏢 {item.company}</span>
-										{/if}
-										{#if item.notes}
-											<p class="contact-notes">{item.notes}</p>
-										{/if}
-									</div>
-								{/if}
-
-								{#if listType === 'bookmarks'}
-									<div class="bookmark-details">
-										{#if item.url}
-											<a
-												href={item.url}
-												target="_blank"
-												rel="noopener noreferrer"
-												class="bookmark-url"
+			{#if listType === 'shopping'}
+				<!-- Grouped shopping list display -->
+				<div class="shopping-groups">
+					{#each groupedShoppingItems as group (group.store)}
+						<div class="store-group">
+							<h3 class="store-header">{group.store}</h3>
+							{#each group.items as item (item.id)}
+								<div class="list-item">
+									{#if editingItemId === item.id}
+										<div class="item-content editing">
+											<input
+												type="text"
+												class="edit-input"
+												bind:value={editName}
+												placeholder="Item name"
+												onkeydown={(e) => handleKeydown(e, item.id)}
+											/>
+										</div>
+										<div class="edit-actions">
+											<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
+												Save
+											</button>
+											<button class="cancel-item" onclick={cancelEdit} title="Cancel">
+												Cancel
+											</button>
+										</div>
+									{:else}
+										<input
+											type="checkbox"
+											checked={item.status}
+											onchange={() => toggleItemStatus(item.id)}
+										/>
+										<div class="item-content">
+											<p class="item-name" class:completed={item.status}>{item.name}</p>
+										</div>
+										<div class="item-actions">
+											<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item">
+												Edit
+											</button>
+											<button
+												class="delete-item"
+												onclick={() => deleteItem(item.id)}
+												title="Delete Item"
 											>
-												🔗 {item.url}
-											</a>
-										{/if}
-										{#if item.description}
-											<p class="bookmark-description">{item.description}</p>
-										{/if}
-										{#if item.tags}
-											<div class="bookmark-tags">
-												{#each item.tags.split(',').map((t: string) => t.trim()) as tag}
-													<span class="tag">{tag}</span>
-												{/each}
-											</div>
-										{/if}
-									</div>
+												<DeleteIcon />
+											</button>
+										</div>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<!-- Standard flat list display for all other types -->
+				<div class="list-items" class:task-list={listType === 'tasks'}>
+					{#each customListItems.current as item (item.id)}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+						<div
+							class="list-item"
+							class:draggable={listType === 'tasks'}
+							draggable={listType === 'tasks'}
+							ondragstart={(e) => handleDragStart(e, item)}
+							ondragover={handleDragOver}
+							ondrop={(e) => handleDrop(e, item)}
+							role={listType === 'tasks' ? 'button' : undefined}
+							tabindex={listType === 'tasks' ? 0 : undefined}
+						>
+							{#if editingItemId === item.id}
+								<div class="item-content editing">
+									<input
+										type="text"
+										class="edit-input"
+										bind:value={editName}
+										placeholder="Item name"
+										onkeydown={(e) => handleKeydown(e, item.id)}
+									/>
+								</div>
+								<div class="edit-actions">
+									<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
+										Save
+									</button>
+									<button class="cancel-item" onclick={cancelEdit} title="Cancel"> Cancel </button>
+								</div>
+							{:else}
+								{#if listType === 'tasks'}
+									<span class="drag-handle">☰</span>
 								{/if}
-							</div>
 
-							<div class="item-actions">
-								<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item">
-									Edit
-								</button>
-								<button class="delete-item" onclick={() => deleteItem(item.id)} title="Delete Item">
-									<DeleteIcon />
-								</button>
-							</div>
-						{/if}
-					</div>
-				{/each}
-			</div>
+								{#if listType === 'basic' || listType === 'shopping' || listType === 'tasks'}
+									<input
+										type="checkbox"
+										checked={item.status}
+										onchange={() => toggleItemStatus(item.id)}
+									/>
+								{/if}
+
+								<div class="item-content">
+									<p class="item-name" class:completed={item.status}>{item.name}</p>
+
+									{#if listType === 'events'}
+										<div class="event-details">
+											{#if item.date}
+												<span class="event-date">📅 {new Date(item.date).toLocaleDateString()}</span
+												>
+											{/if}
+											{#if !item.allDay && item.time}
+												<span class="event-time">🕐 {formatTime(item.time, item.timezone)}</span>
+											{/if}
+											{#if item.allDay}
+												<span class="event-all-day">All Day</span>
+											{/if}
+											{#if item.location}
+												<span class="event-location">📍 {item.location}</span>
+											{/if}
+											{#if item.description}
+												<p class="event-description">{item.description}</p>
+											{/if}
+										</div>
+									{/if}
+
+									{#if listType === 'recipe'}
+										<div class="recipe-details">
+											{#if item.servings}
+												<span class="recipe-servings">🍽️ Serves {item.servings}</span>
+											{/if}
+											{#if item.prepTime}
+												<span class="recipe-time">⏱️ Prep: {item.prepTime}</span>
+											{/if}
+											{#if item.cookTime}
+												<span class="recipe-time">🔥 Cook: {item.cookTime}</span>
+											{/if}
+											{#if item.ingredients}
+												<details class="recipe-section">
+													<summary>Ingredients</summary>
+													<pre class="recipe-text">{item.ingredients}</pre>
+												</details>
+											{/if}
+											{#if item.instructions}
+												<details class="recipe-section">
+													<summary>Instructions</summary>
+													<pre class="recipe-text">{item.instructions}</pre>
+												</details>
+											{/if}
+										</div>
+									{/if}
+
+									{#if listType === 'messages'}
+										<div class="message-details">
+											{#if item.messageText}
+												<p class="message-text">{item.messageText}</p>
+											{/if}
+											{#if item.priority}
+												<span class="message-priority priority-{item.priority}"
+													>{item.priority}</span
+												>
+											{/if}
+											{#if item.tags}
+												<div class="message-tags">
+													{#each item.tags.split(',').map((t: string) => t.trim()) as tag}
+														<span class="tag">{tag}</span>
+													{/each}
+												</div>
+											{/if}
+										</div>
+									{/if}
+
+									{#if listType === 'contacts'}
+										<div class="contact-details">
+											{#if item.phone}
+												<span class="contact-info">📱 {item.phone}</span>
+											{/if}
+											{#if item.email}
+												<span class="contact-info">✉️ {item.email}</span>
+											{/if}
+											{#if item.address}
+												<span class="contact-info">🏠 {item.address}</span>
+											{/if}
+											{#if item.company}
+												<span class="contact-info">🏢 {item.company}</span>
+											{/if}
+											{#if item.notes}
+												<p class="contact-notes">{item.notes}</p>
+											{/if}
+										</div>
+									{/if}
+
+									{#if listType === 'bookmarks'}
+										<div class="bookmark-details">
+											{#if item.url}
+												<a
+													href={item.url}
+													target="_blank"
+													rel="noopener noreferrer"
+													class="bookmark-url"
+												>
+													🔗 {item.url}
+												</a>
+											{/if}
+											{#if item.description}
+												<p class="bookmark-description">{item.description}</p>
+											{/if}
+											{#if item.tags}
+												<div class="bookmark-tags">
+													{#each item.tags.split(',').map((t: string) => t.trim()) as tag}
+														<span class="tag">{tag}</span>
+													{/each}
+												</div>
+											{/if}
+										</div>
+									{/if}
+								</div>
+
+								<div class="item-actions">
+									<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item">
+										Edit
+									</button>
+									<button
+										class="delete-item"
+										onclick={() => deleteItem(item.id)}
+										title="Delete Item"
+									>
+										<DeleteIcon />
+									</button>
+								</div>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{/if}
 		{:else}
 			<p>Loading items...</p>
 		{/if}
@@ -603,6 +774,17 @@
 									<input type="radio" name="store-radio" value={store} bind:group={selectedStore} />
 									<span>{store}</span>
 								</label>
+								{#if isLocalStorageOnly(store)}
+									<button
+										type="button"
+										class="remove-store-btn"
+										onclick={() => removeStore(store)}
+										title="Remove store from saved list"
+										aria-label="Remove {store}"
+									>
+										×
+									</button>
+								{/if}
 							</div>
 						{/each}
 
@@ -766,6 +948,252 @@
 				{/if}
 
 				<button type="submit">Add</button>
+			</form>
+		</div>
+	</div>
+{/if}
+
+<!-- Edit Item Modal -->
+{#if editModal && editingItem}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="modal-overlay" onclick={() => (editModal = false)}>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-content" onclick={(e) => e.stopPropagation()}>
+			<div class="modal-header">
+				<h2>Edit Item</h2>
+				<button type="button" class="close-button" onclick={() => (editModal = false)}>
+					<CloseIcon />
+				</button>
+			</div>
+
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					saveEditModal();
+				}}
+			>
+				<label for="edit-name">
+					Item Name *
+					<input
+						type="text"
+						id="edit-name"
+						bind:value={editingItem.name}
+						placeholder="Enter item name"
+						required
+					/>
+				</label>
+
+				{#if listType === 'shopping'}
+					<label for="edit-store">
+						Store (optional)
+						<input
+							type="text"
+							id="edit-store"
+							bind:value={editingItem.store}
+							placeholder="e.g., Costco, Walmart"
+						/>
+					</label>
+				{:else if listType === 'events'}
+					<label for="edit-date">
+						Date *
+						<input type="date" id="edit-date" bind:value={editingItem.date} required />
+					</label>
+
+					<label class="checkbox-label">
+						<input type="checkbox" bind:checked={editingItem.allDay} />
+						All Day Event
+					</label>
+
+					{#if !editingItem.allDay}
+						<div class="time-inputs">
+							<label for="edit-time">
+								Start Time
+								<input type="time" id="edit-time" bind:value={editingItem.time} />
+							</label>
+
+							<label for="edit-endtime">
+								End Time
+								<input type="time" id="edit-endtime" bind:value={editingItem.endTime} />
+							</label>
+						</div>
+					{/if}
+
+					<label for="edit-location">
+						Location (optional)
+						<input
+							type="text"
+							id="edit-location"
+							bind:value={editingItem.location}
+							placeholder="e.g., Conference Room A"
+						/>
+					</label>
+
+					<label for="edit-description">
+						Description (optional)
+						<textarea
+							id="edit-description"
+							bind:value={editingItem.description}
+							rows="3"
+							placeholder="Add details about this event..."
+						></textarea>
+					</label>
+				{:else if listType === 'recipe'}
+					<label for="edit-ingredients">
+						Ingredients *
+						<textarea
+							id="edit-ingredients"
+							bind:value={editingItem.ingredients}
+							rows="5"
+							placeholder="Enter each ingredient on a new line"
+							required
+						></textarea>
+					</label>
+
+					<label for="edit-instructions">
+						Instructions *
+						<textarea
+							id="edit-instructions"
+							bind:value={editingItem.instructions}
+							rows="6"
+							placeholder="Step-by-step cooking instructions..."
+							required
+						></textarea>
+					</label>
+
+					<div class="recipe-metadata">
+						<label for="edit-servings">
+							Servings
+							<input
+								type="number"
+								id="edit-servings"
+								bind:value={editingItem.servings}
+								min="1"
+								placeholder="4"
+							/>
+						</label>
+
+						<label for="edit-preptime">
+							Prep Time
+							<input
+								type="text"
+								id="edit-preptime"
+								bind:value={editingItem.prepTime}
+								placeholder="15 mins"
+							/>
+						</label>
+
+						<label for="edit-cooktime">
+							Cook Time
+							<input
+								type="text"
+								id="edit-cooktime"
+								bind:value={editingItem.cookTime}
+								placeholder="30 mins"
+							/>
+						</label>
+					</div>
+				{:else if listType === 'messages'}
+					<label for="edit-messagetext">
+						Message *
+						<textarea
+							id="edit-messagetext"
+							bind:value={editingItem.messageText}
+							rows="4"
+							placeholder="Write your message or note here..."
+							required
+						></textarea>
+					</label>
+
+					<label for="edit-priority">
+						Priority
+						<select id="edit-priority" bind:value={editingItem.priority}>
+							<option value="low">Low</option>
+							<option value="medium">Medium</option>
+							<option value="high">High</option>
+							<option value="urgent">Urgent</option>
+						</select>
+					</label>
+
+					<label for="edit-tags">
+						Tags (optional)
+						<input
+							type="text"
+							id="edit-tags"
+							bind:value={editingItem.tags}
+							placeholder="tag1, tag2, tag3"
+						/>
+					</label>
+				{:else if listType === 'contacts'}
+					<label for="edit-phone">
+						Phone
+						<input
+							type="tel"
+							id="edit-phone"
+							bind:value={editingItem.phone}
+							placeholder="+1 (555) 123-4567"
+						/>
+					</label>
+
+					<label for="edit-email">
+						Email
+						<input
+							type="email"
+							id="edit-email"
+							bind:value={editingItem.email}
+							placeholder="contact@example.com"
+						/>
+					</label>
+
+					<label for="edit-address">
+						Address
+						<textarea
+							id="edit-address"
+							bind:value={editingItem.address}
+							rows="3"
+							placeholder="Street, City, State, ZIP"
+						></textarea>
+					</label>
+				{:else if listType === 'bookmarks'}
+					<label for="edit-url">
+						URL *
+						<input
+							type="url"
+							id="edit-url"
+							bind:value={editingItem.url}
+							placeholder="https://example.com"
+							required
+						/>
+					</label>
+
+					<label for="edit-bookmark-description">
+						Description (optional)
+						<textarea
+							id="edit-bookmark-description"
+							bind:value={editingItem.description}
+							rows="2"
+							placeholder="What is this bookmark for?"
+						></textarea>
+					</label>
+
+					<label for="edit-bookmark-tags">
+						Tags (optional)
+						<input
+							type="text"
+							id="edit-bookmark-tags"
+							bind:value={editingItem.tags}
+							placeholder="work, reference, tutorial"
+						/>
+					</label>
+				{/if}
+
+				<div class="modal-actions">
+					<button type="button" class="cancel-btn" onclick={() => (editModal = false)}>
+						Cancel
+					</button>
+					<button type="submit" class="save-btn">Save Changes</button>
+				</div>
 			</form>
 		</div>
 	</div>
@@ -1398,6 +1826,74 @@
 		}
 	}
 
+	.time-inputs {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 15px;
+	}
+
+	.checkbox-label {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-weight: 500;
+		cursor: pointer;
+		margin: 8px 0;
+
+		input[type='checkbox'] {
+			width: 18px;
+			height: 18px;
+			cursor: pointer;
+		}
+	}
+
+	.modal-actions {
+		display: flex;
+		gap: 12px;
+		justify-content: flex-end;
+		margin-top: 20px;
+		padding-top: 20px;
+		border-top: 2px solid #e8e8e8;
+	}
+
+	.cancel-btn,
+	.save-btn {
+		padding: 10px 20px;
+		border-radius: 8px;
+		font-weight: 600;
+		font-size: 0.95rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		border: none;
+
+		&:hover {
+			transform: translateY(-1px);
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		}
+
+		&:active {
+			transform: translateY(0);
+		}
+	}
+
+	.cancel-btn {
+		background: #e8e8e8;
+		color: #222;
+
+		&:hover {
+			background: #d4d4d4;
+		}
+	}
+
+	.save-btn {
+		background: #28a745;
+		color: white;
+
+		&:hover {
+			background: #218838;
+		}
+	}
+
 	button[type='submit'] {
 		padding: 12px;
 		background: #007bff;
@@ -1429,5 +1925,114 @@
 			opacity: 1;
 			transform: translateY(0);
 		}
+	}
+
+	/* Shopping list styles */
+	.shopping-groups {
+		display: flex;
+		flex-direction: column;
+		gap: 24px;
+	}
+
+	.store-group {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	.store-header {
+		font-size: 1.25rem;
+		font-weight: 600;
+		margin: 0 0 8px 0;
+		padding-bottom: 8px;
+		border-bottom: 2px solid var(--level-3, #ddd);
+		color: var(--text-primary, #333);
+	}
+
+	.store-selection {
+		border: 1px solid #ccc;
+		border-radius: 8px;
+		padding: 12px;
+		background: var(--level-1);
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		max-height: 300px;
+		overflow-y: auto;
+
+		legend {
+			font-weight: 600;
+			padding: 0 8px;
+			color: var(--text-primary);
+			font-size: 0.95rem;
+		}
+	}
+
+	.radio-label-wrapper {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		border-radius: 4px;
+		transition: background 0.2s ease;
+
+		&:hover {
+			background: var(--level-2);
+		}
+	}
+
+	.radio-label {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 6px 8px;
+		cursor: pointer;
+		flex-direction: row;
+		margin: 0;
+		flex: 1;
+
+		input[type='radio'] {
+			width: 18px;
+			height: 18px;
+			cursor: pointer;
+			margin: 0;
+			flex-shrink: 0;
+		}
+
+		span {
+			font-size: 0.95rem;
+			flex: 1;
+		}
+	}
+
+	.remove-store-btn {
+		background: none;
+		border: none;
+		color: #dc3545;
+		font-size: 1.5rem;
+		line-height: 1;
+		cursor: pointer;
+		padding: 4px 8px;
+		margin-right: 4px;
+		opacity: 0.6;
+		transition: opacity 0.2s ease;
+		flex-shrink: 0;
+
+		&:hover {
+			opacity: 1;
+		}
+
+		&:active {
+			transform: scale(0.9);
+		}
+	}
+
+	.new-store-input {
+		margin-top: 5px;
+		margin-left: 28px;
+		padding: 8px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		font-size: 0.95rem;
+		background: white;
 	}
 </style>

@@ -6,12 +6,9 @@
 
 	let { data } = $props();
 
-	// Redirect if events are disabled for current view (My Day depends on Events)
-	$effect(() => {
-		if (!viewPreferencesState.shouldShowList(viewModeState.currentMode, 'events')) {
-			goto('/');
-		}
-	});
+	// Redirect if there are no event-type custom lists
+	let hasEventLists = $state(false);
+
 	let z = data.z;
 	const groupId = data.groupId;
 
@@ -50,18 +47,41 @@
 
 	// Query all events for today
 	let events = $state<Query<any, any, any> | null>(null);
+	let eventLists = $state<Query<any, any, any> | null>(null);
 
 	$effect(() => {
 		if (z?.current) {
-			// In personal mode, only show items assigned to the user
-			// In shared/other modes, show items assigned to the group
-			const assignedId = viewModeState.currentMode === 'personal' ? data.id : groupId;
-
-			events = new Query(
-				z.current.query.events
-					.where('assignedToId', assignedId)
+			// Get all event-type custom lists for current view mode
+			eventLists = new Query(
+				z.current.query.customLists
+					.where('createdById', data.id)
 					.where('viewMode', viewModeState.currentMode)
-					.orderBy('createdAt', 'asc')
+					.where('listType', 'events')
+			);
+		} else {
+			eventLists = null;
+		}
+	});
+
+	// Check if we have any event lists
+	$effect(() => {
+		if (eventLists?.current && Array.isArray(eventLists.current)) {
+			hasEventLists = eventLists.current.length > 0;
+			if (!hasEventLists) {
+				goto('/');
+			}
+		}
+	});
+
+	$effect(() => {
+		if (z?.current) {
+			// Query ALL custom list items for the current user/view mode
+			// We'll filter by event list IDs client-side
+			events = new Query(
+				z.current.query.customListItems
+					.where('createdById', data.id)
+					.where('viewMode', viewModeState.currentMode)
+					.orderBy('date', 'asc')
 			);
 		} else {
 			events = null;
@@ -70,7 +90,10 @@
 
 	// Filter all-day events for today
 	let allDayEvents = $derived(() => {
-		if (!Array.isArray(events?.current)) return [];
+		if (!Array.isArray(events?.current) || !Array.isArray(eventLists?.current)) return [];
+
+		// Get list IDs for filtering
+		const listIds = new Set(eventLists.current.map((l: any) => l.id));
 
 		// Get today's date in local timezone (YYYY-MM-DD format)
 		const today = new Date();
@@ -80,13 +103,16 @@
 		const todayStr = `${year}-${month}-${day}`;
 
 		return events.current.filter((event) => {
-			return event.date === todayStr && event.allDay;
+			return listIds.has(event.customListId) && event.date === todayStr && event.allDay;
 		});
 	});
 
 	// Filter timed events for today and calculate their position
 	let todaysEvents = $derived(() => {
-		if (!Array.isArray(events?.current)) return [];
+		if (!Array.isArray(events?.current) || !Array.isArray(eventLists?.current)) return [];
+
+		// Get list IDs for filtering
+		const listIds = new Set(eventLists.current.map((l: any) => l.id));
 
 		// Get today's date in local timezone (YYYY-MM-DD format)
 		const today = new Date();
@@ -104,8 +130,8 @@
 
 		return events.current
 			.filter((event) => {
-				// Check if event is today and NOT all-day
-				return event.date === todayStr && !event.allDay;
+				// Check if event is today and NOT all-day and from one of our event lists
+				return listIds.has(event.customListId) && event.date === todayStr && !event.allDay;
 			})
 			.map((event) => {
 				// Calculate position and duration
@@ -303,7 +329,7 @@
 		}
 
 		try {
-			await z.current.mutate.events.update({
+			await z.current.mutate.customListItems.update({
 				id: editForm.id,
 				name: editForm.name,
 				date: editForm.date,
@@ -329,6 +355,12 @@
 		const dateStr = `${year}-${month}-${day}`;
 		const timeStr = `${String(hour).padStart(2, '0')}:00`;
 
+		// Get the first event list ID as default
+		const defaultListId =
+			eventLists?.current && Array.isArray(eventLists.current) && eventLists.current.length > 0
+				? eventLists.current[0].id
+				: '';
+
 		createForm = {
 			name: '',
 			date: dateStr,
@@ -336,7 +368,8 @@
 			endTime: '',
 			location: '',
 			description: '',
-			allDay: false
+			allDay: false,
+			listId: defaultListId
 		};
 
 		showCreateModal = true;
@@ -348,7 +381,7 @@
 	}
 
 	async function saveNewEvent() {
-		if (!z?.current || !createForm.name || !data.id) return;
+		if (!z?.current || !createForm.name || !data.id || !eventLists?.current) return;
 
 		// Validate end time is after start time
 		if (!createForm.allDay && createForm.time && createForm.endTime) {
@@ -367,13 +400,39 @@
 			const { nanoid } = await import('nanoid');
 			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-			// In personal mode, assign to user's own ID
-			// In shared mode, assign to groupId
-			const assignedTo = viewModeState.currentMode === 'personal' ? data.id : groupId;
+			// Get the target list ID
+			let targetListId;
+			if (createForm.listId) {
+				// Use the selected list from the dropdown
+				targetListId = createForm.listId;
+			} else if (Array.isArray(eventLists.current) && eventLists.current.length > 0) {
+				// Use the first event list if no selection was made (single list scenario)
+				targetListId = eventLists.current[0].id;
+			} else {
+				// Create a new event list if none exists
+				const listId = nanoid();
 
-			await z.current.mutate.events.insert({
+				await z.current.mutate.customLists.insert({
+					id: listId,
+					name: 'My Events',
+					createdById: data.id,
+					viewMode: viewModeState.currentMode,
+					listType: 'events',
+					createdAt: Date.now()
+				});
+
+				targetListId = listId;
+			}
+
+			await z.current.mutate.customListItems.insert({
 				id: nanoid(),
 				name: createForm.name,
+				customListId: targetListId,
+				createdById: data.id,
+				createdAt: Date.now(),
+				status: false,
+				viewMode: viewModeState.currentMode,
+				// Event-specific fields
 				date: createForm.date,
 				time: createForm.allDay ? '' : createForm.time || '',
 				endDate: createForm.endDate || null,
@@ -381,11 +440,7 @@
 				timezone: timezone,
 				location: createForm.location || null,
 				description: createForm.description || null,
-				allDay: createForm.allDay,
-				createdById: data.id,
-				assignedToId: assignedTo,
-				createdAt: Date.now(),
-				viewMode: viewModeState.currentMode
+				allDay: createForm.allDay
 			});
 
 			closeCreateModal();
@@ -735,6 +790,17 @@
 						required
 					/>
 				</div>
+
+				{#if eventLists?.current && Array.isArray(eventLists.current) && eventLists.current.length > 1}
+					<div class="form-group">
+						<label for="create-list">Event List:</label>
+						<select id="create-list" bind:value={createForm.listId} class="form-input" required>
+							{#each eventLists.current as list}
+								<option value={list.id}>{list.name}</option>
+							{/each}
+						</select>
+					</div>
+				{/if}
 
 				<div class="form-group">
 					<label for="create-date">Date:</label>
