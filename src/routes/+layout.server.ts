@@ -2,10 +2,11 @@ export const ssr = false;
 import { redirect } from '@sveltejs/kit';
 import { auth } from '$lib/auth/auth';
 import { db } from '$lib/server/db/index';
-import { userGroupMembers, user, events } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { userGroupMembers, user, events, customLists } from '$lib/server/db/schema';
+import { eq, and } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { nanoid } from 'nanoid';
 dotenv.config();
 
 const JWT_SECRET = process.env.ZERO_AUTH_SECRET;
@@ -29,7 +30,12 @@ export async function load({ request, url }) {
 		isAuthenticated = false;
 		userId = '';
 		groupId = '0';
-		if (url.pathname !== '/account/login' && url.pathname !== '/account/register' && url.pathname !== '/account/forgot-password' && !url.pathname.includes('/reset-password')) {
+		if (
+			url.pathname !== '/account/login' &&
+			url.pathname !== '/account/register' &&
+			url.pathname !== '/account/forgot-password' &&
+			!url.pathname.includes('/reset-password')
+		) {
 			throw redirect(302, '/account/login');
 		}
 	} else {
@@ -44,7 +50,7 @@ export async function load({ request, url }) {
 				.from(userGroupMembers)
 				.where(eq(userGroupMembers.userId, session.user.id))
 				.limit(1);
-				console.log('User group membership:', userGroupMembership);
+			console.log('User group membership:', userGroupMembership);
 
 			// If user is in a group, use that groupId, otherwise use userId as groupId
 			groupId = userGroupMembership[0]?.userGroupId || session.user.id;
@@ -78,9 +84,66 @@ export async function load({ request, url }) {
 					.from(events)
 					.where(eq(events.assignedToId, groupId))
 					.limit(5);
-				console.log('DEBUG events assigned to group', groupId, 'count:', eventsForGroup.length, 'sample:', eventsForGroup.map(e => ({ id: e.id, assignedToId: e.assignedToId })).slice(0,3));
+				console.log(
+					'DEBUG events assigned to group',
+					groupId,
+					'count:',
+					eventsForGroup.length,
+					'sample:',
+					eventsForGroup.map((e) => ({ id: e.id, assignedToId: e.assignedToId })).slice(0, 3)
+				);
 			} catch (err) {
 				console.error('DEBUG: error querying events for groupId', groupId, err);
+			}
+
+			// Create default lists if they don't exist for this user
+			try {
+				// Check for existing Events list
+				const existingEventsList = await db
+					.select()
+					.from(customLists)
+					.where(
+						and(eq(customLists.createdById, session.user.id), eq(customLists.listType, 'events'))
+					)
+					.limit(1);
+
+				if (existingEventsList.length === 0) {
+					// Create default Events list
+					await db.insert(customLists).values({
+						id: nanoid(),
+						name: 'Events',
+						createdById: session.user.id,
+						createdAt: new Date(),
+						viewMode: 'personal',
+						listType: 'events'
+					});
+					console.log('Created default Events list for user:', session.user.id);
+				}
+
+				// Check for existing Shopping list
+				const existingShoppingList = await db
+					.select()
+					.from(customLists)
+					.where(
+						and(eq(customLists.createdById, session.user.id), eq(customLists.listType, 'shopping'))
+					)
+					.limit(1);
+
+				if (existingShoppingList.length === 0) {
+					// Create default Shopping List
+					await db.insert(customLists).values({
+						id: nanoid(),
+						name: 'Shopping List',
+						createdById: session.user.id,
+						createdAt: new Date(),
+						viewMode: 'personal',
+						listType: 'shopping'
+					});
+					console.log('Created default Shopping List for user:', session.user.id);
+				}
+			} catch (error) {
+				console.error('Error creating default lists:', error);
+				// Don't fail the load if list creation fails
 			}
 		} catch (error) {
 			console.error('Error fetching user group membership:', error);
