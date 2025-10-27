@@ -34,7 +34,19 @@ const user = table('user')
 		subscription_id: string().optional(), // Stripe subscription ID
 		stripe_customer_id: string().optional(), // Stripe customer ID
 		current_period_end: number().optional(), // When current billing period ends (timestamp)
-		cancel_at_period_end: boolean() // Whether subscription cancels at period end
+		cancel_at_period_end: boolean(), // Whether subscription cancels at period end
+		// Notification preferences (premium feature) - database uses snake_case
+		timezone: string(), // User's timezone for scheduled notifications
+		notify_morning_briefing: boolean(), // Daily morning briefing at 8 AM
+		notify_evening_wrapup: boolean(), // Daily evening wrap-up at 6 PM
+		notify_event_reminders: boolean(), // 1 hour before events
+		notify_shopping_reminders: boolean(), // Shopping list reminders
+		notify_task_followups: boolean(), // Overdue task reminders
+		notify_group_activity: boolean(), // Group activity notifications
+		notify_weekly_summary: boolean(), // Weekly productivity report
+		notify_subscription_updates: boolean(), // Subscription/billing notifications
+		morning_briefing_time: string(), // Time for morning briefing (HH:mm format)
+		evening_wrapup_time: string() // Time for evening wrap-up (HH:mm format)
 	})
 	.primaryKey('id');
 

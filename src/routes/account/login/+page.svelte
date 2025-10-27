@@ -42,8 +42,9 @@
 			if (err) {
 				console.error('Login error:', err);
 
-				// Check if error is due to unverified email
+				// Check if error is due to unverified email (status 403 or message contains verify/verification)
 				if (
+					err.status === 403 ||
 					err.message?.toLowerCase().includes('verify') ||
 					err.message?.toLowerCase().includes('verification')
 				) {

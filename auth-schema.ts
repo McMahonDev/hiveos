@@ -23,7 +23,19 @@ export const user = pgTable('user', {
 	subscriptionId: text('subscription_id'), // Stripe subscription ID
 	stripeCustomerId: text('stripe_customer_id'), // Stripe customer ID
 	currentPeriodEnd: timestamp('current_period_end'), // When current billing period ends
-	cancelAtPeriodEnd: boolean('cancel_at_period_end').$defaultFn(() => false) // Whether subscription cancels at period end
+	cancelAtPeriodEnd: boolean('cancel_at_period_end').$defaultFn(() => false), // Whether subscription cancels at period end
+	// Notification preferences (premium feature)
+	timezone: text('timezone').$defaultFn(() => 'America/New_York'), // User's timezone for scheduled notifications
+	notifyMorningBriefing: boolean('notify_morning_briefing').$defaultFn(() => true), // Daily morning briefing at 8 AM
+	notifyEveningWrapup: boolean('notify_evening_wrapup').$defaultFn(() => false), // Daily evening wrap-up at 6 PM
+	notifyEventReminders: boolean('notify_event_reminders').$defaultFn(() => true), // 1 hour before events
+	notifyShoppingReminders: boolean('notify_shopping_reminders').$defaultFn(() => false), // Shopping list reminders
+	notifyTaskFollowups: boolean('notify_task_followups').$defaultFn(() => false), // Overdue task reminders
+	notifyGroupActivity: boolean('notify_group_activity').$defaultFn(() => true), // Group activity notifications
+	notifyWeeklySummary: boolean('notify_weekly_summary').$defaultFn(() => false), // Weekly productivity report
+	notifySubscriptionUpdates: boolean('notify_subscription_updates').$defaultFn(() => true), // Subscription/billing notifications
+	morningBriefingTime: text('morning_briefing_time').$defaultFn(() => '08:00'), // Time for morning briefing (HH:mm format)
+	eveningWrapupTime: text('evening_wrapup_time').$defaultFn(() => '18:00') // Time for evening wrap-up (HH:mm format)
 });
 
 export const session = pgTable('session', {

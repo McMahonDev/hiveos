@@ -2,7 +2,10 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '../server/db/index.ts';
 import { schema } from '../combinedSchema.ts';
+import { user, userGroupMembers } from '../server/db/schema.ts';
+import { eq } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
+import { createAuthMiddleware } from 'better-auth/api';
 
 // SMTP Configuration from environment variables
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.example.com';
@@ -151,6 +154,69 @@ export const auth = betterAuth({
 			});
 		}
 	},
+	
+	hooks: {
+		after: createAuthMiddleware(async (ctx) => {
+			// After successful sign-in, check if user is on free tier
+			// and revoke all other sessions if they are
+			if (ctx.path === '/sign-in/email' && ctx.context.newSession) {
+				try {
+					const userId = ctx.context.newSession.session.userId;
+					const currentSessionToken = ctx.context.newSession.session.token;
+					
+					// Fetch user's subscription tier and group membership from database
+					const [userData] = await db
+						.select({ 
+							subscriptionTier: user.subscriptionTier,
+							activeGroupId: user.activeGroupId 
+						})
+						.from(user)
+						.where(eq(user.id, userId))
+						.limit(1);
+					
+					// Check if user is part of any group
+					const groupMembership = await db
+						.select()
+						.from(userGroupMembers)
+						.where(eq(userGroupMembers.userId, userId))
+						.limit(1);
+					
+					const isInGroup = groupMembership.length > 0 || (userData?.activeGroupId && userData.activeGroupId !== userId);
+					
+					// Only revoke sessions if user is on free tier AND not in any group
+					if (userData && (userData.subscriptionTier === 'free' || !userData.subscriptionTier) && !isInGroup) {
+						// Use the database adapter to delete other sessions
+						const sessions = await ctx.context.adapter.findMany({
+							model: 'session',
+							where: [
+								{ field: 'userId', value: userId }
+							]
+						}) as Array<{ token: string; userId: string }>;
+						
+						// Delete all sessions except the current one
+						for (const session of sessions) {
+							if (session.token !== currentSessionToken) {
+								await ctx.context.adapter.delete({
+									model: 'session',
+									where: [
+										{ field: 'token', value: session.token }
+									]
+								});
+							}
+						}
+						
+						console.log(`🔐 Free account (not in group) login: Revoked ${sessions.length - 1} other session(s) for user ${userId}`);
+					} else if (isInGroup) {
+						console.log(`✅ Free account in group - allowing multiple sessions for user ${userId}`);
+					}
+				} catch (error) {
+					// Don't fail the login if session revocation fails
+					console.error('Error revoking other sessions:', error);
+				}
+			}
+		})
+	},
+	
 	advanced: {
 		cookiePrefix: 'hiveos' // Prefix for cookies
 	},
