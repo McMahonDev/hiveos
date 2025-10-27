@@ -157,3 +157,520 @@ The HiveOS Team`;
 		html
 	});
 }
+
+// === NOTIFICATION EMAIL TEMPLATES ===
+
+/**
+ * Send morning briefing email with today's events, tasks, and lists
+ */
+export async function sendMorningBriefing({
+	userEmail,
+	userName,
+	data
+}: {
+	userEmail: string;
+	userName: string;
+	data: {
+		todaysEvents: Array<{ name: string; time: string; location?: string }>;
+		incompleteTasks: number;
+		shoppingLists: Array<{ name: string; itemCount: number }>;
+		customLists: Array<{ name: string; type: string; itemCount: number }>;
+	};
+}) {
+	const subject = `☀️ Good morning, ${userName}! Your day at a glance`;
+
+	const hasContent =
+		data.todaysEvents.length > 0 ||
+		data.incompleteTasks > 0 ||
+		data.shoppingLists.length > 0 ||
+		data.customLists.length > 0;
+
+	const text = `Good morning, ${userName}!
+
+${hasContent ? "Here's what's on your plate today:" : "You have a clear schedule today! 🎉"}
+
+${
+	data.todaysEvents.length > 0
+		? `📅 TODAY'S EVENTS (${data.todaysEvents.length})
+${data.todaysEvents
+	.map(
+		(event) =>
+			`• ${event.time} - ${event.name}${event.location ? ` at ${event.location}` : ''}`
+	)
+	.join('\n')}
+
+`
+		: ''
+}${data.incompleteTasks > 0 ? `✅ TASKS: ${data.incompleteTasks} pending\n\n` : ''}${
+		data.shoppingLists.length > 0
+			? `🛒 SHOPPING LISTS
+${data.shoppingLists.map((list) => `• ${list.name} (${list.itemCount} items)`).join('\n')}
+
+`
+			: ''
+	}${
+		data.customLists.length > 0
+			? `📋 OTHER LISTS
+${data.customLists.map((list) => `• ${list.name} (${list.itemCount} items)`).join('\n')}
+
+`
+			: ''
+	}
+View your full schedule: ${process.env.VITE_APP_URL || 'https://hiveos.app'}/my-day
+
+Have a productive day!
+The HiveOS Team`;
+
+	const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background: #f8f9fa;">
+  <div style="background: linear-gradient(135deg, #FFD400 0%, #FFC700 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="margin: 0; color: #000; font-size: 24px; font-weight: 800;">☀️ Good Morning!</h1>
+  </div>
+  
+  <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
+    <p style="font-size: 16px; margin-top: 0;">Hi ${userName},</p>
+    
+    ${
+			hasContent
+				? `<p style="font-size: 16px;">Here's what's on your plate today:</p>`
+				: `<div style="text-align: center; padding: 40px 20px;">
+        <p style="font-size: 20px; margin: 0;">You have a clear schedule today! 🎉</p>
+        <p style="font-size: 14px; color: #666; margin-top: 10px;">Perfect day to relax or start something new.</p>
+      </div>`
+		}
+    
+    ${
+			data.todaysEvents.length > 0
+				? `
+    <div style="background: #f8f9fa; border-left: 4px solid #4A90E2; padding: 20px; margin: 20px 0; border-radius: 4px;">
+      <h3 style="margin: 0 0 12px 0; color: #000; font-size: 18px;">📅 Today's Events (${data.todaysEvents.length})</h3>
+      ${data.todaysEvents
+				.map(
+					(event) => `
+        <div style="margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #e0e0e0;">
+          <div style="font-weight: 600; color: #333;">${event.name}</div>
+          <div style="font-size: 14px; color: #666;">
+            🕐 ${event.time}${event.location ? ` • 📍 ${event.location}` : ''}
+          </div>
+        </div>`
+				)
+				.join('')}
+    </div>`
+				: ''
+		}
+    
+    ${
+			data.incompleteTasks > 0
+				? `
+    <div style="background: #f8f9fa; border-left: 4px solid #50C878; padding: 20px; margin: 20px 0; border-radius: 4px;">
+      <h3 style="margin: 0; color: #000; font-size: 18px;">✅ Tasks</h3>
+      <p style="margin: 8px 0 0 0; font-size: 16px; color: #666;">You have <strong>${data.incompleteTasks} pending tasks</strong></p>
+    </div>`
+				: ''
+		}
+    
+    ${
+			data.shoppingLists.length > 0
+				? `
+    <div style="background: #f8f9fa; border-left: 4px solid #FF6B6B; padding: 20px; margin: 20px 0; border-radius: 4px;">
+      <h3 style="margin: 0 0 12px 0; color: #000; font-size: 18px;">🛒 Shopping Lists</h3>
+      ${data.shoppingLists
+				.map(
+					(list) => `
+        <div style="margin: 8px 0;">• ${list.name} <span style="color: #666;">(${list.itemCount} items)</span></div>`
+				)
+				.join('')}
+    </div>`
+				: ''
+		}
+    
+    ${
+			data.customLists.length > 0
+				? `
+    <div style="background: #f8f9fa; border-left: 4px solid #9B59B6; padding: 20px; margin: 20px 0; border-radius: 4px;">
+      <h3 style="margin: 0 0 12px 0; color: #000; font-size: 18px;">📋 Other Lists</h3>
+      ${data.customLists
+				.map(
+					(list) => `
+        <div style="margin: 8px 0;">• ${list.name} <span style="color: #666;">(${list.itemCount} items)</span></div>`
+				)
+				.join('')}
+    </div>`
+				: ''
+		}
+    
+    ${
+			hasContent
+				? `
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}/my-day" 
+         style="display: inline-block; background: #FFD400; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        View Full Schedule
+      </a>
+    </div>`
+				: ''
+		}
+    
+    <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 32px 0;">
+    
+    <p style="font-size: 14px; color: #666; margin: 0;">
+      Have a productive day!<br>
+      The HiveOS Team
+    </p>
+  </div>
+  
+  <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+    <p style="margin: 0;">You're receiving this because you enabled morning briefings.</p>
+    <p style="margin: 5px 0 0 0;"><a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}/account/notifications" style="color: #666;">Manage notification settings</a></p>
+  </div>
+</body>
+</html>`;
+
+	await sendEmail({
+		to: userEmail,
+		subject,
+		text,
+		html
+	});
+}
+
+/**
+ * Send evening wrap-up email with today's accomplishments
+ */
+export async function sendEveningWrapup({
+	userEmail,
+	userName,
+	data
+}: {
+	userEmail: string;
+	userName: string;
+	data: {
+		completedTasks: number;
+		eventsAttended: number;
+		tomorrowsEvents: Array<{ name: string; time: string }>;
+		pendingTasks: number;
+	};
+}) {
+	const subject = `🌙 ${userName}, here's your day in review`;
+
+	const text = `Good evening, ${userName}!
+
+Here's how your day went:
+
+${data.completedTasks > 0 ? `✅ Completed ${data.completedTasks} tasks` : ''}
+${data.eventsAttended > 0 ? `📅 Attended ${data.eventsAttended} events` : ''}
+${data.completedTasks === 0 && data.eventsAttended === 0 ? 'No completed tasks or events today.' : ''}
+
+${
+	data.tomorrowsEvents.length > 0
+		? `
+TOMORROW'S SCHEDULE:
+${data.tomorrowsEvents.map((event) => `• ${event.time} - ${event.name}`).join('\n')}
+`
+		: ''
+}
+${data.pendingTasks > 0 ? `You have ${data.pendingTasks} pending tasks.\n` : ''}
+
+View your schedule: ${process.env.VITE_APP_URL || 'https://hiveos.app'}/my-day
+
+Rest well!
+The HiveOS Team`;
+
+	const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background: #1a1a2e;">
+  <div style="background: linear-gradient(135deg, #16213E 0%, #0F3460 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="margin: 0; color: #FFD400; font-size: 24px; font-weight: 800;">🌙 Day in Review</h1>
+  </div>
+  
+  <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 16px; margin-top: 0;">Good evening, ${userName}!</p>
+    
+    <div style="background: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px;">
+      <h3 style="margin: 0 0 16px 0; color: #000; font-size: 18px;">Today's Accomplishments</h3>
+      ${
+				data.completedTasks > 0 || data.eventsAttended > 0
+					? `
+      <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+        ${
+					data.completedTasks > 0
+						? `
+        <div style="text-align: center; padding: 16px;">
+          <div style="font-size: 32px; font-weight: bold; color: #50C878;">${data.completedTasks}</div>
+          <div style="font-size: 14px; color: #666;">Tasks Completed</div>
+        </div>`
+						: ''
+				}
+        ${
+					data.eventsAttended > 0
+						? `
+        <div style="text-align: center; padding: 16px;">
+          <div style="font-size: 32px; font-weight: bold; color: #4A90E2;">${data.eventsAttended}</div>
+          <div style="font-size: 14px; color: #666;">Events Attended</div>
+        </div>`
+						: ''
+				}
+      </div>`
+					: `<p style="text-align: center; color: #666; margin: 0;">No completed tasks or events today.</p>`
+			}
+    </div>
+    
+    ${
+			data.tomorrowsEvents.length > 0
+				? `
+    <div style="background: #fff8e1; border-left: 4px solid #FFD400; padding: 20px; margin: 20px 0; border-radius: 4px;">
+      <h3 style="margin: 0 0 12px 0; color: #000; font-size: 18px;">📅 Tomorrow's Schedule</h3>
+      ${data.tomorrowsEvents
+				.map(
+					(event) => `
+        <div style="margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+          <div style="font-weight: 600; color: #333;">${event.name}</div>
+          <div style="font-size: 14px; color: #666;">🕐 ${event.time}</div>
+        </div>`
+				)
+				.join('')}
+    </div>`
+				: ''
+		}
+    
+    ${
+			data.pendingTasks > 0
+				? `
+    <div style="text-align: center; padding: 16px; margin: 20px 0;">
+      <p style="font-size: 14px; color: #666; margin: 0;">You have <strong>${data.pendingTasks} pending tasks</strong> to tackle.</p>
+    </div>`
+				: ''
+		}
+    
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}/my-day" 
+         style="display: inline-block; background: #FFD400; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        View Tomorrow's Schedule
+      </a>
+    </div>
+    
+    <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 32px 0;">
+    
+    <p style="font-size: 14px; color: #666; margin: 0;">
+      Rest well!<br>
+      The HiveOS Team
+    </p>
+  </div>
+  
+  <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+    <p style="margin: 0;">You're receiving this because you enabled evening wrap-ups.</p>
+    <p style="margin: 5px 0 0 0;"><a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}/account/notifications" style="color: #666;">Manage notification settings</a></p>
+  </div>
+</body>
+</html>`;
+
+	await sendEmail({
+		to: userEmail,
+		subject,
+		text,
+		html
+	});
+}
+
+/**
+ * Send event reminder email
+ */
+export async function sendEventReminder({
+	userEmail,
+	userName,
+	event
+}: {
+	userEmail: string;
+	userName: string;
+	event: {
+		name: string;
+		date: string;
+		time: string;
+		location?: string;
+		description?: string;
+	};
+}) {
+	const subject = `⏰ Reminder: ${event.name} in 1 hour`;
+
+	const text = `Hi ${userName},
+
+This is a reminder that your event "${event.name}" starts in 1 hour.
+
+📅 Date: ${event.date}
+🕐 Time: ${event.time}
+${event.location ? `📍 Location: ${event.location}` : ''}
+${event.description ? `\nDetails: ${event.description}` : ''}
+
+View event: ${process.env.VITE_APP_URL || 'https://hiveos.app'}/events
+
+Best regards,
+The HiveOS Team`;
+
+	const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="margin: 0; color: #fff; font-size: 28px; font-weight: 800;">⏰ Event Reminder</h1>
+  </div>
+  
+  <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 16px; margin-top: 0;">Hi ${userName},</p>
+    
+    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 16px; margin: 24px 0; border-radius: 4px; text-align: center;">
+      <p style="margin: 0; font-size: 18px; font-weight: 600;">Your event starts in <span style="color: #ff6b6b;">1 hour</span></p>
+    </div>
+    
+    <div style="background: #f8f9fa; padding: 24px; margin: 24px 0; border-radius: 8px;">
+      <h2 style="margin: 0 0 16px 0; color: #000; font-size: 22px;">${event.name}</h2>
+      
+      <div style="margin: 12px 0;">
+        <span style="font-weight: 600;">📅 Date:</span> ${event.date}
+      </div>
+      <div style="margin: 12px 0;">
+        <span style="font-weight: 600;">🕐 Time:</span> ${event.time}
+      </div>
+      ${event.location ? `<div style="margin: 12px 0;"><span style="font-weight: 600;">📍 Location:</span> ${event.location}</div>` : ''}
+      ${event.description ? `<div style="margin: 16px 0; padding-top: 16px; border-top: 1px solid #e0e0e0;"><div style="font-weight: 600; margin-bottom: 8px;">Details:</div><div style="color: #666;">${event.description}</div></div>` : ''}
+    </div>
+    
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}/events" 
+         style="display: inline-block; background: #4A90E2; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        View Event
+      </a>
+    </div>
+    
+    <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 32px 0;">
+    
+    <p style="font-size: 14px; color: #666; margin: 0;">
+      Best regards,<br>
+      The HiveOS Team
+    </p>
+  </div>
+  
+  <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+    <p style="margin: 0;">You're receiving this because you enabled event reminders.</p>
+    <p style="margin: 5px 0 0 0;"><a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}/account/notifications" style="color: #666;">Manage notification settings</a></p>
+  </div>
+</body>
+</html>`;
+
+	await sendEmail({
+		to: userEmail,
+		subject,
+		text,
+		html
+	});
+}
+
+/**
+ * Send group activity notification when someone adds multiple items
+ */
+export async function sendGroupActivityNotification({
+	userEmail,
+	userName,
+	data
+}: {
+	userEmail: string;
+	userName: string;
+	data: {
+		memberName: string;
+		groupName: string;
+		listType: string; // 'events', 'shopping', 'tasks', etc.
+		itemsAdded: number;
+		items: Array<{ name: string }>;
+	};
+}) {
+	const subject = `📋 ${data.memberName} added ${data.itemsAdded} items to ${data.groupName}`;
+
+	const listTypeEmoji: Record<string, string> = {
+		events: '📅',
+		shopping: '🛒',
+		tasks: '✅',
+		custom: '📋'
+	};
+
+	const emoji = listTypeEmoji[data.listType] || '📋';
+
+	const text = `Hi ${userName},
+
+${data.memberName} just added ${data.itemsAdded} items to "${data.groupName}":
+
+${data.items.map((item) => `• ${item.name}`).join('\n')}
+
+View in HiveOS: ${process.env.VITE_APP_URL || 'https://hiveos.app'}
+
+Best regards,
+The HiveOS Team`;
+
+	const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #9B59B6 0%, #8E44AD 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="margin: 0; color: #fff; font-size: 28px; font-weight: 800;">${emoji} Group Activity</h1>
+  </div>
+  
+  <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 16px; margin-top: 0;">Hi ${userName},</p>
+    
+    <div style="background: #f8f9fa; border-left: 4px solid #9B59B6; padding: 20px; margin: 24px 0; border-radius: 4px;">
+      <p style="margin: 0; font-size: 16px;">
+        <strong>${data.memberName}</strong> just added <strong>${data.itemsAdded} items</strong> to <strong>"${data.groupName}"</strong>
+      </p>
+    </div>
+    
+    <div style="background: #fafafa; padding: 20px; margin: 24px 0; border-radius: 8px;">
+      <h3 style="margin: 0 0 12px 0; color: #000; font-size: 18px;">New Items:</h3>
+      ${data.items.map((item) => `<div style="margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #e0e0e0;">• ${item.name}</div>`).join('')}
+    </div>
+    
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}" 
+         style="display: inline-block; background: #9B59B6; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        View in HiveOS
+      </a>
+    </div>
+    
+    <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 32px 0;">
+    
+    <p style="font-size: 14px; color: #666; margin: 0;">
+      Best regards,<br>
+      The HiveOS Team
+    </p>
+  </div>
+  
+  <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+    <p style="margin: 0;">You're receiving this because you enabled group activity notifications.</p>
+    <p style="margin: 5px 0 0 0;"><a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}/account/notifications" style="color: #666;">Manage notification settings</a></p>
+  </div>
+</body>
+</html>`;
+
+	await sendEmail({
+		to: userEmail,
+		subject,
+		text,
+		html
+	});
+}
