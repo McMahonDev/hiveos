@@ -31,12 +31,13 @@ export async function load({ request, url }) {
 		userId = '';
 		groupId = '0';
 		if (
+			url.pathname !== '/' &&
 			url.pathname !== '/account/login' &&
 			url.pathname !== '/account/register' &&
 			url.pathname !== '/account/forgot-password' &&
 			!url.pathname.includes('/reset-password')
 		) {
-			throw redirect(302, '/account/login');
+			throw redirect(302, '/');
 		}
 	} else {
 		isAuthenticated = true;
