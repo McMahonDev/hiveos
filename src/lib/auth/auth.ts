@@ -164,6 +164,9 @@ export const auth = betterAuth({
 					const userId = ctx.context.newSession.session.userId;
 					const currentSessionToken = ctx.context.newSession.session.token;
 					
+					console.log(`🔍 Sign-in detected for user ${userId}`);
+					console.log(`🔍 Current session token: ${currentSessionToken}`);
+					
 					// Fetch user's subscription tier and group membership from database
 					const [userData] = await db
 						.select({ 
@@ -185,33 +188,45 @@ export const auth = betterAuth({
 					
 					// Only revoke sessions if user is on free tier AND not in any group
 					if (userData && (userData.subscriptionTier === 'free' || !userData.subscriptionTier) && !isInGroup) {
-						// Use the database adapter to delete other sessions
+						console.log(`🔐 Free account (not in group) - checking for other sessions to revoke`);
+						
+						// Use the database adapter to find all sessions for this user
 						const sessions = await ctx.context.adapter.findMany({
 							model: 'session',
 							where: [
 								{ field: 'userId', value: userId }
 							]
-						}) as Array<{ token: string; userId: string }>;
+						}) as Array<{ token: string; userId: string; id: string }>;
+						
+						console.log(`📊 Found ${sessions.length} total session(s) for user ${userId}`);
+						sessions.forEach((s, i) => {
+							console.log(`  Session ${i + 1}: ${s.token} ${s.token === currentSessionToken ? '(CURRENT - KEEP)' : '(OLD - DELETE)'}`);
+						});
 						
 						// Delete all sessions except the current one
+						let revokedCount = 0;
 						for (const session of sessions) {
 							if (session.token !== currentSessionToken) {
+								console.log(`🗑️ Deleting old session: ${session.token}`);
 								await ctx.context.adapter.delete({
 									model: 'session',
 									where: [
 										{ field: 'token', value: session.token }
 									]
 								});
+								revokedCount++;
 							}
 						}
 						
-						console.log(`🔐 Free account (not in group) login: Revoked ${sessions.length - 1} other session(s) for user ${userId}`);
+						console.log(`✅ Free account login: Kept current session, revoked ${revokedCount} other session(s) for user ${userId}`);
 					} else if (isInGroup) {
 						console.log(`✅ Free account in group - allowing multiple sessions for user ${userId}`);
+					} else {
+						console.log(`✅ Paid account - allowing multiple sessions for user ${userId}`);
 					}
 				} catch (error) {
 					// Don't fail the login if session revocation fails
-					console.error('Error revoking other sessions:', error);
+					console.error('❌ Error revoking other sessions:', error);
 				}
 			}
 		})
