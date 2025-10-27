@@ -17,7 +17,7 @@ import {
 } from '$lib/server/email';
 
 // Secret key for authenticating cron requests (set in environment variables)
-const CRON_SECRET = process.env.CRON_SECRET || 'your-secure-cron-secret-change-this';
+const CRON_SECRET = process.env.CRON_SECRET;
 
 /**
  * Cron job endpoint handler
@@ -33,6 +33,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	}
 
 	try {
+        console.log(`Running cron job: ${job}`);
 		switch (job) {
 			case 'morning-briefing':
 				return await handleMorningBriefing();
