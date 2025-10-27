@@ -963,6 +963,21 @@
 			</div>
 		{/if}
 
+		<!-- Notifications Card -->
+		<div class="card notifications-card">
+			<h2 class="card-title">📧 Notifications</h2>
+			<p class="card-description">
+				Manage your email notification preferences and scheduled digests.
+			</p>
+			<a
+				href="/account/notifications"
+				class="primary-button"
+				style="display: block; text-align: center; text-decoration: none;"
+			>
+				Notification Settings
+			</a>
+		</div>
+
 		<!-- Session Card -->
 		<div class="card session-card">
 			<h2 class="card-title">Session</h2>
