@@ -401,7 +401,7 @@
 		/* Single column centered layout when not authenticated */
 		&:not(:has(aside)) {
 			grid-template-columns: 1fr;
-			max-width: 600px;
+			/* max-width: 600px; */
 			margin: 0 auto;
 			gap: 0;
 		}
