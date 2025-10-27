@@ -69,26 +69,16 @@
 		}
 	}
 
-	// Set up periodic session checking
+	// Set up periodic session checking - check every 5 minutes instead of 5 seconds
 	$effect(() => {
 		if (!auth) return;
 
-		// Check session immediately
-		checkSession();
-
-		// Check session every 5 seconds
-		const interval = setInterval(checkSession, 5000);
+		// Check session every 5 minutes (300000ms) - much more reasonable than 5 seconds
+		const interval = setInterval(checkSession, 300000);
 
 		return () => {
 			clearInterval(interval);
 		};
-	});
-
-	// Check session on route changes
-	$effect(() => {
-		if (auth && $page.url.pathname) {
-			checkSession();
-		}
 	});
 
 	$effect(() => {
