@@ -63,33 +63,42 @@ export const POST: RequestHandler = async ({ params, request }) => {
  */
 async function handleMorningBriefing() {
 	const currentHour = new Date().getHours();
+	console.log(`📧 Starting morning briefing job at hour ${currentHour}`);
+	
 	const users = await getUsersForMorningBriefing(currentHour);
+	console.log(`Found ${users.length} users to notify`);
 
 	let successCount = 0;
 	let errorCount = 0;
 
 	for (const u of users) {
 		try {
+			console.log(`Processing user: ${u.email}`);
+			
 			// Get today's events
 			const today = new Date().toISOString().split('T')[0];
 			const todaysEvents = await db.query.events.findMany({
 				where: and(eq(events.assignedToId, u.id), eq(events.date, today))
 			});
+			console.log(`  - Events today: ${todaysEvents.length}`);
 
 			// Get incomplete tasks
 			const incompleteTasks = await db.query.tasks.findMany({
 				where: and(eq(tasks.assignedToId, u.id), eq(tasks.status, false))
 			});
+			console.log(`  - Incomplete tasks: ${incompleteTasks.length}`);
 
 			// Get shopping lists with items
 			const shoppingLists = await db.query.shoppingList.findMany({
 				where: and(eq(shoppingList.assignedToId, u.id), eq(shoppingList.status, false))
 			});
+			console.log(`  - Shopping lists: ${shoppingLists.length}`);
 
 			// Get custom lists with items
 			const userCustomLists = await db.query.customLists.findMany({
 				where: eq(customLists.createdById, u.id)
 			});
+			console.log(`  - Custom lists: ${userCustomLists.length}`);
 
 			const customListsWithCounts = await Promise.all(
 				userCustomLists.map(async (list) => {
@@ -104,6 +113,7 @@ async function handleMorningBriefing() {
 				})
 			);
 
+			console.log(`Sending morning briefing email to ${u.email}...`);
 			await sendMorningBriefing({
 				userEmail: u.email,
 				userName: u.name,
@@ -122,20 +132,24 @@ async function handleMorningBriefing() {
 				}
 			});
 
+			console.log(`✅ Successfully sent morning briefing to ${u.email}`);
 			successCount++;
 		} catch (error) {
-			console.error(`Error sending morning briefing to ${u.email}:`, error);
+			console.error(`❌ Error sending morning briefing to ${u.email}:`, error);
 			errorCount++;
 		}
 	}
 
-	return json({
+	const result = {
 		success: true,
 		job: 'morning-briefing',
 		processed: users.length,
 		successful: successCount,
 		failed: errorCount
-	});
+	};
+	
+	console.log('Morning briefing job complete:', result);
+	return json(result);
 }
 
 /**
