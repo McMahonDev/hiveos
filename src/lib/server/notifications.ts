@@ -145,8 +145,10 @@ export async function getUsersForMorningBriefing(currentHour: number): Promise<
 		
 		for (const u of allUsersFromDb) {
 			// Check if morning briefing is enabled
-			if (!u.notifyMorningBriefing) {
-				console.log(`User ${u.email}: morning briefing disabled`);
+			// Note: Drizzle returns camelCase but we need to check the actual field
+			const isEnabled = u.notifyMorningBriefing ?? false;
+			if (!isEnabled) {
+				console.log(`User ${u.email}: morning briefing disabled (value: ${u.notifyMorningBriefing})`);
 				continue;
 			}
 			
