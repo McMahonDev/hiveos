@@ -14,6 +14,7 @@
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 	import { viewPreferencesState } from '$lib/utils/viewPreferences.svelte';
 	import OfflineIndicator from '$lib/components/offlineIndicator.svelte';
+	import { page } from '$app/stores';
 
 	let { children, data } = $props();
 	let z = $derived(data.z);
@@ -27,6 +28,7 @@
 	>('basic');
 
 	let customLists = $state<Query<any, any, any> | undefined>(undefined);
+	let isCheckingSession = $state(false);
 
 	function toggleMenu() {
 		menuOpen = !menuOpen;
@@ -44,6 +46,50 @@
 			console.error('Logout failed:', error);
 		}
 	}
+
+	// Check if session is still valid
+	async function checkSession() {
+		if (isCheckingSession || !auth) return;
+
+		isCheckingSession = true;
+		try {
+			const session = await authClient.getSession();
+
+			// If no session data returned but we think we're authenticated, log out
+			if (!session?.data) {
+				console.log('Session expired or revoked - logging out');
+				await handleLogout();
+			}
+		} catch (error) {
+			console.error('Session check failed:', error);
+			// Session is invalid, log out
+			await handleLogout();
+		} finally {
+			isCheckingSession = false;
+		}
+	}
+
+	// Set up periodic session checking
+	$effect(() => {
+		if (!auth) return;
+
+		// Check session immediately
+		checkSession();
+
+		// Check session every 5 seconds
+		const interval = setInterval(checkSession, 5000);
+
+		return () => {
+			clearInterval(interval);
+		};
+	});
+
+	// Check session on route changes
+	$effect(() => {
+		if (auth && $page.url.pathname) {
+			checkSession();
+		}
+	});
 
 	$effect(() => {
 		// set or clear the Query instance when auth / z.current changes
