@@ -110,26 +110,35 @@
 	function formatDate(dateString: string) {
 		// convert date string to a more readable format
 		if (!dateString) return '';
-		const options: Intl.DateTimeFormatOptions = {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric'
-		};
 
-		// Parse plain YYYY-MM-DD as local date to avoid timezone shifts that can
-		// cause the displayed day to be one day earlier in some timezones.
-		let date: Date;
+		console.log('Formatting date string:', dateString);
+
+		// Parse plain YYYY-MM-DD and format without timezone conversion
 		const isoDateMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 		if (isoDateMatch) {
 			const y = Number(isoDateMatch[1]);
 			const m = Number(isoDateMatch[2]) - 1;
 			const d = Number(isoDateMatch[3]);
-			date = new Date(y, m, d);
-		} else {
-			// fallback for other formats
-			date = new Date(dateString);
+
+			// Create date at noon local time to avoid any timezone edge cases
+			const date = new Date(y, m, d, 12, 0, 0);
+
+			const options: Intl.DateTimeFormatOptions = {
+				year: 'numeric',
+				month: 'long',
+				day: 'numeric'
+			};
+
+			return date.toLocaleDateString(undefined, options);
 		}
 
+		// fallback for other formats
+		const date = new Date(dateString);
+		const options: Intl.DateTimeFormatOptions = {
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric'
+		};
 		return date.toLocaleDateString(undefined, options);
 	}
 

@@ -6,6 +6,18 @@
 	import { goto } from '$app/navigation';
 	import { viewModeState, setViewMode } from '$lib/state/viewMode.svelte.ts';
 	import { offlineQueue } from '$lib/utils/offlineQueue.svelte';
+	import { formatTime } from '$lib/utils/dateFormatters';
+	import { getTimeZoneAbbreviation } from '$lib/utils/timezoneUtils';
+	import {
+		saveToLocalStorage as saveShoppingItemToLocalStorage,
+		isLocalStorageOnly as checkIsLocalStorageOnly,
+		removeStore as removeStoreFromStorage
+	} from '$lib/utils/shoppingListHelpers';
+	import EventListItem from '$lib/components/list/EventListItem.svelte';
+	import RecipeListItem from '$lib/components/list/RecipeListItem.svelte';
+	import ContactListItem from '$lib/components/list/ContactListItem.svelte';
+	import MessageListItem from '$lib/components/list/MessageListItem.svelte';
+	import BookmarkListItem from '$lib/components/list/BookmarkListItem.svelte';
 
 	let { data } = $props();
 	const listId = $derived(data.listId);
@@ -161,46 +173,20 @@
 			}));
 	});
 
-	function getTimeZoneAbbreviation(): string {
-		const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-		const shortName = new Date()
-			.toLocaleTimeString('en-US', { timeZoneName: 'short', timeZone })
-			.split(' ')[2];
-		return shortName || timeZone;
-	}
-
 	function assignedToId() {
 		return viewModeState.currentMode === 'personal' ? id : groupId;
 	}
 
-	function saveToLocalStorage(itemName: string, storeName: string) {
-		if (itemName && !savedItems.includes(itemName)) {
-			savedItems = [...savedItems, itemName];
-			localStorage.setItem('shopping-items', JSON.stringify(savedItems));
-		}
-
-		if (storeName && storeName.trim() && !localStorageStores.includes(storeName)) {
-			localStorageStores = [...localStorageStores, storeName];
-			localStorage.setItem('shopping-stores', JSON.stringify(localStorageStores));
-		}
-	}
-
 	function isLocalStorageOnly(storeName: string): boolean {
-		if (!customListItems?.current || !Array.isArray(customListItems.current)) {
-			return localStorageStores.includes(storeName);
-		}
-
-		const isInDB = customListItems.current.some(
-			(item: any) => item.store && item.store.trim() === storeName
-		);
-
-		return !isInDB && localStorageStores.includes(storeName);
+		const items =
+			customListItems?.current && Array.isArray(customListItems.current)
+				? customListItems.current
+				: null;
+		return checkIsLocalStorageOnly(storeName, items, localStorageStores);
 	}
 
 	function removeStore(storeName: string) {
-		localStorageStores = localStorageStores.filter((s) => s !== storeName);
-		localStorage.setItem('shopping-stores', JSON.stringify(localStorageStores));
-
+		localStorageStores = removeStoreFromStorage(storeName, localStorageStores);
 		if (selectedStore === storeName) {
 			selectedStore = '';
 		}
@@ -225,7 +211,9 @@
 		if (listType === 'shopping') {
 			let store = selectedStore === '__new__' ? newStoreName : selectedStore;
 			itemData.store = store || undefined;
-			saveToLocalStorage(name, store);
+			const updated = saveShoppingItemToLocalStorage(name, store, savedItems, localStorageStores);
+			savedItems = updated.savedItems;
+			localStorageStores = updated.localStorageStores;
 		} else if (listType === 'events') {
 			let date = formData.get('date') as string;
 			let time = formData.get('time') as string;
@@ -464,15 +452,6 @@
 
 		draggedItem = null;
 	}
-
-	function formatTime(time: string, timezone: string): string {
-		if (!time) return '';
-		const [hours, minutes] = time.split(':');
-		const hour = parseInt(hours);
-		const ampm = hour >= 12 ? 'PM' : 'AM';
-		const displayHour = hour % 12 || 12;
-		return `${displayHour}:${minutes} ${ampm}`;
-	}
 </script>
 
 <section class="custom-list">
@@ -595,115 +574,15 @@
 									<p class="item-name" class:completed={item.status}>{item.name}</p>
 
 									{#if listType === 'events'}
-										<div class="event-details">
-											{#if item.date}
-												<span class="event-date">📅 {new Date(item.date).toLocaleDateString()}</span
-												>
-											{/if}
-											{#if !item.allDay && item.time}
-												<span class="event-time">🕐 {formatTime(item.time, item.timezone)}</span>
-											{/if}
-											{#if item.allDay}
-												<span class="event-all-day">All Day</span>
-											{/if}
-											{#if item.location}
-												<span class="event-location">📍 {item.location}</span>
-											{/if}
-											{#if item.description}
-												<p class="event-description">{item.description}</p>
-											{/if}
-										</div>
-									{/if}
-
-									{#if listType === 'recipe'}
-										<div class="recipe-details">
-											{#if item.servings}
-												<span class="recipe-servings">🍽️ Serves {item.servings}</span>
-											{/if}
-											{#if item.prepTime}
-												<span class="recipe-time">⏱️ Prep: {item.prepTime}</span>
-											{/if}
-											{#if item.cookTime}
-												<span class="recipe-time">🔥 Cook: {item.cookTime}</span>
-											{/if}
-											{#if item.ingredients}
-												<details class="recipe-section">
-													<summary>Ingredients</summary>
-													<pre class="recipe-text">{item.ingredients}</pre>
-												</details>
-											{/if}
-											{#if item.instructions}
-												<details class="recipe-section">
-													<summary>Instructions</summary>
-													<pre class="recipe-text">{item.instructions}</pre>
-												</details>
-											{/if}
-										</div>
-									{/if}
-
-									{#if listType === 'messages'}
-										<div class="message-details">
-											{#if item.messageText}
-												<p class="message-text">{item.messageText}</p>
-											{/if}
-											{#if item.priority}
-												<span class="message-priority priority-{item.priority}"
-													>{item.priority}</span
-												>
-											{/if}
-											{#if item.tags}
-												<div class="message-tags">
-													{#each item.tags.split(',').map((t: string) => t.trim()) as tag}
-														<span class="tag">{tag}</span>
-													{/each}
-												</div>
-											{/if}
-										</div>
-									{/if}
-
-									{#if listType === 'contacts'}
-										<div class="contact-details">
-											{#if item.phone}
-												<span class="contact-info">📱 {item.phone}</span>
-											{/if}
-											{#if item.email}
-												<span class="contact-info">✉️ {item.email}</span>
-											{/if}
-											{#if item.address}
-												<span class="contact-info">🏠 {item.address}</span>
-											{/if}
-											{#if item.company}
-												<span class="contact-info">🏢 {item.company}</span>
-											{/if}
-											{#if item.notes}
-												<p class="contact-notes">{item.notes}</p>
-											{/if}
-										</div>
-									{/if}
-
-									{#if listType === 'bookmarks'}
-										<div class="bookmark-details">
-											{#if item.url}
-												<a
-													href={item.url}
-													target="_blank"
-													rel="noopener noreferrer"
-													class="bookmark-url"
-												>
-													🔗 {item.url}
-												</a>
-											{/if}
-											{#if item.description}
-												<p class="bookmark-description">{item.description}</p>
-											{/if}
-											{#if item.tags}
-												<div class="bookmark-tags">
-													{#each item.tags.split(',').map((t: string) => t.trim()) as tag}
-														<span class="tag">{tag}</span>
-													{/each}
-												</div>
-											{/if}
-										</div>
+										<EventListItem {item} />
+									{:else if listType === 'recipe'}
+										<RecipeListItem {item} />
+									{:else if listType === 'messages'}
+										<MessageListItem {item} />
+									{:else if listType === 'contacts'}
+										<ContactListItem {item} />
+									{:else if listType === 'bookmarks'}
+										<BookmarkListItem {item} />
 									{/if}
 								</div>
 
@@ -1355,191 +1234,6 @@
 						text-decoration: line-through;
 						opacity: 0.6;
 					}
-				}
-
-				.item-store {
-					font-size: 0.875rem;
-					color: var(--color-tertiary, #666);
-				}
-
-				.event-details {
-					display: flex;
-					flex-wrap: wrap;
-					gap: 8px;
-					font-size: 0.875rem;
-
-					.event-date,
-					.event-time,
-					.event-location,
-					.event-all-day {
-						padding: 4px 8px;
-						background: rgba(0, 123, 255, 0.08);
-						border-radius: 4px;
-						color: var(--text-color, #333);
-					}
-
-					.event-description {
-						width: 100%;
-						margin: 4px 0 0 0;
-						padding: 8px;
-						background: rgba(0, 0, 0, 0.02);
-						border-radius: 4px;
-						font-size: 0.875rem;
-						line-height: 1.4;
-					}
-				}
-
-				.recipe-details {
-					display: flex;
-					flex-direction: column;
-					gap: 10px;
-					font-size: 0.875rem;
-
-					.recipe-servings,
-					.recipe-time {
-						padding: 4px 8px;
-						background: rgba(255, 152, 0, 0.08);
-						border-radius: 4px;
-						display: inline-block;
-						margin-right: 8px;
-					}
-
-					.recipe-section {
-						margin-top: 8px;
-
-						summary {
-							cursor: pointer;
-							font-weight: 600;
-							padding: 6px 0;
-							user-select: none;
-
-							&:hover {
-								color: #007bff;
-							}
-						}
-
-						.recipe-text {
-							margin: 8px 0 0 0;
-							padding: 12px;
-							background: rgba(0, 0, 0, 0.02);
-							border-radius: 4px;
-							white-space: pre-wrap;
-							font-family: inherit;
-							line-height: 1.6;
-						}
-					}
-				}
-
-				.message-details {
-					display: flex;
-					flex-direction: column;
-					gap: 8px;
-					font-size: 0.875rem;
-
-					.message-text {
-						margin: 0;
-						padding: 10px;
-						background: rgba(0, 0, 0, 0.02);
-						border-radius: 4px;
-						line-height: 1.5;
-					}
-
-					.message-priority {
-						display: inline-block;
-						padding: 4px 10px;
-						border-radius: 12px;
-						font-size: 0.75rem;
-						font-weight: 600;
-						text-transform: uppercase;
-
-						&.priority-low {
-							background: #e3f2fd;
-							color: #1976d2;
-						}
-
-						&.priority-medium {
-							background: #fff3e0;
-							color: #f57c00;
-						}
-
-						&.priority-high {
-							background: #fce4ec;
-							color: #c2185b;
-						}
-
-						&.priority-urgent {
-							background: #ffebee;
-							color: #d32f2f;
-						}
-					}
-
-					.message-tags {
-						display: flex;
-						flex-wrap: wrap;
-						gap: 6px;
-					}
-				}
-
-				.contact-details {
-					display: flex;
-					flex-direction: column;
-					gap: 6px;
-					font-size: 0.875rem;
-
-					.contact-info {
-						display: flex;
-						align-items: center;
-						gap: 6px;
-					}
-
-					.contact-notes {
-						margin: 6px 0 0 0;
-						padding: 8px;
-						background: rgba(0, 0, 0, 0.02);
-						border-radius: 4px;
-						font-size: 0.875rem;
-						line-height: 1.4;
-						font-style: italic;
-					}
-				}
-
-				.bookmark-details {
-					display: flex;
-					flex-direction: column;
-					gap: 8px;
-					font-size: 0.875rem;
-
-					.bookmark-url {
-						color: #007bff;
-						text-decoration: none;
-						word-break: break-all;
-
-						&:hover {
-							text-decoration: underline;
-						}
-					}
-
-					.bookmark-description {
-						margin: 0;
-						color: var(--color-tertiary, #666);
-						line-height: 1.4;
-					}
-
-					.bookmark-tags {
-						display: flex;
-						flex-wrap: wrap;
-						gap: 6px;
-					}
-				}
-
-				.tag {
-					display: inline-block;
-					padding: 3px 8px;
-					background: rgba(76, 175, 80, 0.12);
-					color: #2e7d32;
-					border-radius: 12px;
-					font-size: 0.75rem;
-					font-weight: 500;
 				}
 
 				.edit-input {
