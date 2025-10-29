@@ -257,10 +257,12 @@
 		flex-wrap: wrap;
 	}
 
-	.header-content h1 {
-		margin: 0 0 8px 0;
-		font-size: 2rem;
-		color: var(--textColor);
+	.header-content {
+		h1 {
+			margin: 0 0 8px 0;
+			font-size: 2rem;
+			color: var(--textColor);
+		}
 	}
 
 	.subtitle {
@@ -285,11 +287,11 @@
 		font-size: 1rem;
 		font-weight: 600;
 		transition: all 0.2s ease;
-	}
 
-	.info-btn:hover {
-		background-color: rgba(0, 0, 0, 0.05);
-		border-color: rgba(0, 0, 0, 0.3);
+		&:hover {
+			background-color: rgba(0, 0, 0, 0.05);
+			border-color: rgba(0, 0, 0, 0.3);
+		}
 	}
 
 	.create-btn {
@@ -303,30 +305,30 @@
 		font-weight: 600;
 		transition: all 0.2s ease;
 		box-shadow: var(--level-2);
-	}
 
-	.create-btn:hover {
-		transform: translateY(-2px);
-		box-shadow: var(--level-3);
-	}
+		&:hover {
+			transform: translateY(-2px);
+			box-shadow: var(--level-3);
+		}
 
-	.create-btn:active {
-		transform: translateY(0);
+		&:active {
+			transform: translateY(0);
+		}
 	}
 
 	.empty-state {
 		text-align: center;
 		padding: 80px 20px;
-	}
 
-	.empty-state h2 {
-		color: var(--textColor);
-		margin: 0 0 10px 0;
-	}
+		h2 {
+			color: var(--textColor);
+			margin: 0 0 10px 0;
+		}
 
-	.empty-state p {
-		color: var(--color-tertiary, #666);
-		margin: 0 0 30px 0;
+		p {
+			color: var(--color-tertiary, #666);
+			margin: 0 0 30px 0;
+		}
 	}
 
 	.create-btn-large {
@@ -340,20 +342,21 @@
 		font-weight: 600;
 		transition: all 0.2s ease;
 		box-shadow: var(--level-2);
-	}
 
-	.create-btn-large:hover {
-		transform: translateY(-2px);
-		box-shadow: var(--level-3);
+		&:hover {
+			transform: translateY(-2px);
+			box-shadow: var(--level-3);
+		}
 	}
 
 	.comparisons-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 		gap: 20px;
-	}
-	.comparisons-grid a {
-		text-decoration: none;
+
+		a {
+			text-decoration: none;
+		}
 	}
 
 	.comparison-card {
@@ -363,11 +366,11 @@
 		padding: 20px;
 		transition: all 0.2s ease;
 		box-shadow: var(--level-1);
-	}
 
-	.comparison-card:hover {
-		box-shadow: var(--level-2);
-		transform: translateY(-2px);
+		&:hover {
+			box-shadow: var(--level-2);
+			transform: translateY(-2px);
+		}
 	}
 
 	.card-header {
@@ -375,13 +378,13 @@
 		justify-content: space-between;
 		align-items: flex-start;
 		margin-bottom: 12px;
-	}
 
-	.card-header h3 {
-		margin: 0;
-		font-size: 1.25rem;
-		flex: 1;
-		color: var(--textColor);
+		h3 {
+			margin: 0;
+			font-size: 1.25rem;
+			flex: 1;
+			color: var(--textColor);
+		}
 	}
 
 	.delete-btn {
@@ -399,11 +402,11 @@
 		justify-content: center;
 		border-radius: 4px;
 		transition: all 0.2s ease;
-	}
 
-	.delete-btn:hover {
-		background: rgba(255, 0, 0, 0.1);
-		color: #ff0000;
+		&:hover {
+			background: rgba(255, 0, 0, 0.1);
+			color: #ff0000;
+		}
 	}
 
 	.description {
@@ -473,53 +476,55 @@
 		width: 100%;
 		max-height: 90vh;
 		overflow-y: auto;
-	}
 
-	.modal-box h2 {
-		margin-top: 0;
-		margin-bottom: 24px;
-		color: var(--textColor);
+		h2 {
+			margin-top: 0;
+			margin-bottom: 24px;
+			color: var(--textColor);
+		}
 	}
 
 	.form-group {
 		margin-bottom: 20px;
+
+		label {
+			display: block;
+			font-weight: 600;
+			color: var(--textColor);
+			margin-bottom: 8px;
+		}
+
+		input[type='text'],
+		textarea {
+			width: 100%;
+			padding: 10px 12px;
+			border: 1px solid rgba(0, 0, 0, 0.2);
+			border-radius: 6px;
+			font-size: 1rem;
+			font-family: inherit;
+			background: var(--background);
+			color: var(--textColor);
+		}
+
+		textarea {
+			resize: vertical;
+		}
 	}
 
-	.form-group label {
-		display: block;
-		font-weight: 600;
-		color: var(--textColor);
-		margin-bottom: 8px;
-	}
+	.checkbox-group {
+		label {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			cursor: pointer;
+			font-weight: normal;
+		}
 
-	.form-group input[type='text'],
-	.form-group textarea {
-		width: 100%;
-		padding: 10px 12px;
-		border: 1px solid rgba(0, 0, 0, 0.2);
-		border-radius: 6px;
-		font-size: 1rem;
-		font-family: inherit;
-		background: var(--background);
-		color: var(--textColor);
-	}
-
-	.form-group textarea {
-		resize: vertical;
-	}
-
-	.checkbox-group label {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		cursor: pointer;
-		font-weight: normal;
-	}
-
-	.checkbox-group input[type='checkbox'] {
-		width: 18px;
-		height: 18px;
-		cursor: pointer;
+		input[type='checkbox'] {
+			width: 18px;
+			height: 18px;
+			cursor: pointer;
+		}
 	}
 
 	.modal-buttons {
@@ -543,20 +548,20 @@
 	.btn-primary {
 		background-color: var(--primary);
 		color: #000;
-	}
 
-	.btn-primary:hover {
-		transform: translateY(-1px);
-		box-shadow: var(--level-2);
+		&:hover {
+			transform: translateY(-1px);
+			box-shadow: var(--level-2);
+		}
 	}
 
 	.btn-secondary {
 		background-color: #e0e0e0;
 		color: #333;
-	}
 
-	.btn-secondary:hover {
-		background-color: #d0d0d0;
+		&:hover {
+			background-color: #d0d0d0;
+		}
 	}
 
 	.info-modal {
@@ -565,48 +570,203 @@
 
 	.info-section {
 		margin-bottom: 24px;
-	}
 
-	.info-section h3 {
-		margin: 0 0 8px 0;
-		font-size: 1.1rem;
-		color: var(--textColor);
-	}
+		h3 {
+			margin: 0 0 8px 0;
+			font-size: 1.1rem;
+			color: var(--textColor);
+		}
 
-	.info-section p {
-		margin: 0 0 8px 0;
-		color: var(--color-tertiary, #666);
-		line-height: 1.6;
-	}
+		p {
+			margin: 0 0 8px 0;
+			color: var(--color-tertiary, #666);
+			line-height: 1.6;
+		}
 
-	.info-section ul {
-		margin: 8px 0;
-		padding-left: 24px;
-		color: var(--color-tertiary, #666);
-		line-height: 1.6;
-	}
+		ul {
+			margin: 8px 0;
+			padding-left: 24px;
+			color: var(--color-tertiary, #666);
+			line-height: 1.6;
+		}
 
-	.info-section li {
-		margin-bottom: 6px;
-	}
+		li {
+			margin-bottom: 6px;
+		}
 
-	.info-section strong {
-		color: var(--textColor);
-		font-weight: 600;
+		strong {
+			color: var(--textColor);
+			font-weight: 600;
+		}
 	}
 
 	@media (max-width: 768px) {
+		.comparisons-page {
+			padding: 0 16px;
+		}
+
 		.page-header {
 			flex-direction: column;
 			align-items: stretch;
+			margin-bottom: 24px;
+		}
+
+		.header-content h1 {
+			font-size: 1.6rem;
+		}
+
+		.subtitle {
+			font-size: 0.95rem;
 		}
 
 		.header-actions {
 			flex-direction: column;
+			width: 100%;
+		}
+
+		.info-btn,
+		.create-btn {
+			width: 100%;
+			padding: 12px 20px;
 		}
 
 		.comparisons-grid {
 			grid-template-columns: 1fr;
+			gap: 16px;
+		}
+
+		.comparison-card {
+			padding: 16px;
+		}
+
+		.card-header h3 {
+			font-size: 1.1rem;
+		}
+
+		.card-meta {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 8px;
+		}
+
+		.empty-state {
+			padding: 60px 20px;
+		}
+
+		.empty-state h2 {
+			font-size: 1.4rem;
+		}
+
+		.modal-box {
+			padding: 20px;
+			max-width: calc(100% - 32px);
+		}
+
+		.info-modal {
+			max-width: calc(100% - 32px);
+		}
+
+		.info-section h3 {
+			font-size: 1rem;
+		}
+
+		.info-section p,
+		.info-section ul {
+			font-size: 0.9rem;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.comparisons-page {
+			padding: 0 12px;
+		}
+
+		.page-header {
+			margin-bottom: 20px;
+		}
+
+		.header-content h1 {
+			font-size: 1.4rem;
+		}
+
+		.subtitle {
+			font-size: 0.9rem;
+		}
+
+		.info-btn,
+		.create-btn,
+		.create-btn-large {
+			font-size: 0.95rem;
+			padding: 10px 16px;
+		}
+
+		.comparison-card {
+			padding: 14px;
+		}
+
+		.card-header h3 {
+			font-size: 1rem;
+		}
+
+		.description {
+			font-size: 0.85rem;
+		}
+
+		.card-meta {
+			font-size: 0.8rem;
+		}
+
+		.empty-state {
+			padding: 40px 16px;
+		}
+
+		.empty-state h2 {
+			font-size: 1.3rem;
+		}
+
+		.empty-state p {
+			font-size: 0.9rem;
+		}
+
+		.modal-box {
+			padding: 16px;
+		}
+
+		.modal-box h2 {
+			font-size: 1.3rem;
+			margin-bottom: 16px;
+		}
+
+		.form-group input[type='text'],
+		.form-group textarea {
+			font-size: 16px; /* Prevents zoom on iOS */
+		}
+
+		.modal-buttons {
+			flex-direction: column;
+		}
+
+		.btn-primary,
+		.btn-secondary {
+			width: 100%;
+		}
+
+		.info-section {
+			margin-bottom: 20px;
+		}
+
+		.info-section h3 {
+			font-size: 0.95rem;
+		}
+
+		.info-section p,
+		.info-section ul {
+			font-size: 0.85rem;
+			line-height: 1.5;
+		}
+
+		.info-section ul {
+			padding-left: 20px;
 		}
 	}
 </style>

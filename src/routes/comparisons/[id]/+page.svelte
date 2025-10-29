@@ -904,6 +904,14 @@
 
 	.page-title-section {
 		margin-bottom: 32px;
+
+		h1 {
+			margin: 0 0 8px 0;
+			font-size: 2rem;
+			font-weight: 700;
+			color: var(--textColor);
+			line-height: 1.2;
+		}
 	}
 
 	.back-link {
@@ -916,18 +924,10 @@
 		opacity: 0.7;
 		font-size: 0.95rem;
 		transition: opacity 0.2s ease;
-	}
 
-	.back-link:hover {
-		opacity: 1;
-	}
-
-	.page-title-section h1 {
-		margin: 0 0 8px 0;
-		font-size: 2rem;
-		font-weight: 700;
-		color: var(--textColor);
-		line-height: 1.2;
+		&:hover {
+			opacity: 1;
+		}
 	}
 
 	.description {
@@ -938,9 +938,19 @@
 
 	.content-grid {
 		display: grid;
-		grid-template-columns: 400px 1fr;
+		grid-template-columns: minmax(350px, 400px) 1fr;
 		gap: 24px;
 		align-items: start;
+
+		@media (max-width: 1300px) {
+			grid-template-columns: minmax(320px, 380px) 1fr;
+			gap: 20px;
+		}
+
+		@media (max-width: 1200px) {
+			grid-template-columns: minmax(300px, 350px) 1fr;
+			gap: 20px;
+		}
 	}
 
 	.section {
@@ -958,13 +968,13 @@
 		margin-bottom: 20px;
 		flex-wrap: wrap;
 		gap: 12px;
-	}
 
-	.section-header h2 {
-		margin: 0;
-		font-size: 1.25rem;
-		font-weight: 700;
-		color: var(--textColor);
+		h2 {
+			margin: 0;
+			font-size: 1.25rem;
+			font-weight: 700;
+			color: var(--textColor);
+		}
 	}
 
 	.header-buttons {
@@ -983,11 +993,11 @@
 		font-size: 0.9rem;
 		font-weight: 600;
 		transition: all 0.2s ease;
-	}
 
-	.add-btn:hover {
-		transform: translateY(-1px);
-		box-shadow: var(--level-2);
+		&:hover {
+			transform: translateY(-1px);
+			box-shadow: var(--level-2);
+		}
 	}
 
 	.drag-hint {
@@ -1023,26 +1033,30 @@
 		transition: all 0.2s ease;
 		cursor: grab;
 		gap: 12px;
-	}
 
-	.criterion-item:active {
-		cursor: grabbing;
-	}
+		&:active {
+			cursor: grabbing;
 
-	.criterion-item.dragging {
-		opacity: 0.5;
-		transform: scale(0.98);
-	}
+			.drag-handle {
+				cursor: grabbing;
+			}
+		}
 
-	.criterion-item.drag-over {
-		border-color: var(--primary);
-		background: rgba(255, 215, 0, 0.1);
-		transform: translateY(-2px);
-	}
+		&.dragging {
+			opacity: 0.5;
+			transform: scale(0.98);
+		}
 
-	.criterion-item:hover {
-		border-color: rgba(0, 0, 0, 0.2);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+		&.drag-over {
+			border-color: var(--primary);
+			background: rgba(255, 215, 0, 0.1);
+			transform: translateY(-2px);
+		}
+
+		&:hover {
+			border-color: rgba(0, 0, 0, 0.2);
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+		}
 	}
 
 	.drag-handle {
@@ -1051,10 +1065,6 @@
 		cursor: grab;
 		user-select: none;
 		line-height: 1;
-	}
-
-	.criterion-item:active .drag-handle {
-		cursor: grabbing;
 	}
 
 	.criterion-info {
@@ -1107,11 +1117,11 @@
 		border-radius: 4px;
 		color: var(--textColor);
 		transition: all 0.2s ease;
-	}
 
-	.edit-small-btn:hover {
-		background: rgba(0, 0, 0, 0.05);
-		border-color: rgba(0, 0, 0, 0.2);
+		&:hover {
+			background: rgba(0, 0, 0, 0.05);
+			border-color: rgba(0, 0, 0, 0.2);
+		}
 	}
 
 	.items-list {
@@ -1138,12 +1148,12 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-	}
 
-	.item-title h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		color: var(--textColor);
+		h3 {
+			margin: 0;
+			font-size: 1.1rem;
+			color: var(--textColor);
+		}
 	}
 
 	.delete-small-btn {
@@ -1161,11 +1171,11 @@
 		justify-content: center;
 		border-radius: 4px;
 		transition: all 0.2s ease;
-	}
 
-	.delete-small-btn:hover {
-		background: rgba(255, 0, 0, 0.1);
-		color: #ff0000;
+		&:hover {
+			background: rgba(255, 0, 0, 0.1);
+			color: #ff0000;
+		}
 	}
 
 	.item-details {
@@ -1187,29 +1197,39 @@
 	.criteria-values {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: 8px;
 		margin-bottom: 12px;
 		padding: 12px;
 		background: rgba(0, 0, 0, 0.02);
 		border-radius: 6px;
-		font-size: 0.85rem;
+		font-size: 0.875rem;
+		min-width: 0;
+		overflow: hidden;
 	}
 
 	.criterion-value {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
+		align-items: flex-start;
+		gap: 12px;
+		min-width: 0;
 	}
 
 	.criterion-label {
 		color: var(--color-tertiary, #666);
 		font-weight: 500;
+		flex: 1;
+		min-width: 0;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
 	}
 
 	.value-with-points {
 		display: flex;
 		align-items: center;
 		gap: 8px;
+		flex-shrink: 0;
+		white-space: nowrap;
 	}
 
 	.value-display {
@@ -1240,10 +1260,10 @@
 		font-size: 0.9rem;
 		font-weight: 600;
 		transition: all 0.2s ease;
-	}
 
-	.set-values-btn:hover {
-		background-color: #e0e0e0;
+		&:hover {
+			background-color: #e0e0e0;
+		}
 	}
 
 	.loading {
@@ -1257,18 +1277,18 @@
 		padding: 80px 20px;
 		max-width: 600px;
 		margin: 0 auto;
-	}
 
-	.access-denied h2 {
-		color: var(--textColor);
-		margin: 0 0 16px 0;
-		font-size: 1.75rem;
-	}
+		h2 {
+			color: var(--textColor);
+			margin: 0 0 16px 0;
+			font-size: 1.75rem;
+		}
 
-	.access-denied p {
-		color: var(--color-tertiary, #666);
-		margin: 0 0 32px 0;
-		line-height: 1.6;
+		p {
+			color: var(--color-tertiary, #666);
+			margin: 0 0 32px 0;
+			line-height: 1.6;
+		}
 	}
 
 	.back-btn {
@@ -1281,11 +1301,11 @@
 		font-weight: 600;
 		transition: all 0.2s ease;
 		box-shadow: var(--level-2);
-	}
 
-	.back-btn:hover {
-		transform: translateY(-2px);
-		box-shadow: var(--level-3);
+		&:hover {
+			transform: translateY(-2px);
+			box-shadow: var(--level-3);
+		}
 	}
 
 	/* Modal styles */
@@ -1323,12 +1343,12 @@
 		width: 100%;
 		max-height: 90vh;
 		overflow-y: auto;
-	}
 
-	.modal-box h2 {
-		margin-top: 0;
-		margin-bottom: 20px;
-		color: var(--textColor);
+		h2 {
+			margin-top: 0;
+			margin-bottom: 20px;
+			color: var(--textColor);
+		}
 	}
 
 	.modal-subtitle {
@@ -1338,42 +1358,42 @@
 
 	.form-group {
 		margin-bottom: 20px;
-	}
 
-	.form-group label {
-		display: block;
-		font-weight: 600;
-		color: var(--textColor);
-		margin-bottom: 8px;
-	}
+		label {
+			display: block;
+			font-weight: 600;
+			color: var(--textColor);
+			margin-bottom: 8px;
+		}
 
-	.form-group input[type='text'],
-	.form-group input[type='number'],
-	.form-group textarea {
-		width: 100%;
-		padding: 10px 12px;
-		border: 1px solid rgba(0, 0, 0, 0.2);
-		border-radius: 6px;
-		font-size: 1rem;
-		font-family: inherit;
-		background: var(--background);
-		color: var(--textColor);
-	}
+		input[type='text'],
+		input[type='number'],
+		textarea {
+			width: 100%;
+			padding: 10px 12px;
+			border: 1px solid rgba(0, 0, 0, 0.2);
+			border-radius: 6px;
+			font-size: 1rem;
+			font-family: inherit;
+			background: var(--background);
+			color: var(--textColor);
+		}
 
-	.form-group textarea {
-		resize: vertical;
-	}
+		textarea {
+			resize: vertical;
+		}
 
-	.form-group select {
-		width: 100%;
-		padding: 10px 12px;
-		border: 1px solid rgba(0, 0, 0, 0.2);
-		border-radius: 6px;
-		font-size: 1rem;
-		font-family: inherit;
-		background: var(--background);
-		color: var(--textColor);
-		cursor: pointer;
+		select {
+			width: 100%;
+			padding: 10px 12px;
+			border: 1px solid rgba(0, 0, 0, 0.2);
+			border-radius: 6px;
+			font-size: 1rem;
+			font-family: inherit;
+			background: var(--background);
+			color: var(--textColor);
+			cursor: pointer;
+		}
 	}
 
 	.radio-group {
@@ -1381,12 +1401,12 @@
 		border-radius: 8px;
 		padding: 12px;
 		background: rgba(0, 0, 0, 0.02);
-	}
 
-	.radio-group > label:first-child {
-		display: block;
-		margin-bottom: 12px;
-		font-weight: 600;
+		> label:first-child {
+			display: block;
+			margin-bottom: 12px;
+			font-weight: 600;
+		}
 	}
 
 	.radio-group-label {
@@ -1404,18 +1424,18 @@
 		cursor: pointer;
 		border-radius: 6px;
 		transition: background 0.2s ease;
-	}
 
-	.radio-option:hover {
-		background: rgba(0, 0, 0, 0.03);
-	}
+		&:hover {
+			background: rgba(0, 0, 0, 0.03);
+		}
 
-	.radio-option input[type='radio'] {
-		cursor: pointer;
-	}
+		input[type='radio'] {
+			cursor: pointer;
+		}
 
-	.radio-option span {
-		color: var(--textColor);
+		span {
+			color: var(--textColor);
+		}
 	}
 
 	.numeric-input-group {
@@ -1425,21 +1445,21 @@
 		padding: 12px;
 		background: rgba(0, 0, 0, 0.02);
 		border-radius: 6px;
-	}
 
-	.numeric-input-group label {
-		font-weight: 600;
-		color: var(--textColor);
-	}
+		label {
+			font-weight: 600;
+			color: var(--textColor);
+		}
 
-	.numeric-input-group input[type='number'] {
-		padding: 10px 12px;
-		border: 1px solid rgba(0, 0, 0, 0.2);
-		border-radius: 6px;
-		font-size: 1rem;
-		font-family: inherit;
-		background: var(--background);
-		color: var(--textColor);
+		input[type='number'] {
+			padding: 10px 12px;
+			border: 1px solid rgba(0, 0, 0, 0.2);
+			border-radius: 6px;
+			font-size: 1rem;
+			font-family: inherit;
+			background: var(--background);
+			color: var(--textColor);
+		}
 	}
 
 	.input-hint {
@@ -1464,22 +1484,22 @@
 		border-radius: 6px;
 		cursor: pointer;
 		transition: background 0.2s ease;
-	}
 
-	.checkbox-label:hover {
-		background: rgba(0, 0, 0, 0.05);
-	}
+		&:hover {
+			background: rgba(0, 0, 0, 0.05);
+		}
 
-	.checkbox-label input[type='checkbox'] {
-		width: 20px;
-		height: 20px;
-		cursor: pointer;
-	}
+		input[type='checkbox'] {
+			width: 20px;
+			height: 20px;
+			cursor: pointer;
+		}
 
-	.checkbox-label span {
-		flex: 1;
-		color: var(--textColor);
-		font-weight: 500;
+		span {
+			flex: 1;
+			color: var(--textColor);
+			font-weight: 500;
+		}
 	}
 
 	.modal-buttons {
@@ -1503,25 +1523,225 @@
 	.btn-primary {
 		background-color: var(--primary);
 		color: #000;
-	}
 
-	.btn-primary:hover {
-		transform: translateY(-1px);
-		box-shadow: var(--level-2);
+		&:hover {
+			transform: translateY(-1px);
+			box-shadow: var(--level-2);
+		}
 	}
 
 	.btn-secondary {
 		background-color: #e0e0e0;
 		color: #333;
+
+		&:hover {
+			background-color: #d0d0d0;
+		}
 	}
 
-	.btn-secondary:hover {
-		background-color: #d0d0d0;
+	@media (max-width: 1150px) {
+		.content-grid {
+			grid-template-columns: 1fr;
+			gap: 20px;
+		}
+
+		.section {
+			max-width: 100%;
+		}
 	}
 
 	@media (max-width: 968px) {
-		.content-grid {
-			grid-template-columns: 1fr;
+		.comparison-page {
+			padding: 16px;
+		}
+
+		.page-title-section h1 {
+			font-size: 1.5rem;
+		}
+
+		.section {
+			padding: 16px;
+		}
+
+		.section-header {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.section-header h2 {
+			font-size: 1.1rem;
+		}
+
+		.header-buttons {
+			width: 100%;
+		}
+
+		.add-btn {
+			width: 100%;
+			padding: 10px 16px;
+		}
+
+		.criterion-item {
+			flex-direction: column;
+			align-items: stretch;
+			padding: 12px;
+			gap: 8px;
+		}
+
+		.drag-handle {
+			align-self: flex-start;
+		}
+
+		.criterion-info {
+			order: 1;
+		}
+
+		.criterion-actions {
+			order: 2;
+			justify-content: flex-start;
+			margin-top: 8px;
+		}
+
+		.criterion-meta {
+			flex-direction: column;
+			gap: 6px;
+		}
+
+		.item-card {
+			padding: 12px;
+		}
+
+		.item-header {
+			flex-wrap: wrap;
+		}
+
+		.item-title h3 {
+			font-size: 1rem;
+		}
+
+		.item-details {
+			flex-direction: column;
+			gap: 8px;
+		}
+
+		.criteria-values {
+			padding: 10px;
+			font-size: 0.8rem;
+		}
+
+		.criterion-value {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 4px;
+		}
+
+		.value-with-points {
+			width: 100%;
+			justify-content: space-between;
+		}
+
+		.set-values-btn {
+			width: 100%;
+		}
+
+		.modal-box {
+			padding: 20px;
+			max-width: calc(100% - 32px);
+		}
+
+		.drag-hint {
+			font-size: 0.8rem;
+			padding: 6px 10px;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.comparison-page {
+			padding: 12px;
+		}
+
+		.page-title-section h1 {
+			font-size: 1.3rem;
+		}
+
+		.description {
+			font-size: 0.95rem;
+		}
+
+		.section {
+			padding: 12px;
+			border-radius: 8px;
+		}
+
+		.criterion-item {
+			padding: 10px;
+		}
+
+		.criterion-name {
+			font-size: 0.9rem;
+		}
+
+		.criterion-meta {
+			font-size: 0.8rem;
+		}
+
+		.edit-small-btn {
+			font-size: 0.75rem;
+			padding: 4px 10px;
+		}
+
+		.item-title h3 {
+			font-size: 0.95rem;
+		}
+
+		.criteria-values {
+			font-size: 0.75rem;
+			padding: 8px;
+		}
+
+		.criterion-label {
+			font-size: 0.8rem;
+		}
+
+		.value-display {
+			font-size: 0.85rem;
+		}
+
+		.points-display {
+			font-size: 0.75rem;
+		}
+
+		.modal-box {
+			padding: 16px;
+		}
+
+		.modal-box h2 {
+			font-size: 1.3rem;
+			margin-bottom: 16px;
+		}
+
+		.form-group input[type='text'],
+		.form-group input[type='number'],
+		.form-group textarea,
+		.form-group select {
+			font-size: 16px; /* Prevents zoom on iOS */
+		}
+
+		.modal-buttons {
+			flex-direction: column;
+		}
+
+		.btn-primary,
+		.btn-secondary {
+			width: 100%;
+		}
+
+		.access-denied {
+			padding: 40px 16px;
+		}
+
+		.access-denied h2 {
+			font-size: 1.4rem;
 		}
 	}
 </style>
