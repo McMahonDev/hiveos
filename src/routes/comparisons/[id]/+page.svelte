@@ -27,6 +27,8 @@
 	let editCriterionModalOpen = $state(false);
 	let addItemModalOpen = $state(false);
 	let setItemValuesModalOpen = $state(false);
+	let itemDetailModalOpen = $state(false);
+	let selectedItemForDetail = $state<any>(null);
 
 	// Drag and drop state
 	let draggedCriterion = $state<any>(null);
@@ -411,6 +413,11 @@
 		}
 	}
 
+	function openItemDetailModal(item: any) {
+		selectedItemForDetail = item;
+		itemDetailModalOpen = true;
+	}
+
 	async function deleteItem(itemId: string) {
 		if (!z?.current) return;
 
@@ -455,6 +462,10 @@
 
 		itemValueStates = boolStates;
 		itemNumericValues = numericStates;
+
+		// Close item detail modal if open
+		itemDetailModalOpen = false;
+
 		setItemValuesModalOpen = true;
 	}
 
@@ -523,6 +534,26 @@
 			{/if}
 		</div>
 
+		<!-- Top Item Banner -->
+		{#if rankedItems.length > 0}
+			{@const topItem = rankedItems[0]}
+			<div class="top-item-banner">
+				<div class="banner-content">
+					<div class="banner-info">
+						<span class="banner-label">Top Choice</span>
+						<span class="banner-item-name">{topItem.name}</span>
+					</div>
+					<div class="banner-score">
+						<span class="score-label">Score</span>
+						<span class="score-value">{topItem.totalScore.toFixed(2)}</span>
+					</div>
+					<button class="banner-view-btn" onclick={() => openItemDetailModal(topItem)}>
+						View Details
+					</button>
+				</div>
+			</div>
+		{/if}
+
 		<div class="content-grid">
 			<!-- Criteria Section -->
 			<section class="section">
@@ -559,11 +590,17 @@
 									ondragover={(e) => handleDragOver(e, criterion)}
 									ondrop={handleDrop}
 									ondragend={handleDragEnd}
-									ontouchstart={(e) => handleTouchStart(e, criterion)}
-									ontouchmove={handleTouchMove}
-									ontouchend={handleTouchEnd}
 								>
-									<div class="drag-handle" aria-label="Drag to reorder">⋮⋮</div>
+									<!-- svelte-ignore a11y_no_static_element_interactions -->
+									<div
+										class="drag-handle"
+										aria-label="Drag to reorder"
+										ontouchstart={(e) => handleTouchStart(e, criterion)}
+										ontouchmove={handleTouchMove}
+										ontouchend={handleTouchEnd}
+									>
+										⋮⋮
+									</div>
 									<div class="criterion-info">
 										<span class="criterion-name">{criterion.name}</span>
 										<div class="criterion-meta">
@@ -617,85 +654,50 @@
 					{:else}
 						<div class="items-list">
 							{#each rankedItems as item (item.id)}
-								{@const itemCriteriaValues = Array.isArray(itemValues?.current)
-									? itemValues.current.filter((v: any) => v.comparisonItemId === item.id)
-									: []}
-								<div class="item-card">
-									<div class="item-header">
-										<div class="item-title">
-											<h3>#{item.rank} {item.name}</h3>
+								<!-- svelte-ignore a11y_click_events_have_key_events -->
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<div
+									class="item-card compact"
+									role="button"
+									tabindex="0"
+									onclick={() => openItemDetailModal(item)}
+								>
+									<div class="item-compact-content">
+										<div class="item-rank-badge">#{item.rank}</div>
+										<div class="item-compact-info">
+											<h3 class="item-compact-name">{item.name}</h3>
+											<div class="item-compact-meta">
+												<span class="compact-score">Score: {item.totalScore.toFixed(2)}</span>
+												{#if comp.isPriceAFactor && item.price}
+													<span class="compact-price">${item.price}</span>
+												{/if}
+											</div>
 										</div>
-										<button
-											class="delete-small-btn"
-											onclick={() => deleteItem(item.id)}
-											aria-label="Delete item"
-										>
-											×
-										</button>
-									</div>
-									<div class="item-details">
-										<div class="score">Score: {item.totalScore.toFixed(2)}</div>
-										{#if comp.isPriceAFactor && item.price}
-											<div class="price">Price: ${item.price}</div>
-										{/if}
-									</div>
-
-									<!-- Show criteria values -->
-									{#if criteria?.current && Array.isArray(criteria.current)}
-										<div class="criteria-values">
-											{#each criteria.current as criterion (criterion.id)}
-												{@const value = itemCriteriaValues.find(
-													(v: any) => v.criterionId === criterion.id
-												)}
-												{@const allValuesForCriterion = Array.isArray(itemValues?.current)
-													? itemValues.current.filter((v: any) => v.criterionId === criterion.id)
-													: []}
-												{@const points = (() => {
-													if (criterion.type === 'number' && value?.numericValue != null) {
-														// Calculate normalized score for numeric
-														const validValues = allValuesForCriterion
-															.map((v: any) => v.numericValue)
-															.filter((v: any) => v != null);
-														if (validValues.length === 0) return 0;
-														if (validValues.length === 1) return criterion.weight;
-														const min = Math.min(...validValues);
-														const max = Math.max(...validValues);
-														if (min === max) return criterion.weight;
-														const normalized = (value.numericValue - min) / (max - min);
-														const finalScore =
-															criterion.higherIsBetter === false ? 1 - normalized : normalized;
-														return finalScore * criterion.weight;
-													} else if (criterion.type === 'boolean') {
-														// Boolean criteria
-														return value?.hasFeature ? criterion.weight : 0;
-													}
-													return 0;
-												})()}
-												<div class="criterion-value">
-													<span class="criterion-label">{criterion.name}:</span>
-													<div class="value-with-points">
-														{#if criterion.type === 'number'}
-															<span class="value-display">
-																{value?.numericValue ?? 'N/A'}
-															</span>
-														{:else}
-															<span class="value-display">
-																{value?.hasFeature ? '✓' : '✗'}
-															</span>
-														{/if}
-														<span class="points-display">({points.toFixed(2)} pts)</span>
-													</div>
-												</div>
-											{/each}
+										<div class="item-compact-actions">
+											<button
+												class="icon-btn"
+												onclick={(e) => {
+													e.stopPropagation();
+													openSetItemValuesModal(item);
+												}}
+												aria-label="Set values"
+												title="Set values"
+											>
+												✏️
+											</button>
+											<button
+												class="icon-btn delete"
+												onclick={(e) => {
+													e.stopPropagation();
+													deleteItem(item.id);
+												}}
+												aria-label="Delete item"
+												title="Delete item"
+											>
+												×
+											</button>
 										</div>
-									{/if}
-
-									{#if item.notes}
-										<p class="item-notes">{item.notes}</p>
-									{/if}
-									<button class="set-values-btn" onclick={() => openSetItemValuesModal(item)}>
-										Set Values
-									</button>
+									</div>
 								</div>
 							{/each}
 						</div>
@@ -947,6 +949,121 @@
 	</div>
 {/if}
 
+<!-- Item Detail Modal -->
+{#if itemDetailModalOpen && selectedItemForDetail}
+	<div class="modal">
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-backdrop" onclick={() => (itemDetailModalOpen = false)}></div>
+		<div class="modal-box large">
+			<div class="modal-header">
+				<div>
+					<h2>#{selectedItemForDetail.rank} {selectedItemForDetail.name}</h2>
+					<div class="item-detail-score">
+						Total Score: <strong>{selectedItemForDetail.totalScore.toFixed(2)}</strong>
+					</div>
+				</div>
+				<button
+					class="modal-close-btn"
+					onclick={() => (itemDetailModalOpen = false)}
+					aria-label="Close"
+				>
+					×
+				</button>
+			</div>
+
+			<div class="modal-content scrollable">
+				{#if comparison?.current && Array.isArray(comparison.current) && comparison.current[0]}
+					{@const comp = comparison.current[0]}
+
+					{#if comp.isPriceAFactor && selectedItemForDetail.price}
+						<div class="detail-section">
+							<strong>Price:</strong> ${selectedItemForDetail.price}
+						</div>
+					{/if}
+
+					{#if selectedItemForDetail.notes}
+						<div class="detail-section">
+							<strong>Notes:</strong>
+							<p class="item-notes-text">{selectedItemForDetail.notes}</p>
+						</div>
+					{/if}
+
+					{#if criteria?.current && Array.isArray(criteria.current)}
+						{@const itemCriteriaValues = Array.isArray(itemValues?.current)
+							? itemValues.current.filter(
+									(v: any) => v.comparisonItemId === selectedItemForDetail.id
+								)
+							: []}
+
+						<div class="detail-section">
+							<strong>Criteria Breakdown:</strong>
+							<div class="criteria-breakdown">
+								{#each criteria.current as criterion (criterion.id)}
+									{@const value = itemCriteriaValues.find(
+										(v: any) => v.criterionId === criterion.id
+									)}
+									{@const allValuesForCriterion = Array.isArray(itemValues?.current)
+										? itemValues.current.filter((v: any) => v.criterionId === criterion.id)
+										: []}
+									{@const points = (() => {
+										if (criterion.type === 'number' && value?.numericValue != null) {
+											const validValues = allValuesForCriterion
+												.map((v: any) => v.numericValue)
+												.filter((v: any) => v != null);
+											if (validValues.length === 0) return 0;
+											if (validValues.length === 1) return criterion.weight;
+											const min = Math.min(...validValues);
+											const max = Math.max(...validValues);
+											if (min === max) return criterion.weight;
+											const normalized = (value.numericValue - min) / (max - min);
+											const finalScore =
+												criterion.higherIsBetter === false ? 1 - normalized : normalized;
+											return finalScore * criterion.weight;
+										} else if (criterion.type === 'boolean') {
+											return value?.hasFeature ? criterion.weight : 0;
+										}
+										return 0;
+									})()}
+
+									<div class="criterion-detail-row">
+										<span class="criterion-detail-name">{criterion.name}</span>
+										<div class="criterion-detail-value">
+											{#if criterion.type === 'number'}
+												<span class="value-badge">
+													{value?.numericValue ?? 'N/A'}
+												</span>
+											{:else}
+												<span class="value-badge" class:has-feature={value?.hasFeature}>
+													{value?.hasFeature ? '✓ Yes' : '✗ No'}
+												</span>
+											{/if}
+											<span class="points-badge">{points.toFixed(2)} pts</span>
+										</div>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				{/if}
+			</div>
+
+			<div class="modal-buttons">
+				<button
+					type="button"
+					class="btn-primary"
+					onclick={() => openSetItemValuesModal(selectedItemForDetail)}
+				>
+					Edit Values
+				</button>
+				<button type="button" class="btn-secondary" onclick={() => (itemDetailModalOpen = false)}>
+					Close
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
 	.comparison-page {
 		max-width: 1400px;
@@ -986,6 +1103,117 @@
 		margin: 0;
 		color: var(--color-tertiary, #666);
 		font-size: 1.05rem;
+	}
+
+	.top-item-banner {
+		background: var(--background);
+		border: 2px solid rgba(0, 0, 0, 0.08);
+		border-left: 4px solid var(--primary);
+		border-radius: 12px;
+		padding: 20px 24px;
+		margin-bottom: 24px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+		transition: all 0.2s ease;
+
+		&:hover {
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+			border-color: rgba(0, 0, 0, 0.12);
+		}
+
+		.banner-content {
+			display: flex;
+			align-items: center;
+			gap: 20px;
+			flex-wrap: wrap;
+		}
+
+		.banner-info {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+			flex: 1;
+			min-width: 150px;
+
+			.banner-label {
+				font-size: 0.7rem;
+				font-weight: 700;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+				color: var(--primary);
+			}
+
+			.banner-item-name {
+				font-size: 1.4rem;
+				font-weight: 700;
+				color: var(--textColor);
+				line-height: 1.2;
+			}
+		}
+
+		.banner-score {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-end;
+			gap: 4px;
+
+			.score-label {
+				font-size: 0.7rem;
+				font-weight: 600;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+				color: var(--color-tertiary, #666);
+			}
+
+			.score-value {
+				font-size: 2rem;
+				font-weight: 700;
+				color: var(--textColor);
+				line-height: 1;
+			}
+		}
+
+		.banner-view-btn {
+			background: var(--textColor);
+			color: var(--background);
+			padding: 10px 24px;
+			border-radius: 8px;
+			border: none;
+			cursor: pointer;
+			font-size: 0.9rem;
+			font-weight: 600;
+			transition: all 0.2s ease;
+			white-space: nowrap;
+
+			&:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+			}
+		}
+
+		@media (max-width: 640px) {
+			padding: 16px 18px;
+
+			.banner-content {
+				gap: 14px;
+			}
+
+			.banner-info .banner-item-name {
+				font-size: 1.2rem;
+			}
+
+			.banner-score {
+				align-items: flex-start;
+
+				.score-value {
+					font-size: 1.6rem;
+				}
+			}
+
+			.banner-view-btn {
+				width: 100%;
+				margin-top: 4px;
+			}
+		}
 	}
 
 	.content-grid {
@@ -1085,16 +1313,17 @@
 		transition: all 0.2s ease;
 		cursor: grab;
 		gap: 12px;
-		touch-action: none;
+		touch-action: auto;
 		user-select: none;
 		-webkit-user-select: none;
 
 		&:active {
 			cursor: grabbing;
+		}
 
-			.drag-handle {
-				cursor: grabbing;
-			}
+		@media (max-width: 768px) {
+			cursor: default;
+			touch-action: pan-y;
 		}
 
 		&.dragging {
@@ -1130,10 +1359,23 @@
 		align-items: center;
 		justify-content: center;
 
+		&:active {
+			cursor: grabbing;
+		}
+
 		@media (max-width: 768px) {
-			font-size: 1.2rem;
-			min-width: 32px;
-			min-height: 32px;
+			font-size: 1.3rem;
+			min-width: 44px;
+			min-height: 44px;
+			padding: 8px;
+			margin: -8px -8px -8px -4px;
+			touch-action: none;
+			background: rgba(0, 0, 0, 0.03);
+			border-radius: 6px;
+
+			&:active {
+				background: rgba(0, 0, 0, 0.06);
+			}
 		}
 	}
 
@@ -1197,32 +1439,115 @@
 	.items-list {
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: 12px;
 	}
 
 	.item-card {
 		padding: 16px;
-		background: rgba(0, 0, 0, 0.02);
+		background: var(--background);
 		border-radius: 8px;
-		border: 1px solid rgba(0, 0, 0, 0.05);
+		border: 1px solid rgba(0, 0, 0, 0.1);
+		transition: all 0.2s ease;
+
+		&.compact {
+			cursor: pointer;
+
+			&:hover {
+				border-color: var(--primary);
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+				transform: translateY(-2px);
+			}
+		}
 	}
 
-	.item-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		margin-bottom: 12px;
-	}
-
-	.item-title {
+	.item-compact-content {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 12px;
+	}
 
-		h3 {
-			margin: 0;
-			font-size: 1.1rem;
+	.item-rank-badge {
+		background: var(--primary);
+		color: #000;
+		font-weight: 700;
+		font-size: 1.1rem;
+		width: 40px;
+		height: 40px;
+		border-radius: 8px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+
+	.item-compact-info {
+		flex: 1;
+		min-width: 0;
+
+		.item-compact-name {
+			margin: 0 0 6px 0;
+			font-size: 1rem;
+			font-weight: 600;
 			color: var(--textColor);
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.item-compact-meta {
+			display: flex;
+			gap: 12px;
+			font-size: 0.85rem;
+			color: var(--color-tertiary, #666);
+			flex-wrap: wrap;
+
+			.compact-score {
+				font-weight: 600;
+				color: var(--textColor);
+			}
+
+			.compact-price {
+				color: var(--color-tertiary, #666);
+			}
+		}
+	}
+
+	.item-compact-actions {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		flex-shrink: 0;
+	}
+
+	.icon-btn {
+		background: transparent;
+		border: 1px solid rgba(0, 0, 0, 0.1);
+		cursor: pointer;
+		font-size: 1rem;
+		line-height: 1;
+		color: var(--textColor);
+		padding: 8px;
+		width: 32px;
+		height: 32px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 6px;
+		transition: all 0.2s ease;
+
+		&:hover {
+			background: rgba(0, 0, 0, 0.05);
+			border-color: var(--textColor);
+		}
+
+		&.delete {
+			font-size: 1.3rem;
+
+			&:hover {
+				background: rgba(255, 0, 0, 0.1);
+				border-color: #ff0000;
+				color: #ff0000;
+			}
 		}
 	}
 
@@ -1245,94 +1570,6 @@
 		&:hover {
 			background: rgba(255, 0, 0, 0.1);
 			color: #ff0000;
-		}
-	}
-
-	.item-details {
-		display: flex;
-		gap: 16px;
-		margin-bottom: 12px;
-		font-size: 0.9rem;
-	}
-
-	.score {
-		font-weight: 600;
-		color: var(--primary);
-	}
-
-	.price {
-		color: var(--color-tertiary, #666);
-	}
-
-	.criteria-values {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		margin-bottom: 12px;
-		padding: 12px;
-		background: rgba(0, 0, 0, 0.02);
-		border-radius: 6px;
-		font-size: 0.875rem;
-		min-width: 0;
-		overflow: hidden;
-	}
-
-	.criterion-value {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: 12px;
-		min-width: 0;
-	}
-
-	.criterion-label {
-		color: var(--color-tertiary, #666);
-		font-weight: 500;
-		flex: 1;
-		min-width: 0;
-		word-wrap: break-word;
-		overflow-wrap: break-word;
-	}
-
-	.value-with-points {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		flex-shrink: 0;
-		white-space: nowrap;
-	}
-
-	.value-display {
-		color: #000;
-		font-weight: 600;
-	}
-
-	.points-display {
-		color: var(--primary);
-		font-size: 0.8rem;
-		font-weight: 600;
-	}
-
-	.item-notes {
-		font-size: 0.9rem;
-		color: var(--color-tertiary, #666);
-		margin: 0 0 12px 0;
-		font-style: italic;
-	}
-
-	.set-values-btn {
-		background-color: #f0f0f0;
-		color: #333;
-		padding: 8px 16px;
-		border-radius: 6px;
-		border: none;
-		cursor: pointer;
-		font-size: 0.9rem;
-		font-weight: 600;
-		transition: all 0.2s ease;
-
-		&:hover {
-			background-color: #e0e0e0;
 		}
 	}
 
@@ -1609,6 +1846,142 @@
 		}
 	}
 
+	.modal-box.large {
+		max-width: 700px;
+	}
+
+	.modal-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		margin-bottom: 20px;
+		gap: 16px;
+
+		h2 {
+			margin: 0 0 8px 0;
+			font-size: 1.5rem;
+			font-weight: 700;
+			color: var(--textColor);
+		}
+
+		.item-detail-score {
+			font-size: 0.95rem;
+			color: var(--color-tertiary, #666);
+
+			strong {
+				color: var(--primary);
+				font-weight: 700;
+			}
+		}
+	}
+
+	.modal-close-btn {
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		font-size: 2rem;
+		line-height: 1;
+		color: #999;
+		padding: 0;
+		width: 32px;
+		height: 32px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 4px;
+		transition: all 0.2s ease;
+		flex-shrink: 0;
+
+		&:hover {
+			background: rgba(0, 0, 0, 0.05);
+			color: var(--textColor);
+		}
+	}
+
+	.modal-content.scrollable {
+		max-height: 60vh;
+		overflow-y: auto;
+		margin-bottom: 20px;
+	}
+
+	.detail-section {
+		margin-bottom: 24px;
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+
+		strong {
+			display: block;
+			margin-bottom: 12px;
+			font-size: 1rem;
+			font-weight: 700;
+			color: var(--textColor);
+		}
+
+		.item-notes-text {
+			margin: 0;
+			padding: 12px;
+			background: rgba(0, 0, 0, 0.03);
+			border-radius: 6px;
+			color: var(--color-tertiary, #666);
+			font-style: italic;
+			line-height: 1.6;
+		}
+	}
+
+	.criteria-breakdown {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	.criterion-detail-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 12px;
+		background: rgba(0, 0, 0, 0.03);
+		border-radius: 6px;
+		gap: 16px;
+
+		.criterion-detail-name {
+			font-weight: 500;
+			color: var(--textColor);
+			flex: 1;
+		}
+
+		.criterion-detail-value {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			flex-shrink: 0;
+		}
+	}
+
+	.value-badge {
+		padding: 4px 10px;
+		border-radius: 4px;
+		font-size: 0.85rem;
+		font-weight: 600;
+		background: rgba(0, 0, 0, 0.05);
+		color: var(--textColor);
+
+		&.has-feature {
+			background: rgba(0, 200, 0, 0.15);
+			color: #008000;
+		}
+	}
+
+	.points-badge {
+		padding: 4px 10px;
+		border-radius: 4px;
+		font-size: 0.85rem;
+		font-weight: 700;
+		background: rgba(255, 215, 0, 0.2);
+		color: #000;
+	}
+
 	@media (max-width: 1150px) {
 		.content-grid {
 			grid-template-columns: 1fr;
@@ -1681,39 +2054,6 @@
 			padding: 12px;
 		}
 
-		.item-header {
-			flex-wrap: wrap;
-		}
-
-		.item-title h3 {
-			font-size: 1rem;
-		}
-
-		.item-details {
-			flex-direction: column;
-			gap: 8px;
-		}
-
-		.criteria-values {
-			padding: 10px;
-			font-size: 0.8rem;
-		}
-
-		.criterion-value {
-			flex-direction: column;
-			align-items: flex-start;
-			gap: 4px;
-		}
-
-		.value-with-points {
-			width: 100%;
-			justify-content: space-between;
-		}
-
-		.set-values-btn {
-			width: 100%;
-		}
-
 		.modal-box {
 			padding: 20px;
 			max-width: calc(100% - 32px);
@@ -1758,27 +2098,6 @@
 		.edit-small-btn {
 			font-size: 0.75rem;
 			padding: 4px 10px;
-		}
-
-		.item-title h3 {
-			font-size: 0.95rem;
-		}
-
-		.criteria-values {
-			font-size: 0.75rem;
-			padding: 8px;
-		}
-
-		.criterion-label {
-			font-size: 0.8rem;
-		}
-
-		.value-display {
-			font-size: 0.85rem;
-		}
-
-		.points-display {
-			font-size: 0.75rem;
 		}
 
 		.modal-box {
