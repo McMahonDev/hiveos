@@ -50,3 +50,8 @@ This short guidance helps an AI coding assistant become productive in this repo 
 - `zero-docs-llm.txt` — Zero Sync documentation
 
 If anything in these instructions is unclear or you want more detail (examples of schema changes, example psql commands, or automated tests), tell me which area to expand. After approval I'll integrate minor edits or expand to include common PR checklists.
+
+8. Reminder
+
+- When suggesting code changes, avoid introducing new dependencies unless absolutely necessary. Prioritize clarity and maintainability in your code suggestions.
+- Do not use emojis in the code suggestions.
