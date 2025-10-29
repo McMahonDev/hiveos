@@ -139,6 +139,52 @@ export const accessCodes = pgTable('accessCodes', {
 	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
 });
 
+// --- Comparison Tool Tables ---
+export const comparisons = pgTable('comparisons', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	description: text('description'),
+	isPriceAFactor: boolean('isPriceAFactor').$defaultFn(() => false),
+	createdById: text('createdById').notNull(),
+	viewMode: text('viewMode').notNull(),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date()),
+	updatedAt: timestamp('updatedAt').$defaultFn(() => new Date())
+});
+
+export const comparisonCriteria = pgTable('comparisonCriteria', {
+	id: text('id').primaryKey(),
+	comparisonId: text('comparisonId').notNull(),
+	name: text('name').notNull(),
+	type: text('type').$defaultFn(() => 'boolean'),
+	higherIsBetter: boolean('higherIsBetter'),
+	weight: integer('weight').$defaultFn(() => 1),
+	sortOrder: integer('sortOrder').$defaultFn(() => 0),
+	createdById: text('createdById').notNull(),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
+});
+
+export const comparisonItems = pgTable('comparisonItems', {
+	id: text('id').primaryKey(),
+	comparisonId: text('comparisonId').notNull(),
+	name: text('name').notNull(),
+	price: integer('price'),
+	notes: text('notes'),
+	totalScore: integer('totalScore').$defaultFn(() => 0),
+	createdById: text('createdById').notNull(),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
+});
+
+export const comparisonItemValues = pgTable('comparisonItemValues', {
+	id: text('id').primaryKey(),
+	comparisonItemId: text('comparisonItemId').notNull(),
+	criterionId: text('criterionId').notNull(),
+	hasFeature: boolean('hasFeature').$defaultFn(() => false),
+	numericValue: integer('numericValue'),
+	notes: text('notes'),
+	createdById: text('createdById').notNull(),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
+});
+
 // --- Relationships ---
 // Users <-> Tasks
 export const usersRelations = relations(user, ({ many }) => ({
@@ -246,6 +292,54 @@ export const accessCodesRelations = relations(accessCodes, ({ one }) => ({
 	}),
 	createdBy: one(user, {
 		fields: [accessCodes.createdById],
+		references: [user.id]
+	})
+}));
+
+// --- Comparison Tool Relationships ---
+export const comparisonsRelations = relations(comparisons, ({ one, many }) => ({
+	createdBy: one(user, {
+		fields: [comparisons.createdById],
+		references: [user.id]
+	}),
+	criteria: many(comparisonCriteria),
+	items: many(comparisonItems)
+}));
+
+export const comparisonCriteriaRelations = relations(comparisonCriteria, ({ one }) => ({
+	comparison: one(comparisons, {
+		fields: [comparisonCriteria.comparisonId],
+		references: [comparisons.id]
+	}),
+	createdBy: one(user, {
+		fields: [comparisonCriteria.createdById],
+		references: [user.id]
+	})
+}));
+
+export const comparisonItemsRelations = relations(comparisonItems, ({ one, many }) => ({
+	comparison: one(comparisons, {
+		fields: [comparisonItems.comparisonId],
+		references: [comparisons.id]
+	}),
+	createdBy: one(user, {
+		fields: [comparisonItems.createdById],
+		references: [user.id]
+	}),
+	values: many(comparisonItemValues)
+}));
+
+export const comparisonItemValuesRelations = relations(comparisonItemValues, ({ one }) => ({
+	comparisonItem: one(comparisonItems, {
+		fields: [comparisonItemValues.comparisonItemId],
+		references: [comparisonItems.id]
+	}),
+	criterion: one(comparisonCriteria, {
+		fields: [comparisonItemValues.criterionId],
+		references: [comparisonCriteria.id]
+	}),
+	createdBy: one(user, {
+		fields: [comparisonItemValues.createdById],
 		references: [user.id]
 	})
 }));

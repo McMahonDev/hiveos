@@ -242,6 +242,60 @@ const accessCodes = table('accessCodes')
 	})
 	.primaryKey('id');
 
+// Comparison tool tables
+const comparisons = table('comparisons')
+	.columns({
+		id: string(),
+		name: string(), // e.g., "Car Comparison"
+		description: string().optional(), // Optional description of what's being compared
+		isPriceAFactor: boolean(), // Whether price is a consideration
+		createdById: string(),
+		viewMode: string(), // 'personal', 'shared', or custom category ID
+		createdAt: number(),
+		updatedAt: number()
+	})
+	.primaryKey('id');
+
+const comparisonCriteria = table('comparisonCriteria')
+	.columns({
+		id: string(),
+		comparisonId: string(), // Reference to comparisons
+		name: string(), // e.g., "Premium Sound", "Number of Seats", "MPG"
+		type: string(), // 'boolean' (has/doesn't have) or 'number' (numeric value)
+		higherIsBetter: boolean().optional(), // For numeric types: true if higher is better (MPG), false if lower is better (price)
+		weight: number(), // Higher weight = more important (calculated through pairwise comparisons)
+		sortOrder: number(), // Display order in the UI
+		createdById: string(),
+		createdAt: number()
+	})
+	.primaryKey('id');
+
+const comparisonItems = table('comparisonItems')
+	.columns({
+		id: string(),
+		comparisonId: string(), // Reference to comparisons
+		name: string(), // e.g., "Toyota Camry", "Honda Accord"
+		price: number().optional(), // Optional price field
+		notes: string().optional(), // Optional notes about this item
+		totalScore: number(), // Calculated weighted score
+		createdById: string(),
+		createdAt: number()
+	})
+	.primaryKey('id');
+
+const comparisonItemValues = table('comparisonItemValues')
+	.columns({
+		id: string(),
+		comparisonItemId: string(), // Reference to comparisonItems
+		criterionId: string(), // Reference to comparisonCriteria
+		hasFeature: boolean(), // Whether this item has/meets this criterion (for boolean type)
+		numericValue: number().optional(), // Numeric value for number type criteria (e.g., 7 seats, 35 MPG)
+		notes: string().optional(), // Optional notes about this specific value
+		createdById: string(),
+		createdAt: number()
+	})
+	.primaryKey('id');
+
 // Relationships
 
 const taskRelationships = relationships(tasks, ({ one }) => ({
@@ -363,6 +417,58 @@ const accessCodesRelationships = relationships(accessCodes, ({ one }) => ({
 	})
 }));
 
+const comparisonsRelationships = relationships(comparisons, ({ one }) => ({
+	createdBy: one({
+		sourceField: ['createdById'],
+		destSchema: user,
+		destField: ['id']
+	})
+}));
+
+const comparisonCriteriaRelationships = relationships(comparisonCriteria, ({ one }) => ({
+	comparison: one({
+		sourceField: ['comparisonId'],
+		destSchema: comparisons,
+		destField: ['id']
+	}),
+	createdBy: one({
+		sourceField: ['createdById'],
+		destSchema: user,
+		destField: ['id']
+	})
+}));
+
+const comparisonItemsRelationships = relationships(comparisonItems, ({ one }) => ({
+	comparison: one({
+		sourceField: ['comparisonId'],
+		destSchema: comparisons,
+		destField: ['id']
+	}),
+	createdBy: one({
+		sourceField: ['createdById'],
+		destSchema: user,
+		destField: ['id']
+	})
+}));
+
+const comparisonItemValuesRelationships = relationships(comparisonItemValues, ({ one }) => ({
+	comparisonItem: one({
+		sourceField: ['comparisonItemId'],
+		destSchema: comparisonItems,
+		destField: ['id']
+	}),
+	criterion: one({
+		sourceField: ['criterionId'],
+		destSchema: comparisonCriteria,
+		destField: ['id']
+	}),
+	createdBy: one({
+		sourceField: ['createdById'],
+		destSchema: user,
+		destField: ['id']
+	})
+}));
+
 export const schema = createSchema({
 	tables: [
 		user,
@@ -378,7 +484,11 @@ export const schema = createSchema({
 		customLists,
 		customListItems,
 		viewModeCategories,
-		accessCodes
+		accessCodes,
+		comparisons,
+		comparisonCriteria,
+		comparisonItems,
+		comparisonItemValues
 	],
 	relationships: [
 		taskRelationships,
@@ -391,7 +501,11 @@ export const schema = createSchema({
 		customListRelationships,
 		customListItemRelationships,
 		viewModeCategoriesRelationships,
-		accessCodesRelationships
+		accessCodesRelationships,
+		comparisonsRelationships,
+		comparisonCriteriaRelationships,
+		comparisonItemsRelationships,
+		comparisonItemValuesRelationships
 	]
 });
 
@@ -410,6 +524,10 @@ export type CustomList = Row<typeof schema.tables.customLists>;
 export type CustomListItem = Row<typeof schema.tables.customListItems>;
 export type ViewModeCategory = Row<typeof schema.tables.viewModeCategories>;
 export type AccessCode = Row<typeof schema.tables.accessCodes>;
+export type Comparison = Row<typeof schema.tables.comparisons>;
+export type ComparisonCriterion = Row<typeof schema.tables.comparisonCriteria>;
+export type ComparisonItem = Row<typeof schema.tables.comparisonItems>;
+export type ComparisonItemValue = Row<typeof schema.tables.comparisonItemValues>;
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	const isUser = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'user'>) =>
@@ -481,6 +599,39 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	const isAccessCodeCreator = (
 		authData: AuthData,
 		{ cmp }: ExpressionBuilder<Schema, 'accessCodes'>
+	) => cmp('createdById', '=', authData.sub);
+
+	// Comparisons - user must be creator OR it's shared with their group
+	const isComparisonCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'comparisons'>
+	) => cmp('createdById', '=', authData.sub);
+
+	const canViewOrMutateComparison = (
+		authData: AuthData,
+		{ or, cmp }: ExpressionBuilder<Schema, 'comparisons'>
+	) =>
+		or(
+			cmp('createdById', '=', authData.sub),
+			authData.groupId ? cmp('viewMode', '=', 'shared') : cmp('id', '=', '__never__')
+		);
+
+	// Comparison Criteria - must have access to parent comparison
+	const isComparisonCriteriaCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'comparisonCriteria'>
+	) => cmp('createdById', '=', authData.sub);
+
+	// Comparison Items - must have access to parent comparison
+	const isComparisonItemCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'comparisonItems'>
+	) => cmp('createdById', '=', authData.sub);
+
+	// Comparison Item Values - must have access to parent comparison
+	const isComparisonItemValueCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'comparisonItemValues'>
 	) => cmp('createdById', '=', authData.sub);
 
 	return {
@@ -593,6 +744,50 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 					postMutation: [isAccessCodeCreator]
 				},
 				delete: [isAccessCodeCreator] // Only creator/admin can delete
+			}
+		},
+		comparisons: {
+			row: {
+				select: [canViewOrMutateComparison],
+				insert: [canViewOrMutateComparison],
+				update: {
+					preMutation: [canViewOrMutateComparison],
+					postMutation: [canViewOrMutateComparison]
+				},
+				delete: [canViewOrMutateComparison]
+			}
+		},
+		comparisonCriteria: {
+			row: {
+				select: [isComparisonCriteriaCreator],
+				insert: [isComparisonCriteriaCreator],
+				update: {
+					preMutation: [isComparisonCriteriaCreator],
+					postMutation: [isComparisonCriteriaCreator]
+				},
+				delete: [isComparisonCriteriaCreator]
+			}
+		},
+		comparisonItems: {
+			row: {
+				select: [isComparisonItemCreator],
+				insert: [isComparisonItemCreator],
+				update: {
+					preMutation: [isComparisonItemCreator],
+					postMutation: [isComparisonItemCreator]
+				},
+				delete: [isComparisonItemCreator]
+			}
+		},
+		comparisonItemValues: {
+			row: {
+				select: [isComparisonItemValueCreator],
+				insert: [isComparisonItemValueCreator],
+				update: {
+					preMutation: [isComparisonItemValueCreator],
+					postMutation: [isComparisonItemValueCreator]
+				},
+				delete: [isComparisonItemValueCreator]
 			}
 		}
 	};
