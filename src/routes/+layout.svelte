@@ -199,6 +199,12 @@
 				<li class="create-list-item">
 					<button class="create-list-btn" onclick={() => openCreateList()}>+ Create List</button>
 				</li>
+				<li class="section-divider">
+					<span class="section-title">Tools</span>
+				</li>
+				<li>
+					<a onclick={() => (menuOpen = false)} href="/comparisons">Comparison Tool</a>
+				</li>
 				<li class="push-bottom">
 					<a onclick={() => (menuOpen = false)} href="/settings">Settings</a>
 				</li>
@@ -536,6 +542,22 @@
 					font-size: 1.2rem;
 					padding: 12px;
 				}
+			}
+
+			.section-divider {
+				margin-top: 20px;
+				padding-top: 10px;
+				border-top: 1px solid rgba(0, 0, 0, 0.1);
+			}
+
+			.section-title {
+				font-size: 0.85rem;
+				font-weight: 700;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+				color: var(--color-tertiary, #999);
+				display: block;
+				margin-bottom: 10px;
 			}
 		}
 
