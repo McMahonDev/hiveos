@@ -135,7 +135,8 @@ export async function getUsersForMorningBriefing(currentHour: number): Promise<
 	}>
 > {
 	try {
-		console.log(`🌅 Getting users for morning briefing at hour ${currentHour}`);
+		const now = new Date();
+		console.log(`🌅 Getting users for morning briefing at UTC hour ${currentHour}, UTC time: ${now.toISOString()}`);
 		
 		// Get all users from database with notification preferences
 		const allUsersFromDb = await db.query.user.findMany();
@@ -145,10 +146,9 @@ export async function getUsersForMorningBriefing(currentHour: number): Promise<
 		
 		for (const u of allUsersFromDb) {
 			// Check if morning briefing is enabled
-			// Note: Drizzle returns camelCase but we need to check the actual field
 			const isEnabled = u.notifyMorningBriefing ?? false;
 			if (!isEnabled) {
-				console.log(`User ${u.email}: morning briefing disabled (value: ${u.notifyMorningBriefing})`);
+				console.log(`User ${u.email}: morning briefing disabled`);
 				continue;
 			}
 			
@@ -160,17 +160,24 @@ export async function getUsersForMorningBriefing(currentHour: number): Promise<
 			}
 			
 			const briefingTime = u.morningBriefingTime || '08:00';
-			const [hour] = briefingTime.split(':').map(Number);
+			const [desiredHour, desiredMinute] = briefingTime.split(':').map(Number);
+			const userTimezone = u.timezone || 'America/New_York';
 			
-			console.log(`User ${u.email}: briefing time ${briefingTime}, target hour ${hour}, current hour ${currentHour}`);
+			// Get current time in user's timezone
+			const userLocalTime = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+			const userLocalHour = userLocalTime.getHours();
+			const userLocalMinute = userLocalTime.getMinutes();
 			
-			if (hour === currentHour) {
+			console.log(`User ${u.email} (${userTimezone}): briefing time ${briefingTime}, local time ${userLocalHour}:${userLocalMinute.toString().padStart(2, '0')}`);
+			
+			// Send if current hour matches desired hour (allowing some flexibility with minutes)
+			if (userLocalHour === desiredHour && userLocalMinute < 30) {
 				console.log(`✅ User ${u.email} qualifies for morning briefing`);
 				eligibleUsers.push({
 					id: u.id,
 					email: u.email,
 					name: u.name,
-					timezone: u.timezone || 'America/New_York',
+					timezone: userTimezone,
 					briefingTime
 				});
 			}
@@ -197,26 +204,43 @@ export async function getUsersForEveningWrapup(currentHour: number): Promise<
 	}>
 > {
 	try {
-		console.log(`🌙 Getting users for evening wrapup at hour ${currentHour}`);
+		const now = new Date();
+		console.log(`🌙 Getting users for evening wrapup at UTC hour ${currentHour}, UTC time: ${now.toISOString()}`);
 		
 		const allUsersFromDb = await db.query.user.findMany();
 		const eligibleUsers = [];
 		
 		for (const u of allUsersFromDb) {
-			if (!u.notifyEveningWrapup) continue;
+			if (!u.notifyEveningWrapup) {
+				console.log(`User ${u.email}: evening wrapup disabled`);
+				continue;
+			}
 			
 			const premium = await hasPremiumAccess(u.id);
-			if (!premium) continue;
+			if (!premium) {
+				console.log(`User ${u.email}: no premium access`);
+				continue;
+			}
 			
 			const wrapupTime = u.eveningWrapupTime || '18:00';
-			const [hour] = wrapupTime.split(':').map(Number);
+			const [desiredHour, desiredMinute] = wrapupTime.split(':').map(Number);
+			const userTimezone = u.timezone || 'America/New_York';
 			
-			if (hour === currentHour) {
+			// Get current time in user's timezone
+			const userLocalTime = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+			const userLocalHour = userLocalTime.getHours();
+			const userLocalMinute = userLocalTime.getMinutes();
+			
+			console.log(`User ${u.email} (${userTimezone}): wrapup time ${wrapupTime}, local time ${userLocalHour}:${userLocalMinute.toString().padStart(2, '0')}`);
+			
+			// Send if current hour matches desired hour (allowing some flexibility with minutes)
+			if (userLocalHour === desiredHour && userLocalMinute < 30) {
+				console.log(`✅ User ${u.email} qualifies for evening wrapup`);
 				eligibleUsers.push({
 					id: u.id,
 					email: u.email,
 					name: u.name,
-					timezone: u.timezone || 'America/New_York',
+					timezone: userTimezone,
 					wrapupTime
 				});
 			}
