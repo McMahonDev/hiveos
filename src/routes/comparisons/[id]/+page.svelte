@@ -32,6 +32,11 @@
 	let draggedCriterion = $state<any>(null);
 	let draggedOverCriterion = $state<any>(null);
 
+	// Touch support for mobile
+	let touchStartY = $state<number>(0);
+	let touchCurrentY = $state<number>(0);
+	let isDraggingTouch = $state<boolean>(false);
+
 	// Form states
 	let newCriterionName = $state('');
 	let newCriterionType = $state<'boolean' | 'number'>('boolean');
@@ -198,7 +203,7 @@
 		}
 	}
 
-	// Drag and drop handlers
+	// Drag and drop handlers (desktop)
 	function handleDragStart(criterion: any) {
 		draggedCriterion = criterion;
 	}
@@ -208,9 +213,58 @@
 		draggedOverCriterion = criterion;
 	}
 
+	function handleDragEnd() {
+		draggedCriterion = null;
+		draggedOverCriterion = null;
+	}
+
 	async function handleDrop(e: DragEvent) {
 		e.preventDefault();
+		await reorderCriteria();
+	}
 
+	// Touch handlers (mobile)
+	function handleTouchStart(e: TouchEvent, criterion: any) {
+		isDraggingTouch = true;
+		draggedCriterion = criterion;
+		touchStartY = e.touches[0].clientY;
+		touchCurrentY = e.touches[0].clientY;
+	}
+
+	function handleTouchMove(e: TouchEvent) {
+		if (!isDraggingTouch || !draggedCriterion) return;
+
+		touchCurrentY = e.touches[0].clientY;
+
+		// Find which criterion we're hovering over
+		const allCriteria = Array.isArray(criteria?.current) ? criteria.current : [];
+		const elements = document.querySelectorAll('.criterion-item');
+
+		for (let i = 0; i < elements.length; i++) {
+			const element = elements[i] as HTMLElement;
+			const rect = element.getBoundingClientRect();
+
+			if (touchCurrentY >= rect.top && touchCurrentY <= rect.bottom) {
+				draggedOverCriterion = allCriteria[i];
+				break;
+			}
+		}
+	}
+
+	async function handleTouchEnd() {
+		if (!isDraggingTouch) return;
+
+		await reorderCriteria();
+
+		isDraggingTouch = false;
+		draggedCriterion = null;
+		draggedOverCriterion = null;
+		touchStartY = 0;
+		touchCurrentY = 0;
+	}
+
+	// Shared reorder logic
+	async function reorderCriteria() {
 		if (!z?.current || !draggedCriterion || !draggedOverCriterion) return;
 		if (draggedCriterion.id === draggedOverCriterion.id) {
 			draggedCriterion = null;
@@ -244,11 +298,6 @@
 			console.error('Failed to reorder criteria:', err);
 		}
 
-		draggedCriterion = null;
-		draggedOverCriterion = null;
-	}
-
-	function handleDragEnd() {
 		draggedCriterion = null;
 		draggedOverCriterion = null;
 	}
@@ -510,6 +559,9 @@
 									ondragover={(e) => handleDragOver(e, criterion)}
 									ondrop={handleDrop}
 									ondragend={handleDragEnd}
+									ontouchstart={(e) => handleTouchStart(e, criterion)}
+									ontouchmove={handleTouchMove}
+									ontouchend={handleTouchEnd}
 								>
 									<div class="drag-handle" aria-label="Drag to reorder">⋮⋮</div>
 									<div class="criterion-info">
@@ -1033,6 +1085,9 @@
 		transition: all 0.2s ease;
 		cursor: grab;
 		gap: 12px;
+		touch-action: none;
+		user-select: none;
+		-webkit-user-select: none;
 
 		&:active {
 			cursor: grabbing;
@@ -1045,6 +1100,7 @@
 		&.dragging {
 			opacity: 0.5;
 			transform: scale(0.98);
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 		}
 
 		&.drag-over {
@@ -1064,7 +1120,21 @@
 		font-size: 1rem;
 		cursor: grab;
 		user-select: none;
+		-webkit-user-select: none;
 		line-height: 1;
+		padding: 4px;
+		margin: -4px;
+		min-width: 24px;
+		min-height: 24px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		@media (max-width: 768px) {
+			font-size: 1.2rem;
+			min-width: 32px;
+			min-height: 32px;
+		}
 	}
 
 	.criterion-info {
