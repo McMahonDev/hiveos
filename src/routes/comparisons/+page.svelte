@@ -10,6 +10,7 @@
 
 	let comparisons = $state<Query<any, any, any> | undefined>(undefined);
 	let createModalOpen = $state(false);
+	let infoModalOpen = $state(false);
 	let newComparisonName = $state('');
 	let newComparisonDescription = $state('');
 	let isPriceAFactor = $state(false);
@@ -87,7 +88,10 @@
 			<h1>Comparison Tool</h1>
 			<p class="subtitle">Make better decisions by comparing your options side-by-side</p>
 		</div>
-		<button class="create-btn" onclick={openCreateModal}>+ New Comparison</button>
+		<div class="header-actions">
+			<button class="info-btn" onclick={() => (infoModalOpen = true)}>How it works</button>
+			<button class="create-btn" onclick={openCreateModal}>+ New Comparison</button>
+		</div>
 	</section>
 
 	{#if comparisons?.current && Array.isArray(comparisons.current)}
@@ -123,7 +127,7 @@
 							<div class="card-meta">
 								<span class="date">Created {formatDate(comparison.createdAt)}</span>
 								{#if comparison.isPriceAFactor}
-									<span class="badge">💰 Price Factor</span>
+									<span class="badge">Price Factor</span>
 								{/if}
 							</div>
 						</div>
@@ -150,7 +154,7 @@
 						type="text"
 						id="comparison-name"
 						bind:value={newComparisonName}
-						placeholder="e.g., Cars, Laptops, Apartments..."
+						placeholder="Enter comparison name"
 						required
 					/>
 				</div>
@@ -183,6 +187,61 @@
 	</div>
 {/if}
 
+{#if infoModalOpen}
+	<div class="modal">
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-backdrop" onclick={() => (infoModalOpen = false)}></div>
+		<div class="modal-box info-modal">
+			<h2>How the Comparison Tool Works</h2>
+
+			<div class="info-section">
+				<h3>1. Create a Comparison</h3>
+				<p>
+					Start by naming your comparison and optionally adding a description. You can also indicate
+					if price is a factor in your decision.
+				</p>
+			</div>
+
+			<div class="info-section">
+				<h3>2. Define Your Criteria</h3>
+				<p>Add the factors that matter to you. Each criterion can be either:</p>
+				<ul>
+					<li><strong>Yes/No:</strong> Whether an item has a feature or not</li>
+					<li>
+						<strong>Numeric:</strong> Measurable values where you specify if higher or lower is better
+					</li>
+				</ul>
+				<p>
+					Drag criteria to reorder them - items at the top have higher importance and weight more
+					heavily in scoring.
+				</p>
+			</div>
+
+			<div class="info-section">
+				<h3>3. Add Items to Compare</h3>
+				<p>
+					Add the options you're considering. For each item, you can set values for your criteria.
+				</p>
+			</div>
+
+			<div class="info-section">
+				<h3>4. Automatic Scoring</h3>
+				<p>
+					Items are automatically ranked based on how well they match your criteria. Each criterion
+					contributes points based on its weight, and items are sorted from highest to lowest score.
+				</p>
+			</div>
+
+			<div class="modal-buttons">
+				<button type="button" class="btn-primary" onclick={() => (infoModalOpen = false)}>
+					Got it
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
 	.comparisons-page {
 		max-width: 1200px;
@@ -210,6 +269,29 @@
 		font-size: 1rem;
 	}
 
+	.header-actions {
+		display: flex;
+		gap: 12px;
+		align-items: center;
+	}
+
+	.info-btn {
+		background-color: transparent;
+		color: var(--textColor);
+		padding: 12px 24px;
+		border-radius: 8px;
+		border: 1px solid rgba(0, 0, 0, 0.2);
+		cursor: pointer;
+		font-size: 1rem;
+		font-weight: 600;
+		transition: all 0.2s ease;
+	}
+
+	.info-btn:hover {
+		background-color: rgba(0, 0, 0, 0.05);
+		border-color: rgba(0, 0, 0, 0.3);
+	}
+
 	.create-btn {
 		background-color: var(--primary);
 		color: #000;
@@ -235,11 +317,6 @@
 	.empty-state {
 		text-align: center;
 		padding: 80px 20px;
-	}
-
-	.empty-icon {
-		font-size: 4rem;
-		margin-bottom: 20px;
 	}
 
 	.empty-state h2 {
@@ -275,6 +352,9 @@
 		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 		gap: 20px;
 	}
+	.comparisons-grid a {
+		text-decoration: none;
+	}
 
 	.comparison-card {
 		background: var(--background);
@@ -301,15 +381,7 @@
 		margin: 0;
 		font-size: 1.25rem;
 		flex: 1;
-	}
-
-	.card-header h3 a {
 		color: var(--textColor);
-		text-decoration: none;
-	}
-
-	.card-header h3 a:hover {
-		text-decoration: underline;
 	}
 
 	.delete-btn {
@@ -397,7 +469,7 @@
 		border-radius: 12px;
 		box-shadow: var(--level-3);
 		z-index: 10001;
-		max-width: 500px;
+		max-width: 800px;
 		width: 100%;
 		max-height: 90vh;
 		overflow-y: auto;
@@ -487,10 +559,50 @@
 		background-color: #d0d0d0;
 	}
 
+	.info-modal {
+		max-width: 800px;
+	}
+
+	.info-section {
+		margin-bottom: 24px;
+	}
+
+	.info-section h3 {
+		margin: 0 0 8px 0;
+		font-size: 1.1rem;
+		color: var(--textColor);
+	}
+
+	.info-section p {
+		margin: 0 0 8px 0;
+		color: var(--color-tertiary, #666);
+		line-height: 1.6;
+	}
+
+	.info-section ul {
+		margin: 8px 0;
+		padding-left: 24px;
+		color: var(--color-tertiary, #666);
+		line-height: 1.6;
+	}
+
+	.info-section li {
+		margin-bottom: 6px;
+	}
+
+	.info-section strong {
+		color: var(--textColor);
+		font-weight: 600;
+	}
+
 	@media (max-width: 768px) {
 		.page-header {
 			flex-direction: column;
 			align-items: stretch;
+		}
+
+		.header-actions {
+			flex-direction: column;
 		}
 
 		.comparisons-grid {

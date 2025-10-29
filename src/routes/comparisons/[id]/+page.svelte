@@ -9,6 +9,7 @@
 		updateCriteriaWeights,
 		sortCriteriaByWeight
 	} from '$lib/utils/comparisonRanking';
+	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 
 	let { data } = $props();
 	let z = $derived(data.z);
@@ -19,6 +20,7 @@
 	let criteria = $state<Query<any, any, any> | undefined>(undefined);
 	let items = $state<Query<any, any, any> | undefined>(undefined);
 	let itemValues = $state<Query<any, any, any> | undefined>(undefined);
+	let accessDenied = $state(false);
 
 	// Modal states
 	let addCriterionModalOpen = $state(false);
@@ -68,6 +70,44 @@
 					q.where('comparisonId', comparisonId)
 				)
 			);
+		}
+	});
+
+	// Security check: Verify access permissions
+	$effect(() => {
+		if (comparison?.current && Array.isArray(comparison.current) && comparison.current[0]) {
+			const comp = comparison.current[0];
+			const currentViewMode = viewModeState.currentMode;
+
+			// Check if the comparison belongs to the current user
+			if (comp.createdById !== userId) {
+				console.warn('Access denied: Comparison does not belong to current user');
+				accessDenied = true;
+				goto('/comparisons');
+				return;
+			}
+
+			// Check if the comparison's view mode matches the current view mode
+			if (comp.viewMode !== currentViewMode) {
+				console.warn('Access denied: Comparison view mode does not match current view mode');
+				accessDenied = true;
+				goto('/comparisons');
+				return;
+			}
+
+			accessDenied = false;
+		}
+	});
+
+	// Watch for view mode changes and redirect if needed
+	$effect(() => {
+		const currentViewMode = viewModeState.currentMode;
+		if (comparison?.current && Array.isArray(comparison.current) && comparison.current[0]) {
+			const comp = comparison.current[0];
+			if (comp.viewMode !== currentViewMode) {
+				console.log('View mode changed, redirecting to comparisons home');
+				goto('/comparisons');
+			}
 		}
 	});
 
@@ -296,6 +336,7 @@
 				name: newItemName.trim(),
 				price: newItemPrice,
 				notes: newItemNotes.trim() || null,
+				totalScore: 0,
 				createdById: userId,
 				createdAt: Date.now()
 			});
@@ -413,7 +454,16 @@
 </script>
 
 <div class="comparison-page">
-	{#if comparison?.current && Array.isArray(comparison.current) && comparison.current[0]}
+	{#if accessDenied}
+		<div class="access-denied">
+			<h2>Access Denied</h2>
+			<p>
+				You don't have permission to view this comparison or it doesn't exist in the current view
+				mode.
+			</p>
+			<a href="/comparisons" class="back-btn">← Back to Comparisons</a>
+		</div>
+	{:else if comparison?.current && Array.isArray(comparison.current) && comparison.current[0]}
 		{@const comp = comparison.current[0]}
 
 		<div class="page-title-section">
@@ -437,7 +487,7 @@
 				</div>
 
 				{#if criteria?.current && Array.isArray(criteria.current) && criteria.current.length > 1}
-					<p class="drag-hint">💡 Drag to reorder • Top = Most Important</p>
+					<p class="drag-hint">Drag to reorder - Top = Most Important</p>
 				{/if}
 
 				{#if criteria?.current && Array.isArray(criteria.current)}
@@ -616,12 +666,12 @@
 			<h2>Add Criterion</h2>
 			<form onsubmit={addCriterion}>
 				<div class="form-group">
-					<label for="criterion-name">What criterion matters to you?</label>
+					<label for="criterion-name">Criterion Name</label>
 					<input
 						type="text"
 						id="criterion-name"
 						bind:value={newCriterionName}
-						placeholder="e.g., Premium Sound, Number of Seats, MPG..."
+						placeholder="Enter criterion name"
 						required
 					/>
 				</div>
@@ -629,8 +679,8 @@
 				<div class="form-group">
 					<label for="criterion-type">Criterion Type</label>
 					<select id="criterion-type" bind:value={newCriterionType}>
-						<option value="boolean">Yes/No (Has feature or doesn't)</option>
-						<option value="number">Numeric Value (e.g., MPG, seats, price)</option>
+						<option value="boolean">Yes/No</option>
+						<option value="number">Numeric Value</option>
 					</select>
 				</div>
 
@@ -644,7 +694,7 @@
 								checked={newCriterionHigherIsBetter === true}
 								onchange={() => (newCriterionHigherIsBetter = true)}
 							/>
-							<span>Higher is better (e.g., MPG, number of seats)</span>
+							<span>Higher is better</span>
 						</label>
 						<label class="radio-option">
 							<input
@@ -653,7 +703,7 @@
 								checked={newCriterionHigherIsBetter === false}
 								onchange={() => (newCriterionHigherIsBetter = false)}
 							/>
-							<span>Lower is better (e.g., price, 0-60 time)</span>
+							<span>Lower is better</span>
 						</label>
 					</div>
 				{/if}
@@ -688,7 +738,7 @@
 						type="text"
 						id="edit-criterion-name"
 						bind:value={editCriterionName}
-						placeholder="e.g., Premium Sound, Number of Seats, MPG..."
+						placeholder="Enter criterion name"
 						required
 					/>
 				</div>
@@ -696,8 +746,8 @@
 				<div class="form-group">
 					<label for="edit-criterion-type">Criterion Type</label>
 					<select id="edit-criterion-type" bind:value={editCriterionType}>
-						<option value="boolean">Yes/No (Has feature or doesn't)</option>
-						<option value="number">Numeric Value (e.g., MPG, seats, price)</option>
+						<option value="boolean">Yes/No</option>
+						<option value="number">Numeric Value</option>
 					</select>
 				</div>
 
@@ -711,7 +761,7 @@
 								checked={editCriterionHigherIsBetter === true}
 								onchange={() => (editCriterionHigherIsBetter = true)}
 							/>
-							<span>Higher is better (e.g., MPG, number of seats)</span>
+							<span>Higher is better</span>
 						</label>
 						<label class="radio-option">
 							<input
@@ -720,7 +770,7 @@
 								checked={editCriterionHigherIsBetter === false}
 								onchange={() => (editCriterionHigherIsBetter = false)}
 							/>
-							<span>Lower is better (e.g., price, 0-60 time)</span>
+							<span>Lower is better</span>
 						</label>
 					</div>
 				{/if}
@@ -755,7 +805,7 @@
 						type="text"
 						id="item-name"
 						bind:value={newItemName}
-						placeholder="e.g., Toyota Camry, Honda Accord..."
+						placeholder="Enter item name"
 						required
 					/>
 				</div>
@@ -767,7 +817,7 @@
 							type="number"
 							id="item-price"
 							bind:value={newItemPrice}
-							placeholder="e.g., 35000"
+							placeholder="Enter price"
 							min="0"
 						/>
 					</div>
@@ -944,7 +994,10 @@
 		font-size: 0.85rem;
 		color: var(--color-tertiary, #666);
 		margin: 0 0 12px 0;
-		font-style: italic;
+		padding: 8px 12px;
+		background: rgba(0, 0, 0, 0.03);
+		border-radius: 6px;
+		border-left: 3px solid var(--primary);
 	}
 
 	.empty-section {
@@ -1160,7 +1213,7 @@
 	}
 
 	.value-display {
-		color: var(--textColor);
+		color: #000;
 		font-weight: 600;
 	}
 
@@ -1197,6 +1250,42 @@
 		text-align: center;
 		padding: 40px;
 		color: var(--color-tertiary, #666);
+	}
+
+	.access-denied {
+		text-align: center;
+		padding: 80px 20px;
+		max-width: 600px;
+		margin: 0 auto;
+	}
+
+	.access-denied h2 {
+		color: var(--textColor);
+		margin: 0 0 16px 0;
+		font-size: 1.75rem;
+	}
+
+	.access-denied p {
+		color: var(--color-tertiary, #666);
+		margin: 0 0 32px 0;
+		line-height: 1.6;
+	}
+
+	.back-btn {
+		display: inline-block;
+		background-color: var(--primary);
+		color: #000;
+		padding: 12px 24px;
+		border-radius: 8px;
+		text-decoration: none;
+		font-weight: 600;
+		transition: all 0.2s ease;
+		box-shadow: var(--level-2);
+	}
+
+	.back-btn:hover {
+		transform: translateY(-2px);
+		box-shadow: var(--level-3);
 	}
 
 	/* Modal styles */
