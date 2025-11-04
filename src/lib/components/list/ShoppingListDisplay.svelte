@@ -1,13 +1,109 @@
 <script lang="ts">
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
+	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import type { Query } from 'zero-svelte';
+	import { nanoid } from 'nanoid';
+	import {
+		saveToLocalStorage as saveShoppingItemToLocalStorage,
+		isLocalStorageOnly as checkIsLocalStorageOnly,
+		removeStore as removeStoreFromStorage
+	} from '$lib/utils/shoppingListHelpers';
 
 	interface Props {
 		customListItems: Query<any, any, any> | null;
 		z: any;
+		listId: string;
+		userId: string;
+		viewMode: string;
 	}
 
-	let { customListItems, z }: Props = $props();
+	let { customListItems, z, listId, userId, viewMode }: Props = $props();
+
+	let addModal = $state(false);
+	let selectedStore = $state('');
+	let showNewStoreInput = $state(false);
+	let newStoreName = $state('');
+
+	// Shopping list helpers
+	let savedItems = $state<string[]>([]);
+	let localStorageStores = $state<string[]>([]);
+
+	$effect(() => {
+		if (typeof window !== 'undefined') {
+			const items = localStorage.getItem('shopping-items');
+			const stores = localStorage.getItem('shopping-stores');
+			savedItems = items ? JSON.parse(items) : [];
+			localStorageStores = stores ? JSON.parse(stores) : [];
+		}
+	});
+
+	let savedStores = $derived.by(() => {
+		const storesSet = new Set<string>();
+		localStorageStores.forEach((store) => {
+			if (store && store.trim()) storesSet.add(store.trim());
+		});
+
+		if (customListItems?.current && Array.isArray(customListItems.current)) {
+			customListItems.current.forEach((item: any) => {
+				if (item.store && item.store.trim() && item.store !== 'Any Store') {
+					storesSet.add(item.store.trim());
+				}
+			});
+		}
+
+		return Array.from(storesSet).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+	});
+
+	$effect(() => {
+		showNewStoreInput = selectedStore === '__new__';
+		if (selectedStore !== '__new__') {
+			newStoreName = '';
+		}
+	});
+
+	function isLocalStorageOnly(storeName: string): boolean {
+		const items =
+			customListItems?.current && Array.isArray(customListItems.current)
+				? customListItems.current
+				: null;
+		return checkIsLocalStorageOnly(storeName, items, localStorageStores);
+	}
+
+	function removeStore(storeName: string) {
+		localStorageStores = removeStoreFromStorage(storeName, localStorageStores);
+		if (selectedStore === storeName) {
+			selectedStore = '';
+		}
+	}
+
+	function onsubmit(event: Event) {
+		event.preventDefault();
+		const formData = new FormData(event.target as HTMLFormElement);
+		const name = formData.get('name') as string;
+
+		let store = selectedStore === '__new__' ? newStoreName : selectedStore;
+
+		const itemData = {
+			id: nanoid(),
+			name,
+			status: false,
+			customListId: listId,
+			createdById: userId,
+			createdAt: Date.now(),
+			viewMode: viewMode,
+			store: store || undefined
+		};
+
+		const updated = saveShoppingItemToLocalStorage(name, store, savedItems, localStorageStores);
+		savedItems = updated.savedItems;
+		localStorageStores = updated.localStorageStores;
+
+		z?.current.mutate.customListItems.insert(itemData);
+		(event.target as HTMLFormElement).reset();
+		selectedStore = '';
+		newStoreName = '';
+		addModal = false;
+	}
 
 	// Group shopping items by store
 	let groupedShoppingItems = $derived.by(() => {
@@ -86,6 +182,10 @@
 	}
 </script>
 
+<div class="list-header">
+	<button class="add-item-btn" onclick={() => (addModal = true)}>Add Item</button>
+</div>
+
 <div class="shopping-groups">
 	{#each groupedShoppingItems as group (group.store)}
 		<div class="store-group">
@@ -132,7 +232,117 @@
 	{/each}
 </div>
 
+{#if addModal}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="modal-overlay" onclick={() => (addModal = false)}>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-content" onclick={(e) => e.stopPropagation()}>
+			<div class="modal-header">
+				<h2>Add Item</h2>
+				<button
+					class="close-button"
+					onclick={() => (addModal = false)}
+					type="button"
+					aria-label="Close"
+				>
+					<CloseIcon />
+				</button>
+			</div>
+			<form {onsubmit}>
+				<label for="name">
+					Item Name
+					<input type="text" id="name" name="name" list="items-list" autocomplete="off" required />
+				</label>
+
+				<datalist id="items-list">
+					{#each savedItems as item}
+						<option value={item}></option>
+					{/each}
+				</datalist>
+
+				<fieldset class="store-selection">
+					<legend>Select Store</legend>
+
+					<label class="radio-label">
+						<input type="radio" name="store-radio" value="" bind:group={selectedStore} />
+						<span>Any Store</span>
+					</label>
+
+					{#each savedStores as store}
+						<div class="radio-label-wrapper">
+							<label class="radio-label">
+								<input type="radio" name="store-radio" value={store} bind:group={selectedStore} />
+								<span>{store}</span>
+							</label>
+							{#if isLocalStorageOnly(store)}
+								<button
+									type="button"
+									class="remove-store-btn"
+									onclick={() => removeStore(store)}
+									title="Remove store from saved list"
+									aria-label="Remove {store}"
+								>
+									×
+								</button>
+							{/if}
+						</div>
+					{/each}
+
+					<label class="radio-label">
+						<input type="radio" name="store-radio" value="__new__" bind:group={selectedStore} />
+						<span>Add New Store</span>
+					</label>
+
+					{#if showNewStoreInput}
+						<input
+							type="text"
+							bind:value={newStoreName}
+							placeholder="Enter store name"
+							class="new-store-input"
+						/>
+					{/if}
+				</fieldset>
+
+				<div class="modal-actions">
+					<button type="button" class="cancel-btn" onclick={() => (addModal = false)}>Cancel</button
+					>
+					<button type="submit" class="save-btn">Add</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
 <style>
+	.list-header {
+		display: flex;
+		justify-content: flex-end;
+		margin-bottom: 15px;
+	}
+
+	.add-item-btn {
+		background: #28a745;
+		color: white;
+		border: none;
+		padding: 10px 20px;
+		border-radius: 6px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+
+		&:hover {
+			background: #218838;
+			transform: translateY(-1px);
+			box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+		}
+
+		&:active {
+			transform: translateY(0);
+		}
+	}
+
 	.shopping-groups {
 		display: flex;
 		flex-direction: column;
@@ -313,6 +523,234 @@
 			&:active {
 				transform: scale(0.9);
 			}
+		}
+	}
+
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+		padding: 20px;
+		backdrop-filter: blur(2px);
+	}
+
+	.modal-content {
+		background: var(--background);
+		padding: 20px;
+		border-radius: 10px;
+		box-shadow: var(--level-3);
+		width: 100%;
+		max-width: 600px;
+		max-height: 90vh;
+		overflow-y: auto;
+		animation: slideUp 0.3s ease-out;
+
+		@media screen and (max-width: 690px) {
+			max-height: 85vh;
+			padding: 16px;
+		}
+	}
+
+	.modal-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 20px;
+
+		h2 {
+			margin: 0;
+			color: var(--textColor);
+		}
+	}
+
+	.close-button {
+		background: transparent;
+		border: none;
+		padding: 8px;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 4px;
+		transition: background 0.2s ease;
+
+		&:hover {
+			background: rgba(0, 0, 0, 0.05);
+		}
+
+		&:active {
+			transform: scale(0.95);
+		}
+	}
+
+	form {
+		display: flex;
+		flex-direction: column;
+		gap: 15px;
+
+		label {
+			display: flex;
+			flex-direction: column;
+			width: 100%;
+			font-weight: 600;
+			color: var(--textColor);
+
+			input {
+				margin-top: 5px;
+				padding: 10px;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+				font-size: 1rem;
+				font-family: inherit;
+
+				&:focus {
+					outline: none;
+					border-color: #007bff;
+					box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+				}
+			}
+		}
+	}
+
+	.store-selection {
+		border: 1px solid #ccc;
+		border-radius: 8px;
+		padding: 12px;
+		background: var(--level-1);
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		max-height: 300px;
+		overflow-y: auto;
+
+		legend {
+			font-weight: 600;
+			padding: 0 8px;
+			color: var(--text-primary);
+			font-size: 0.95rem;
+		}
+	}
+
+	.radio-label-wrapper {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		border-radius: 4px;
+		transition: background 0.2s ease;
+
+		&:hover {
+			background: var(--level-2);
+		}
+	}
+
+	.radio-label {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 6px 8px;
+		cursor: pointer;
+		flex-direction: row;
+		margin: 0;
+		flex: 1;
+
+		input[type='radio'] {
+			width: 18px;
+			height: 18px;
+			cursor: pointer;
+			margin: 0;
+			flex-shrink: 0;
+		}
+
+		span {
+			font-size: 0.95rem;
+			flex: 1;
+		}
+	}
+
+	.remove-store-btn {
+		background: none;
+		border: none;
+		color: #dc3545;
+		font-size: 1.5rem;
+		line-height: 1;
+		cursor: pointer;
+		padding: 4px 8px;
+		margin-right: 4px;
+		opacity: 0.6;
+		transition: opacity 0.2s ease;
+		flex-shrink: 0;
+
+		&:hover {
+			opacity: 1;
+		}
+
+		&:active {
+			transform: scale(0.9);
+		}
+	}
+
+	.new-store-input {
+		margin-top: 5px;
+		margin-left: 28px;
+		padding: 8px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		font-size: 0.95rem;
+		background: white;
+	}
+
+	.modal-actions {
+		display: flex;
+		gap: 10px;
+		justify-content: flex-end;
+		margin-top: 10px;
+	}
+
+	.cancel-btn,
+	.save-btn {
+		padding: 10px 20px;
+		border: none;
+		border-radius: 6px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.cancel-btn {
+		background: #6c757d;
+		color: white;
+
+		&:hover {
+			background: #5a6268;
+		}
+	}
+
+	.save-btn {
+		background: #007bff;
+		color: white;
+
+		&:hover {
+			background: #0056b3;
+			transform: translateY(-1px);
+			box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+		}
+	}
+
+	@keyframes slideUp {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
 		}
 	}
 </style>

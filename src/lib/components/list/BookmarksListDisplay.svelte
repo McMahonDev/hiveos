@@ -1,20 +1,78 @@
 <script lang="ts">
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
+	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import BookmarkListItem from '$lib/components/list/BookmarkListItem.svelte';
 	import type { Query } from 'zero-svelte';
+	import { nanoid } from 'nanoid';
 
 	interface Props {
 		customListItems: Query<any, any, any> | null;
 		z: any;
-		onEdit: (item: any) => void;
+		listId: string;
+		userId: string;
+		viewMode: string;
 	}
 
-	let { customListItems, z, onEdit }: Props = $props();
+	let { customListItems, z, listId, userId, viewMode }: Props = $props();
+
+	let addModal = $state(false);
+	let editModal = $state(false);
+	let editingItem = $state<any>(null);
+
+	function onsubmit(event: Event) {
+		event.preventDefault();
+		const form = event.target as HTMLFormElement;
+		const formData = new FormData(form);
+
+		const itemData = {
+			id: nanoid(),
+			name: formData.get('name') as string,
+			url: formData.get('url') as string,
+			description: (formData.get('description') as string) || null,
+			tags: (formData.get('tags') as string) || null,
+			status: false,
+			customListId: listId,
+			createdById: userId,
+			createdAt: Date.now(),
+			viewMode: viewMode
+		};
+
+		z?.current.mutate.customListItems.insert(itemData);
+		form.reset();
+		addModal = false;
+	}
 
 	function deleteItem(itemId: string) {
 		z?.current.mutate.customListItems.delete({ id: itemId });
 	}
+
+	function startEdit(item: any) {
+		editingItem = { ...item };
+		editModal = true;
+	}
+
+	function cancelEdit() {
+		editModal = false;
+		editingItem = null;
+	}
+
+	function saveEdit() {
+		if (editingItem) {
+			z?.current.mutate.customListItems.update({
+				id: editingItem.id,
+				name: editingItem.name,
+				url: editingItem.url,
+				description: editingItem.description,
+				tags: editingItem.tags
+			});
+			cancelEdit();
+		}
+	}
 </script>
+
+<div class="list-header">
+	<button class="add-item-btn" onclick={() => (addModal = true)}>Add Bookmark</button>
+</div>
 
 <div class="list-items">
 	{#each customListItems?.current && Array.isArray(customListItems.current) ? customListItems.current : [] as item (item.id)}
@@ -24,7 +82,7 @@
 				<BookmarkListItem {item} />
 			</div>
 			<div class="item-actions">
-				<button class="edit-item" onclick={() => onEdit(item)} title="Edit Item"> Edit </button>
+				<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item"> Edit </button>
 				<button class="delete-item" onclick={() => deleteItem(item.id)} title="Delete Item">
 					<DeleteIcon />
 				</button>
@@ -33,7 +91,123 @@
 	{/each}
 </div>
 
+{#if addModal}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="modal-overlay" onclick={() => (addModal = false)}>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-content" onclick={(e) => e.stopPropagation()}>
+			<div class="modal-header">
+				<h2>Add Bookmark</h2>
+				<button
+					class="close-button"
+					onclick={() => (addModal = false)}
+					type="button"
+					aria-label="Close"
+				>
+					<CloseIcon />
+				</button>
+			</div>
+			<form {onsubmit}>
+				<label>
+					Title
+					<input type="text" name="name" required />
+				</label>
+				<label>
+					URL
+					<input type="url" name="url" required />
+				</label>
+				<label>
+					Description
+					<textarea name="description" rows="3"></textarea>
+				</label>
+				<label>
+					Tags
+					<input type="text" name="tags" placeholder="Comma-separated tags" />
+				</label>
+				<div class="modal-actions">
+					<button type="button" class="cancel-btn" onclick={() => (addModal = false)}>Cancel</button
+					>
+					<button type="submit" class="save-btn">Add Bookmark</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
+{#if editModal && editingItem}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="modal-overlay" onclick={cancelEdit}>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-content" onclick={(e) => e.stopPropagation()}>
+			<div class="modal-header">
+				<h2>Edit Bookmark</h2>
+				<button class="close-button" onclick={cancelEdit} type="button" aria-label="Close">
+					<CloseIcon />
+				</button>
+			</div>
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					saveEdit();
+				}}
+			>
+				<label>
+					Title
+					<input type="text" bind:value={editingItem.name} required />
+				</label>
+				<label>
+					URL
+					<input type="url" bind:value={editingItem.url} required />
+				</label>
+				<label>
+					Description
+					<textarea bind:value={editingItem.description} rows="3"></textarea>
+				</label>
+				<label>
+					Tags
+					<input type="text" bind:value={editingItem.tags} placeholder="Comma-separated tags" />
+				</label>
+				<div class="modal-actions">
+					<button type="button" class="cancel-btn" onclick={cancelEdit}>Cancel</button>
+					<button type="submit" class="save-btn">Save Changes</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
 <style>
+	.list-header {
+		display: flex;
+		justify-content: flex-end;
+		margin-bottom: 15px;
+	}
+
+	.add-item-btn {
+		background: #28a745;
+		color: white;
+		border: none;
+		padding: 10px 20px;
+		border-radius: 6px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+
+		&:hover {
+			background: #218838;
+			transform: translateY(-1px);
+			box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+		}
+
+		&:active {
+			transform: translateY(0);
+		}
+	}
+
 	.list-items {
 		display: flex;
 		flex-direction: column;
@@ -119,6 +293,158 @@
 			&:active {
 				transform: scale(0.9);
 			}
+		}
+	}
+
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+		padding: 20px;
+		backdrop-filter: blur(2px);
+	}
+
+	.modal-content {
+		background: var(--background);
+		padding: 20px;
+		border-radius: 10px;
+		box-shadow: var(--level-3);
+		width: 100%;
+		max-width: 600px;
+		max-height: 90vh;
+		overflow-y: auto;
+		animation: slideUp 0.3s ease-out;
+
+		@media screen and (max-width: 690px) {
+			max-height: 85vh;
+			padding: 16px;
+		}
+	}
+
+	.modal-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 20px;
+
+		h2 {
+			margin: 0;
+			color: var(--textColor);
+		}
+	}
+
+	.close-button {
+		background: transparent;
+		border: none;
+		padding: 8px;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 4px;
+		transition: background 0.2s ease;
+
+		&:hover {
+			background: rgba(0, 0, 0, 0.05);
+		}
+
+		&:active {
+			transform: scale(0.95);
+		}
+	}
+
+	form {
+		display: flex;
+		flex-direction: column;
+		gap: 15px;
+	}
+
+	label {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		font-weight: 600;
+		color: var(--textColor);
+
+		input,
+		textarea {
+			margin-top: 5px;
+			padding: 10px;
+			border: 1px solid #ccc;
+			border-radius: 4px;
+			font-size: 1rem;
+			font-family: inherit;
+
+			&:focus {
+				outline: none;
+				border-color: #007bff;
+				box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+			}
+		}
+	}
+
+	.modal-actions {
+		display: flex;
+		gap: 12px;
+		justify-content: flex-end;
+		margin-top: 20px;
+		padding-top: 20px;
+		border-top: 2px solid #e8e8e8;
+	}
+
+	.cancel-btn,
+	.save-btn {
+		padding: 10px 20px;
+		border-radius: 8px;
+		font-weight: 600;
+		font-size: 0.95rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		border: none;
+
+		&:hover {
+			transform: translateY(-1px);
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		}
+
+		&:active {
+			transform: translateY(0);
+		}
+	}
+
+	.cancel-btn {
+		background: #e8e8e8;
+		color: #222;
+
+		&:hover {
+			background: #d4d4d4;
+		}
+	}
+
+	.save-btn {
+		background: #28a745;
+		color: white;
+
+		&:hover {
+			background: #218838;
+		}
+	}
+
+	@keyframes slideUp {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
 		}
 	}
 </style>

@@ -1,20 +1,93 @@
 <script lang="ts">
+	import { nanoid } from 'nanoid';
 	import DeleteIcon from '$lib/static/icons/deleteIcon.svelte';
+	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import RecipeListItem from '$lib/components/list/RecipeListItem.svelte';
 	import type { Query } from 'zero-svelte';
 
 	interface Props {
 		customListItems: Query<any, any, any> | null;
 		z: any;
-		onEdit: (item: any) => void;
+		listId: string;
+		userId: string;
+		viewMode: string;
 	}
 
-	let { customListItems, z, onEdit }: Props = $props();
+	let { customListItems, z, listId, userId, viewMode }: Props = $props();
+
+	let addModal = $state(false);
+	let editModal = $state(false);
+	let editingItem = $state<any>(null);
+
+	function startEdit(item: any) {
+		editingItem = { ...item };
+		editModal = true;
+	}
+
+	function cancelEdit() {
+		editModal = false;
+		editingItem = null;
+	}
+
+	async function saveEdit() {
+		if (!editingItem || !z?.current) return;
+
+		const updateData: any = {
+			id: editingItem.id,
+			name: editingItem.name,
+			ingredients: editingItem.ingredients || null,
+			instructions: editingItem.instructions || null,
+			servings: editingItem.servings ? Number(editingItem.servings) : null,
+			prepTime: editingItem.prepTime || null,
+			cookTime: editingItem.cookTime || null
+		};
+
+		try {
+			await z.current.mutate.customListItems.update(updateData);
+			cancelEdit();
+		} catch (error) {
+			console.error('Failed to update item:', error);
+		}
+	}
 
 	function deleteItem(itemId: string) {
 		z?.current.mutate.customListItems.delete({ id: itemId });
 	}
+
+	function onsubmit(event: Event) {
+		event.preventDefault();
+		const formData = new FormData(event.target as HTMLFormElement);
+		const name = formData.get('name') as string;
+		const ingredients = formData.get('ingredients') as string;
+		const instructions = formData.get('instructions') as string;
+		const servings = formData.get('servings') as string;
+		const prepTime = formData.get('prepTime') as string;
+		const cookTime = formData.get('cookTime') as string;
+
+		const itemData: any = {
+			id: nanoid(),
+			name,
+			status: false,
+			customListId: listId,
+			createdById: userId,
+			createdAt: Date.now(),
+			viewMode: viewMode,
+			ingredients: ingredients || undefined,
+			instructions: instructions || undefined,
+			servings: servings ? parseInt(servings) : undefined,
+			prepTime: prepTime || undefined,
+			cookTime: cookTime || undefined
+		};
+
+		z?.current.mutate.customListItems.insert(itemData);
+		(event.target as HTMLFormElement).reset();
+		addModal = false;
+	}
 </script>
+
+<div class="list-header">
+	<button class="add-item-btn" onclick={() => (addModal = true)}>Add Recipe</button>
+</div>
 
 <div class="list-items">
 	{#each customListItems?.current && Array.isArray(customListItems.current) ? customListItems.current : [] as item (item.id)}
@@ -24,7 +97,7 @@
 				<RecipeListItem {item} />
 			</div>
 			<div class="item-actions">
-				<button class="edit-item" onclick={() => onEdit(item)} title="Edit Item"> Edit </button>
+				<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item"> Edit </button>
 				<button class="delete-item" onclick={() => deleteItem(item.id)} title="Delete Item">
 					<DeleteIcon />
 				</button>
@@ -33,7 +106,200 @@
 	{/each}
 </div>
 
+{#if addModal}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="modal-overlay" onclick={() => (addModal = false)}>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-content" onclick={(e) => e.stopPropagation()}>
+			<div class="modal-header">
+				<h2>Add Recipe</h2>
+				<button type="button" class="close-button" onclick={() => (addModal = false)}>
+					<CloseIcon />
+				</button>
+			</div>
+
+			<form {onsubmit}>
+				<label for="name">
+					Recipe Name
+					<input type="text" id="name" name="name" required />
+				</label>
+
+				<label for="ingredients">
+					Ingredients *
+					<textarea
+						id="ingredients"
+						name="ingredients"
+						rows="5"
+						placeholder="Enter each ingredient on a new line&#10;e.g.&#10;2 cups flour&#10;1 tsp salt&#10;3 eggs"
+						required
+					></textarea>
+				</label>
+
+				<label for="instructions">
+					Instructions *
+					<textarea
+						id="instructions"
+						name="instructions"
+						rows="6"
+						placeholder="Step-by-step cooking instructions..."
+						required
+					></textarea>
+				</label>
+
+				<div class="recipe-metadata">
+					<label for="servings">
+						Servings
+						<input type="number" id="servings" name="servings" min="1" placeholder="4" />
+					</label>
+
+					<label for="prepTime">
+						Prep Time
+						<input type="text" id="prepTime" name="prepTime" placeholder="15 mins" />
+					</label>
+
+					<label for="cookTime">
+						Cook Time
+						<input type="text" id="cookTime" name="cookTime" placeholder="30 mins" />
+					</label>
+				</div>
+
+				<div class="modal-actions">
+					<button type="button" class="cancel-btn" onclick={() => (addModal = false)}>Cancel</button
+					>
+					<button type="submit" class="save-btn">Add Recipe</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
+{#if editModal && editingItem}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="modal-overlay" onclick={() => (editModal = false)}>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-content" onclick={(e) => e.stopPropagation()}>
+			<div class="modal-header">
+				<h2>Edit Recipe</h2>
+				<button type="button" class="close-button" onclick={() => (editModal = false)}>
+					<CloseIcon />
+				</button>
+			</div>
+
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					saveEdit();
+				}}
+			>
+				<label for="edit-name">
+					Recipe Name *
+					<input
+						type="text"
+						id="edit-name"
+						bind:value={editingItem.name}
+						placeholder="Enter recipe name"
+						required
+					/>
+				</label>
+
+				<label for="edit-ingredients">
+					Ingredients *
+					<textarea
+						id="edit-ingredients"
+						bind:value={editingItem.ingredients}
+						rows="5"
+						placeholder="Enter each ingredient on a new line"
+						required
+					></textarea>
+				</label>
+
+				<label for="edit-instructions">
+					Instructions *
+					<textarea
+						id="edit-instructions"
+						bind:value={editingItem.instructions}
+						rows="6"
+						placeholder="Step-by-step cooking instructions..."
+						required
+					></textarea>
+				</label>
+
+				<div class="recipe-metadata">
+					<label for="edit-servings">
+						Servings
+						<input
+							type="number"
+							id="edit-servings"
+							bind:value={editingItem.servings}
+							min="1"
+							placeholder="4"
+						/>
+					</label>
+
+					<label for="edit-preptime">
+						Prep Time
+						<input
+							type="text"
+							id="edit-preptime"
+							bind:value={editingItem.prepTime}
+							placeholder="15 mins"
+						/>
+					</label>
+
+					<label for="edit-cooktime">
+						Cook Time
+						<input
+							type="text"
+							id="edit-cooktime"
+							bind:value={editingItem.cookTime}
+							placeholder="30 mins"
+						/>
+					</label>
+				</div>
+
+				<div class="modal-actions">
+					<button type="button" class="cancel-btn" onclick={() => (editModal = false)}>
+						Cancel
+					</button>
+					<button type="submit" class="save-btn">Save Changes</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
 <style>
+	.list-header {
+		display: flex;
+		justify-content: flex-end;
+		margin-bottom: 15px;
+	}
+
+	.add-item-btn {
+		background: #28a745;
+		color: white;
+		border: none;
+		padding: 10px 20px;
+		border-radius: 6px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+
+		&:hover {
+			background: #218838;
+			transform: translateY(-1px);
+			box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+		}
+
+		&:active {
+			transform: translateY(0);
+		}
+	}
+
 	.list-items {
 		display: flex;
 		flex-direction: column;
@@ -119,6 +385,168 @@
 			&:active {
 				transform: scale(0.9);
 			}
+		}
+	}
+
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+		padding: 20px;
+		backdrop-filter: blur(2px);
+	}
+
+	.modal-content {
+		background: var(--background);
+		padding: 20px;
+		border-radius: 10px;
+		box-shadow: var(--level-3);
+		width: 100%;
+		max-width: 600px;
+		max-height: 90vh;
+		overflow-y: auto;
+		animation: slideUp 0.3s ease-out;
+
+		@media screen and (max-width: 690px) {
+			max-height: 85vh;
+			padding: 16px;
+		}
+	}
+
+	.modal-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 20px;
+
+		h2 {
+			margin: 0;
+			color: var(--textColor);
+		}
+	}
+
+	.close-button {
+		background: transparent;
+		border: none;
+		padding: 8px;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 4px;
+		transition: background 0.2s ease;
+
+		&:hover {
+			background: rgba(0, 0, 0, 0.05);
+		}
+
+		&:active {
+			transform: scale(0.95);
+		}
+	}
+
+	form {
+		display: flex;
+		flex-direction: column;
+		gap: 15px;
+	}
+
+	label {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		font-weight: 600;
+		color: var(--textColor);
+
+		input,
+		textarea {
+			margin-top: 5px;
+			padding: 10px;
+			border: 1px solid #ccc;
+			border-radius: 4px;
+			font-size: 1rem;
+			font-family: inherit;
+
+			&:focus {
+				outline: none;
+				border-color: #007bff;
+				box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+			}
+		}
+	}
+
+	.recipe-metadata {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+		gap: 15px;
+
+		label {
+			margin: 0;
+		}
+	}
+
+	.modal-actions {
+		display: flex;
+		gap: 12px;
+		justify-content: flex-end;
+		margin-top: 20px;
+		padding-top: 20px;
+		border-top: 2px solid #e8e8e8;
+	}
+
+	.cancel-btn,
+	.save-btn {
+		padding: 10px 20px;
+		border-radius: 8px;
+		font-weight: 600;
+		font-size: 0.95rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		border: none;
+
+		&:hover {
+			transform: translateY(-1px);
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		}
+
+		&:active {
+			transform: translateY(0);
+		}
+	}
+
+	.cancel-btn {
+		background: #e8e8e8;
+		color: #222;
+
+		&:hover {
+			background: #d4d4d4;
+		}
+	}
+
+	.save-btn {
+		background: #28a745;
+		color: white;
+
+		&:hover {
+			background: #218838;
+		}
+	}
+
+	@keyframes slideUp {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
 		}
 	}
 </style>
