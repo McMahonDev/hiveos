@@ -249,6 +249,7 @@ const comparisons = table('comparisons')
 		name: string(), // e.g., "Car Comparison"
 		description: string().optional(), // Optional description of what's being compared
 		isPriceAFactor: boolean(), // Whether price is a consideration
+		priceWeight: number(), // Weight for price bonus (1-10 scale, default 1)
 		createdById: string(),
 		viewMode: string(), // 'personal', 'shared', or custom category ID
 		createdAt: number(),

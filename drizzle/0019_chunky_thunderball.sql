@@ -1,0 +1,1 @@
+ALTER TABLE "comparisons" ADD COLUMN "priceWeight" integer DEFAULT 1 NOT NULL;
