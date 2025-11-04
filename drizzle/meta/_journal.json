@@ -134,6 +134,20 @@
       "when": 1761664187099,
       "tag": "0018_tired_spiral",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1762289929986,
+      "tag": "0019_chunky_thunderball",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1762290484277,
+      "tag": "0020_lumpy_deathstrike",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,7 @@
 	let newComparisonName = $state('');
 	let newComparisonDescription = $state('');
 	let isPriceAFactor = $state(false);
+	let priceWeight = $state(1);
 
 	$effect(() => {
 		if (z?.current) {
@@ -34,6 +35,7 @@
 		newComparisonName = '';
 		newComparisonDescription = '';
 		isPriceAFactor = false;
+		priceWeight = 1;
 	}
 
 	async function createComparison(e: Event) {
@@ -49,6 +51,7 @@
 				name: newComparisonName.trim(),
 				description: newComparisonDescription.trim() || null,
 				isPriceAFactor,
+				priceWeight: isPriceAFactor ? priceWeight : 1,
 				createdById: userId,
 				viewMode: viewModeState.currentMode,
 				createdAt: now,
@@ -175,6 +178,24 @@
 						<span>Is price a consideration factor?</span>
 					</label>
 				</div>
+
+				{#if isPriceAFactor}
+					<div class="form-group">
+						<label for="price-weight">
+							Price Importance (1-10)
+							<span class="label-hint">How much should price impact the final score?</span>
+						</label>
+						<input
+							type="range"
+							id="price-weight"
+							bind:value={priceWeight}
+							min="1"
+							max="10"
+							step="1"
+						/>
+						<div class="range-value">{priceWeight}</div>
+					</div>
+				{/if}
 
 				<div class="modal-buttons">
 					<button type="submit" class="btn-primary">Create Comparison</button>
@@ -525,6 +546,60 @@
 			height: 18px;
 			cursor: pointer;
 		}
+	}
+
+	.label-hint {
+		display: block;
+		font-size: 0.85rem;
+		font-weight: normal;
+		color: var(--color-tertiary, #666);
+		margin-top: 4px;
+	}
+
+	input[type='range'] {
+		width: 100%;
+		height: 6px;
+		border-radius: 3px;
+		background: rgba(0, 0, 0, 0.1);
+		outline: none;
+		cursor: pointer;
+		margin: 8px 0;
+	}
+
+	input[type='range']::-webkit-slider-thumb {
+		appearance: none;
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		background: var(--primary);
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	input[type='range']::-webkit-slider-thumb:hover {
+		transform: scale(1.2);
+	}
+
+	input[type='range']::-moz-range-thumb {
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		background: var(--primary);
+		cursor: pointer;
+		border: none;
+		transition: all 0.2s ease;
+	}
+
+	input[type='range']::-moz-range-thumb:hover {
+		transform: scale(1.2);
+	}
+
+	.range-value {
+		text-align: center;
+		font-size: 1.2rem;
+		font-weight: 700;
+		color: var(--primary);
+		margin-top: 4px;
 	}
 
 	.modal-buttons {

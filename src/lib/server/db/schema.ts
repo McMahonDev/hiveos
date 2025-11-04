@@ -1,5 +1,5 @@
 // drizzle/schema.ts
-import { pgTable, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, real } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Import and re-export the Better Auth tables
@@ -145,6 +145,7 @@ export const comparisons = pgTable('comparisons', {
 	name: text('name').notNull(),
 	description: text('description'),
 	isPriceAFactor: boolean('isPriceAFactor').$defaultFn(() => false),
+	priceWeight: integer('priceWeight').$defaultFn(() => 1),
 	createdById: text('createdById').notNull(),
 	viewMode: text('viewMode').notNull(),
 	createdAt: timestamp('createdAt').$defaultFn(() => new Date()),
@@ -179,7 +180,7 @@ export const comparisonItemValues = pgTable('comparisonItemValues', {
 	comparisonItemId: text('comparisonItemId').notNull(),
 	criterionId: text('criterionId').notNull(),
 	hasFeature: boolean('hasFeature').$defaultFn(() => false),
-	numericValue: integer('numericValue'),
+	numericValue: real('numericValue'),
 	notes: text('notes'),
 	createdById: text('createdById').notNull(),
 	createdAt: timestamp('createdAt').$defaultFn(() => new Date())

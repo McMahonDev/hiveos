@@ -1,0 +1,1 @@
+ALTER TABLE "comparisonItemValues" ALTER COLUMN "numericValue" SET DATA TYPE real;

@@ -1,4 +1,39 @@
 /**
+ * Calculate tiered price bonus points
+ * Items with lower prices get higher bonuses in a tiered system
+ * @param itemPrice - The price of the current item
+ * @param allPrices - All item prices for comparison
+ * @param priceWeight - Weight multiplier for price bonus (1-10 scale)
+ * @returns Price bonus points
+ */
+export function calculatePriceBonus(
+	itemPrice: number | null | undefined,
+	allPrices: (number | null | undefined)[],
+	priceWeight: number
+): number {
+	// No price, no bonus
+	if (itemPrice === null || itemPrice === undefined) return 0;
+
+	// Filter valid prices and sort descending (highest to lowest)
+	const validPrices = allPrices
+		.filter((p): p is number => p !== null && p !== undefined)
+		.sort((a, b) => b - a);
+
+	// Need at least 2 items with prices to calculate bonus
+	if (validPrices.length < 2) return 0;
+
+	// Find position of this item's price (0 = most expensive)
+	const position = validPrices.indexOf(itemPrice);
+	if (position === -1) return 0;
+
+	// Calculate tier: highest price gets 0, second gets 1, third gets 2, etc.
+	const tier = validPrices.length - 1 - position;
+
+	// Apply weight to the tier bonus
+	return tier * priceWeight;
+}
+
+/**
  * Normalize a numeric value to a 0-1 scale within a set of values
  * @param value - The value to normalize
  * @param allValues - All values for this criterion
@@ -34,6 +69,7 @@ function normalizeNumericValue(
  * Calculate the total weighted score for a comparison item
  * @param itemValues - Array of values with criterion info
  * @param allItemValues - All item values for normalization of numeric criteria
+ * @param priceBonus - Optional price bonus points to add to the score
  * @returns Total weighted score
  */
 export function calculateItemScore(
@@ -46,9 +82,10 @@ export function calculateItemScore(
 	allItemValues?: Array<{
 		numericValue?: number | null;
 		criterionId: string;
-	}>
+	}>,
+	priceBonus?: number
 ): number {
-	return itemValues.reduce((total, value) => {
+	const criteriaScore = itemValues.reduce((total, value) => {
 		const { criterion } = value;
 
 		if (criterion.type === 'number') {
@@ -76,6 +113,9 @@ export function calculateItemScore(
 
 		return total;
 	}, 0);
+
+	// Add price bonus if provided
+	return criteriaScore + (priceBonus || 0);
 }
 
 /**
