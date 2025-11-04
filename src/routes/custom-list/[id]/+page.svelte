@@ -13,11 +13,14 @@
 		isLocalStorageOnly as checkIsLocalStorageOnly,
 		removeStore as removeStoreFromStorage
 	} from '$lib/utils/shoppingListHelpers';
-	import EventListItem from '$lib/components/list/EventListItem.svelte';
-	import RecipeListItem from '$lib/components/list/RecipeListItem.svelte';
-	import ContactListItem from '$lib/components/list/ContactListItem.svelte';
-	import MessageListItem from '$lib/components/list/MessageListItem.svelte';
-	import BookmarkListItem from '$lib/components/list/BookmarkListItem.svelte';
+	import ShoppingListDisplay from '$lib/components/list/ShoppingListDisplay.svelte';
+	import BasicListDisplay from '$lib/components/list/BasicListDisplay.svelte';
+	import TasksListDisplay from '$lib/components/list/TasksListDisplay.svelte';
+	import EventsListDisplay from '$lib/components/list/EventsListDisplay.svelte';
+	import RecipesListDisplay from '$lib/components/list/RecipesListDisplay.svelte';
+	import MessagesListDisplay from '$lib/components/list/MessagesListDisplay.svelte';
+	import ContactsListDisplay from '$lib/components/list/ContactsListDisplay.svelte';
+	import BookmarksListDisplay from '$lib/components/list/BookmarksListDisplay.svelte';
 
 	let { data } = $props();
 	const listId = $derived(data.listId);
@@ -137,40 +140,6 @@
 		if (selectedStore !== '__new__') {
 			newStoreName = '';
 		}
-	});
-
-	// Group shopping items by store
-	let groupedShoppingItems = $derived.by(() => {
-		if (
-			listType !== 'shopping' ||
-			!customListItems?.current ||
-			!Array.isArray(customListItems.current)
-		) {
-			return [];
-		}
-
-		const items = customListItems.current;
-		const storeMap = new Map<string, any[]>();
-
-		items.forEach((item) => {
-			const store = item.store?.trim() || 'Any Store';
-			if (!storeMap.has(store)) {
-				storeMap.set(store, []);
-			}
-			storeMap.get(store)!.push(item);
-		});
-
-		// Convert to array and sort stores (Any Store first, then alphabetically)
-		return Array.from(storeMap.entries())
-			.sort(([storeA], [storeB]) => {
-				if (storeA === 'Any Store') return -1;
-				if (storeB === 'Any Store') return 1;
-				return storeA.toLowerCase().localeCompare(storeB.toLowerCase());
-			})
-			.map(([store, items]) => ({
-				store,
-				items: items.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
-			}));
 	});
 
 	function assignedToId() {
@@ -313,38 +282,17 @@
 		}
 	}
 
-	let editingItemId = $state<string | null>(null);
-	let editName = $state('');
 	let editModal = $state(false);
 	let editingItem = $state<any>(null);
 
 	function startEdit(item: any) {
-		// For basic lists, use inline editing
-		if (listType === 'basic') {
-			editingItemId = item.id;
-			editName = item.name;
-		} else {
-			// For other types, use modal editing
-			editingItem = { ...item };
-			editModal = true;
-		}
+		editingItem = { ...item };
+		editModal = true;
 	}
 
 	function cancelEdit() {
-		editingItemId = null;
-		editName = '';
 		editModal = false;
 		editingItem = null;
-	}
-
-	function saveEdit(id: string) {
-		if (editName.trim()) {
-			z?.current.mutate.customListItems.update({
-				id,
-				name: editName.trim()
-			});
-		}
-		cancelEdit();
 	}
 
 	async function saveEditModal() {
@@ -392,66 +340,6 @@
 			console.error('Failed to update item:', error);
 		}
 	}
-
-	function handleKeydown(event: KeyboardEvent, id: string) {
-		if (event.key === 'Enter') {
-			event.preventDefault();
-			saveEdit(id);
-		} else if (event.key === 'Escape') {
-			cancelEdit();
-		}
-	}
-
-	function toggleItemStatus(itemId: string) {
-		const item = customListItems?.current?.find((i: any) => i.id === itemId);
-		if (item) {
-			z?.current.mutate.customListItems.update({
-				id: itemId,
-				status: !item.status
-			});
-		}
-	}
-
-	// Drag and drop for task lists
-	let draggedItem = $state<any>(null);
-
-	function handleDragStart(e: DragEvent, item: any) {
-		draggedItem = item;
-		e.dataTransfer!.effectAllowed = 'move';
-	}
-
-	function handleDragOver(e: DragEvent) {
-		e.preventDefault();
-		e.dataTransfer!.dropEffect = 'move';
-	}
-
-	function handleDrop(e: DragEvent, targetItem: any) {
-		e.preventDefault();
-		if (!draggedItem || draggedItem.id === targetItem.id) return;
-
-		const items = customListItems?.current;
-		if (!items || !Array.isArray(items)) return;
-
-		const draggedIndex = items.findIndex((i: any) => i.id === draggedItem.id);
-		const targetIndex = items.findIndex((i: any) => i.id === targetItem.id);
-
-		if (draggedIndex === -1 || targetIndex === -1) return;
-
-		// Reorder items
-		const newItems = [...items];
-		newItems.splice(draggedIndex, 1);
-		newItems.splice(targetIndex, 0, draggedItem);
-
-		// Update sortOrder for all items
-		newItems.forEach((item: any, index: number) => {
-			z?.current.mutate.customListItems.update({
-				id: item.id,
-				sortOrder: index
-			});
-		});
-
-		draggedItem = null;
-	}
 </script>
 
 <section class="custom-list">
@@ -473,135 +361,21 @@
 	<div class="list-container">
 		{#if customListItems?.current && Array.isArray(customListItems.current)}
 			{#if listType === 'shopping'}
-				<!-- Grouped shopping list display -->
-				<div class="shopping-groups">
-					{#each groupedShoppingItems as group (group.store)}
-						<div class="store-group">
-							<h3 class="store-header">{group.store}</h3>
-							{#each group.items as item (item.id)}
-								<div class="list-item">
-									{#if editingItemId === item.id}
-										<div class="item-content editing">
-											<input
-												type="text"
-												class="edit-input"
-												bind:value={editName}
-												placeholder="Item name"
-												onkeydown={(e) => handleKeydown(e, item.id)}
-											/>
-										</div>
-										<div class="edit-actions">
-											<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
-												Save
-											</button>
-											<button class="cancel-item" onclick={cancelEdit} title="Cancel">
-												Cancel
-											</button>
-										</div>
-									{:else}
-										<input
-											type="checkbox"
-											checked={item.status}
-											onchange={() => toggleItemStatus(item.id)}
-										/>
-										<div class="item-content">
-											<p class="item-name" class:completed={item.status}>{item.name}</p>
-										</div>
-										<div class="item-actions">
-											<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item">
-												Edit
-											</button>
-											<button
-												class="delete-item"
-												onclick={() => deleteItem(item.id)}
-												title="Delete Item"
-											>
-												<DeleteIcon />
-											</button>
-										</div>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					{/each}
-				</div>
-			{:else}
-				<!-- Standard flat list display for all other types -->
-				<div class="list-items" class:task-list={listType === 'tasks'}>
-					{#each customListItems.current as item (item.id)}
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-						<div
-							class="list-item"
-							class:draggable={listType === 'tasks'}
-							draggable={listType === 'tasks'}
-							ondragstart={(e) => handleDragStart(e, item)}
-							ondragover={handleDragOver}
-							ondrop={(e) => handleDrop(e, item)}
-							role={listType === 'tasks' ? 'button' : undefined}
-							tabindex={listType === 'tasks' ? 0 : undefined}
-						>
-							{#if editingItemId === item.id}
-								<div class="item-content editing">
-									<input
-										type="text"
-										class="edit-input"
-										bind:value={editName}
-										placeholder="Item name"
-										onkeydown={(e) => handleKeydown(e, item.id)}
-									/>
-								</div>
-								<div class="edit-actions">
-									<button class="save-item" onclick={() => saveEdit(item.id)} title="Save">
-										Save
-									</button>
-									<button class="cancel-item" onclick={cancelEdit} title="Cancel"> Cancel </button>
-								</div>
-							{:else}
-								{#if listType === 'tasks'}
-									<span class="drag-handle">☰</span>
-								{/if}
-
-								{#if listType === 'basic' || listType === 'shopping' || listType === 'tasks'}
-									<input
-										type="checkbox"
-										checked={item.status}
-										onchange={() => toggleItemStatus(item.id)}
-									/>
-								{/if}
-
-								<div class="item-content">
-									<p class="item-name" class:completed={item.status}>{item.name}</p>
-
-									{#if listType === 'events'}
-										<EventListItem {item} />
-									{:else if listType === 'recipe'}
-										<RecipeListItem {item} />
-									{:else if listType === 'messages'}
-										<MessageListItem {item} />
-									{:else if listType === 'contacts'}
-										<ContactListItem {item} />
-									{:else if listType === 'bookmarks'}
-										<BookmarkListItem {item} />
-									{/if}
-								</div>
-
-								<div class="item-actions">
-									<button class="edit-item" onclick={() => startEdit(item)} title="Edit Item">
-										Edit
-									</button>
-									<button
-										class="delete-item"
-										onclick={() => deleteItem(item.id)}
-										title="Delete Item"
-									>
-										<DeleteIcon />
-									</button>
-								</div>
-							{/if}
-						</div>
-					{/each}
-				</div>
+				<ShoppingListDisplay {customListItems} {z} />
+			{:else if listType === 'basic'}
+				<BasicListDisplay {customListItems} {z} />
+			{:else if listType === 'tasks'}
+				<TasksListDisplay {customListItems} {z} />
+			{:else if listType === 'events'}
+				<EventsListDisplay {customListItems} {z} onEdit={startEdit} />
+			{:else if listType === 'recipe'}
+				<RecipesListDisplay {customListItems} {z} onEdit={startEdit} />
+			{:else if listType === 'messages'}
+				<MessagesListDisplay {customListItems} {z} onEdit={startEdit} />
+			{:else if listType === 'contacts'}
+				<ContactsListDisplay {customListItems} {z} onEdit={startEdit} />
+			{:else if listType === 'bookmarks'}
+				<BookmarksListDisplay {customListItems} {z} onEdit={startEdit} />
 			{/if}
 		{:else}
 			<p>Loading items...</p>
@@ -610,7 +384,11 @@
 </section>
 
 {#if modal}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="modal-overlay" onclick={() => (modal = false)}>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="modal-content" onclick={(e) => e.stopPropagation()}>
 			<div class="modal-header">
 				<h2>Add an item</h2>
@@ -1171,188 +949,6 @@
 			flex-direction: column;
 			gap: 10px;
 		}
-
-		.list-item {
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			padding: 15px;
-			background: var(--level-2);
-			border-radius: 8px;
-			box-shadow: var(--level-1);
-			transition: all 0.2s ease;
-			gap: 12px;
-
-			&:hover {
-				box-shadow: var(--level-3);
-				transform: translateY(-1px);
-			}
-
-			&.draggable {
-				cursor: move;
-			}
-
-			.drag-handle {
-				font-size: 1.2rem;
-				color: #999;
-				cursor: grab;
-				user-select: none;
-
-				&:active {
-					cursor: grabbing;
-				}
-			}
-
-			input[type='checkbox'] {
-				width: 20px;
-				height: 20px;
-				cursor: pointer;
-				flex-shrink: 0;
-			}
-
-			p {
-				margin: 0;
-				flex: 1;
-				font-weight: 500;
-			}
-
-			.item-content {
-				flex: 1;
-				display: flex;
-				flex-direction: column;
-				gap: 8px;
-
-				&.editing {
-					gap: 8px;
-				}
-
-				.item-name {
-					font-weight: 600;
-					font-size: 1rem;
-
-					&.completed {
-						text-decoration: line-through;
-						opacity: 0.6;
-					}
-				}
-
-				.edit-input {
-					padding: 8px;
-					border: 1px solid #ccc;
-					border-radius: 4px;
-					font-size: 1rem;
-					font-weight: 500;
-					width: 100%;
-
-					&:focus {
-						outline: none;
-						border-color: #007bff;
-						box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
-					}
-				}
-			}
-
-			.item-actions {
-				display: flex;
-				gap: 8px;
-				align-items: center;
-				flex-shrink: 0;
-			}
-
-			.edit-actions {
-				display: flex;
-				gap: 8px;
-				align-items: center;
-				flex-shrink: 0;
-			}
-
-			.edit-item {
-				background: #007bff;
-				color: white;
-				border: none;
-				padding: 6px 12px;
-				border-radius: 4px;
-				cursor: pointer;
-				font-size: 0.875rem;
-				transition: all 0.2s ease;
-				white-space: nowrap;
-
-				&:hover {
-					background: #0056b3;
-					transform: scale(1.05);
-				}
-
-				&:active {
-					transform: scale(0.95);
-				}
-			}
-
-			.save-item {
-				background: #28a745;
-				color: white;
-				border: none;
-				padding: 6px 12px;
-				border-radius: 4px;
-				cursor: pointer;
-				font-size: 0.875rem;
-				transition: all 0.2s ease;
-				white-space: nowrap;
-
-				&:hover {
-					background: #218838;
-					transform: scale(1.05);
-				}
-
-				&:active {
-					transform: scale(0.95);
-				}
-			}
-
-			.cancel-item {
-				background: #6c757d;
-				color: white;
-				border: none;
-				padding: 6px 12px;
-				border-radius: 4px;
-				cursor: pointer;
-				font-size: 0.875rem;
-				transition: all 0.2s ease;
-				white-space: nowrap;
-
-				&:hover {
-					background: #5a6268;
-					transform: scale(1.05);
-				}
-
-				&:active {
-					transform: scale(0.95);
-				}
-			}
-
-			.delete-item {
-				background: #dc3545;
-				color: white;
-				border: none;
-				padding: 6px 8px;
-				border-radius: 4px;
-				cursor: pointer;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				transition: all 0.2s ease;
-				min-width: 32px;
-				height: 32px;
-
-				&:hover {
-					background: #c82333;
-					transform: scale(1.1);
-				}
-
-				&:active {
-					transform: scale(0.9);
-				}
-			}
-		}
 	}
 
 	form {
@@ -1619,28 +1215,6 @@
 			opacity: 1;
 			transform: translateY(0);
 		}
-	}
-
-	/* Shopping list styles */
-	.shopping-groups {
-		display: flex;
-		flex-direction: column;
-		gap: 24px;
-	}
-
-	.store-group {
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-	}
-
-	.store-header {
-		font-size: 1.25rem;
-		font-weight: 600;
-		margin: 0 0 8px 0;
-		padding-bottom: 8px;
-		border-bottom: 2px solid var(--level-3, #ddd);
-		color: var(--text-primary, #333);
 	}
 
 	.store-selection {
