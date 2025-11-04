@@ -5,6 +5,7 @@
 	import { nanoid } from 'nanoid';
 	import {
 		calculateItemScore,
+		calculatePriceBonus,
 		rankItems,
 		updateCriteriaWeights,
 		sortCriteriaByWeight
@@ -123,9 +124,14 @@
 		if (!items?.current || !Array.isArray(items.current)) return [];
 		if (!criteria?.current || !Array.isArray(criteria.current)) return [];
 		if (!itemValues?.current || !Array.isArray(itemValues.current)) return [];
+		if (!comparison?.current || !Array.isArray(comparison.current)) return [];
 
 		const allCriteria = criteria.current;
 		const allValues = itemValues.current;
+		const comp = comparison.current[0];
+
+		// Get all prices for price bonus calculation
+		const allPrices = items.current.map((item: any) => item.price);
 
 		// Calculate score for each item
 		const itemsWithScores = items.current.map((item: any) => {
@@ -145,11 +151,18 @@
 					};
 				});
 
-			const totalScore = calculateItemScore(itemCriteriaValues, allValues);
+			// Calculate price bonus if price is a factor
+			const priceBonus =
+				comp.isPriceAFactor && item.price
+					? calculatePriceBonus(item.price, allPrices, comp.priceWeight || 1)
+					: 0;
+
+			const totalScore = calculateItemScore(itemCriteriaValues, allValues, priceBonus);
 
 			return {
 				...item,
-				totalScore
+				totalScore,
+				priceBonus
 			};
 		});
 
@@ -476,6 +489,8 @@
 			const values = Array.isArray(itemValues?.current) ? itemValues.current : [];
 			const allCriteria = Array.isArray(criteria?.current) ? criteria.current : [];
 
+			console.log('Saving item values. Current state:', itemNumericValues);
+
 			// Save both boolean and numeric values
 			for (const criterion of allCriteria) {
 				const existingValue = values.find(
@@ -483,9 +498,23 @@
 				);
 
 				const hasFeature = criterion.type === 'boolean' ? itemValueStates[criterion.id] : false;
-				const numericValue = criterion.type === 'number' ? itemNumericValues[criterion.id] : null;
+				// Convert empty string or undefined to null, otherwise keep the number
+				const rawValue = itemNumericValues[criterion.id];
+				const numericValue =
+					criterion.type === 'number'
+						? rawValue === undefined || rawValue === null
+							? null
+							: rawValue
+						: null;
+
+				console.log(`Criterion ${criterion.name} (${criterion.type}):`, {
+					rawValue,
+					numericValue,
+					hasFeature
+				});
 
 				if (existingValue) {
+					console.log('Updating existing value:', existingValue.id);
 					await z.current.mutate.comparisonItemValues.update({
 						id: existingValue.id,
 						hasFeature,
@@ -920,11 +949,21 @@
 							<div class="numeric-input-group">
 								<label for={`numeric-${criterion.id}`}>{criterion.name}</label>
 								<input
-									type="number"
+									type="text"
+									inputmode="decimal"
 									id={`numeric-${criterion.id}`}
 									bind:value={itemNumericValues[criterion.id]}
 									placeholder="Enter value"
-									step="any"
+									oninput={(e) => {
+										const target = e.target as HTMLInputElement;
+										const val = target.value;
+										// Allow empty, numbers, and decimal point
+										if (val === '' || val === null) {
+											itemNumericValues[criterion.id] = null;
+										} else if (!isNaN(parseFloat(val))) {
+											itemNumericValues[criterion.id] = parseFloat(val);
+										}
+									}}
 								/>
 								<small class="input-hint">
 									{criterion.higherIsBetter === false ? '↓ Lower is better' : '↑ Higher is better'}
@@ -1042,6 +1081,17 @@
 										</div>
 									</div>
 								{/each}
+
+								{#if comp.isPriceAFactor && selectedItemForDetail.priceBonus > 0}
+									<div class="criterion-detail-row price-bonus-row">
+										<span class="criterion-detail-name">💰 Price Bonus</span>
+										<div class="criterion-detail-value">
+											<span class="points-badge price-bonus">
+												+{selectedItemForDetail.priceBonus.toFixed(2)} pts
+											</span>
+										</div>
+									</div>
+								{/if}
 							</div>
 						</div>
 					{/if}
@@ -1758,7 +1808,7 @@
 			color: var(--textColor);
 		}
 
-		input[type='number'] {
+		input[type='text'] {
 			padding: 10px 12px;
 			border: 1px solid rgba(0, 0, 0, 0.2);
 			border-radius: 6px;
@@ -1980,6 +2030,17 @@
 		font-weight: 700;
 		background: rgba(255, 215, 0, 0.2);
 		color: #000;
+
+		&.price-bonus {
+			background: rgba(34, 197, 94, 0.2);
+			color: #15803d;
+		}
+	}
+
+	.price-bonus-row {
+		border-top: 2px solid rgba(34, 197, 94, 0.2);
+		padding-top: 12px;
+		margin-top: 8px;
 	}
 
 	@media (max-width: 1150px) {
