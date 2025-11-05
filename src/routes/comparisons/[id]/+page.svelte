@@ -30,6 +30,7 @@
 	let setItemValuesModalOpen = $state(false);
 	let itemDetailModalOpen = $state(false);
 	let selectedItemForDetail = $state<any>(null);
+	let scoresBreakdownModalOpen = $state(false);
 
 	// Drag and drop state
 	let draggedCriterion = $state<any>(null);
@@ -178,11 +179,13 @@
 
 		// Calculate weight based on position (highest sortOrder gets lowest weight)
 		const maxSortOrder = existingCriteria.length;
-		const newWeight = existingCriteria.length > 0 ? 1 : 1; // Start with weight 1 (lowest priority)
+		const newWeight = 1; // New criterion gets lowest weight
 
 		try {
+			const newCriterionId = nanoid();
+
 			await z.current.mutate.comparisonCriteria.insert({
-				id: nanoid(),
+				id: newCriterionId,
 				comparisonId,
 				name: newCriterionName.trim(),
 				type: newCriterionType,
@@ -193,9 +196,19 @@
 				createdAt: Date.now()
 			});
 
+			// Update weights for all existing criteria to maintain proper ordering
+			// Higher position (lower sortOrder) = higher weight
+			for (let i = 0; i < existingCriteria.length; i++) {
+				const criterion = existingCriteria[i];
+				const updatedWeight = existingCriteria.length + 1 - i; // +1 because we added a new one
+				await z.current.mutate.comparisonCriteria.update({
+					id: criterion.id,
+					weight: updatedWeight
+				});
+			}
+
 			// Create empty values for all items
 			const allItems = Array.isArray(items?.current) ? items.current : [];
-			const newCriterionId = nanoid();
 			for (const item of allItems) {
 				await z.current.mutate.comparisonItemValues.insert({
 					id: nanoid(),
@@ -672,7 +685,12 @@
 			<section class="section">
 				<div class="section-header">
 					<h2>Items ({items?.current?.length || 0})</h2>
-					<button class="add-btn" onclick={openAddItemModal}>+ Add Item</button>
+					<div class="header-buttons">
+						<button class="view-breakdown-btn" onclick={() => (scoresBreakdownModalOpen = true)}>
+							View All Scores
+						</button>
+						<button class="add-btn" onclick={openAddItemModal}>+ Add Item</button>
+					</div>
 				</div>
 
 				{#if items?.current && Array.isArray(items.current)}
@@ -1114,6 +1132,160 @@
 	</div>
 {/if}
 
+<!-- Scores Breakdown Modal -->
+{#if scoresBreakdownModalOpen}
+	<div class="modal">
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="modal-backdrop" onclick={() => (scoresBreakdownModalOpen = false)}></div>
+		<div class="modal-box large">
+			<div class="modal-header">
+				<div>
+					<h2>All Items - Score Breakdown</h2>
+					<p class="modal-subtitle">Compare scores across all items</p>
+				</div>
+				<button
+					class="modal-close-btn"
+					onclick={() => (scoresBreakdownModalOpen = false)}
+					aria-label="Close"
+				>
+					×
+				</button>
+			</div>
+
+			<div class="modal-content scrollable">
+				{#if rankedItems.length === 0}
+					<div class="empty-section">
+						<p>No items to display. Add some items to see their scores!</p>
+					</div>
+				{:else if comparison?.current && Array.isArray(comparison.current) && comparison.current[0]}
+					{@const comp = comparison.current[0]}
+
+					<div class="comparison-table-wrapper">
+						<table class="comparison-table">
+							<thead>
+								<tr>
+									<th class="sticky-col">Criterion</th>
+									{#each rankedItems as item (item.id)}
+										<th class="item-header">
+											<div class="item-header-content">
+												<div class="item-rank-small">#{item.rank}</div>
+												<div class="item-name-small">{item.name}</div>
+												<div class="item-total-small">{item.totalScore.toFixed(2)} pts</div>
+											</div>
+										</th>
+									{/each}
+								</tr>
+							</thead>
+							<tbody>
+								{#if comp.isPriceAFactor}
+									<tr class="price-row">
+										<td class="sticky-col criterion-label">💰 Price</td>
+										{#each rankedItems as item (item.id)}
+											<td class="value-cell">
+												{item.price ? `$${item.price}` : 'N/A'}
+											</td>
+										{/each}
+									</tr>
+								{/if}
+
+								{#if criteria?.current && Array.isArray(criteria.current)}
+									{#each criteria.current as criterion (criterion.id)}
+										<tr>
+											<td class="sticky-col criterion-label">
+												<div class="criterion-label-content">
+													<span class="criterion-label-name">{criterion.name}</span>
+													<span class="criterion-label-weight">({criterion.weight}x)</span>
+												</div>
+											</td>
+											{#each rankedItems as item (item.id)}
+												{@const itemCriteriaValues = Array.isArray(itemValues?.current)
+													? itemValues.current.filter((v: any) => v.comparisonItemId === item.id)
+													: []}
+												{@const value = itemCriteriaValues.find(
+													(v: any) => v.criterionId === criterion.id
+												)}
+												{@const allValuesForCriterion = Array.isArray(itemValues?.current)
+													? itemValues.current.filter((v: any) => v.criterionId === criterion.id)
+													: []}
+												{@const points = (() => {
+													if (criterion.type === 'number' && value?.numericValue != null) {
+														const validValues = allValuesForCriterion
+															.map((v: any) => v.numericValue)
+															.filter((v: any) => v != null);
+														if (validValues.length === 0) return 0;
+														if (validValues.length === 1) return criterion.weight;
+														const min = Math.min(...validValues);
+														const max = Math.max(...validValues);
+														if (min === max) return criterion.weight;
+														const normalized = (value.numericValue - min) / (max - min);
+														const finalScore =
+															criterion.higherIsBetter === false ? 1 - normalized : normalized;
+														return finalScore * criterion.weight;
+													} else if (criterion.type === 'boolean') {
+														return value?.hasFeature ? criterion.weight : 0;
+													}
+													return 0;
+												})()}
+												<td class="value-cell">
+													<div class="cell-content">
+														{#if criterion.type === 'number'}
+															<span class="cell-value">
+																{value?.numericValue ?? 'N/A'}
+															</span>
+														{:else}
+															<span class="cell-value" class:has-feature={value?.hasFeature}>
+																{value?.hasFeature ? '✓' : '✗'}
+															</span>
+														{/if}
+														<span class="cell-points">{points.toFixed(2)}</span>
+													</div>
+												</td>
+											{/each}
+										</tr>
+									{/each}
+								{/if}
+
+								{#if comp.isPriceAFactor}
+									<tr class="bonus-row">
+										<td class="sticky-col criterion-label">💰 Price Bonus</td>
+										{#each rankedItems as item (item.id)}
+											<td class="value-cell bonus-cell">
+												<span class="cell-points bonus">
+													{item.priceBonus > 0 ? `+${item.priceBonus.toFixed(2)}` : '0.00'}
+												</span>
+											</td>
+										{/each}
+									</tr>
+								{/if}
+
+								<tr class="total-row">
+									<td class="sticky-col criterion-label total-label">Total Score</td>
+									{#each rankedItems as item (item.id)}
+										<td class="value-cell total-cell">
+											<strong>{item.totalScore.toFixed(2)}</strong>
+										</td>
+									{/each}
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				{/if}
+			</div>
+
+			<div class="modal-buttons">
+				<button
+					type="button"
+					class="btn-primary"
+					onclick={() => (scoresBreakdownModalOpen = false)}
+				>
+					Close
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
 	.comparison-page {
 		max-width: 1400px;
@@ -1313,7 +1485,8 @@
 		align-items: center;
 	}
 
-	.add-btn {
+	.add-btn,
+	.view-breakdown-btn {
 		background-color: var(--primary);
 		color: #000;
 		padding: 8px 16px;
@@ -1327,6 +1500,16 @@
 		&:hover {
 			transform: translateY(-1px);
 			box-shadow: var(--level-2);
+		}
+	}
+
+	.view-breakdown-btn {
+		background-color: transparent;
+		border: 1px solid var(--primary);
+		color: var(--textColor);
+
+		&:hover {
+			background-color: rgba(255, 215, 0, 0.1);
 		}
 	}
 
@@ -2043,6 +2226,209 @@
 		margin-top: 8px;
 	}
 
+	/* Scores Breakdown Modal Styles - Table Layout */
+	.comparison-table-wrapper {
+		overflow-x: auto;
+		overflow-y: visible;
+		border-radius: 8px;
+		border: 1px solid rgba(0, 0, 0, 0.1);
+	}
+
+	.comparison-table {
+		width: 100%;
+		border-collapse: separate;
+		border-spacing: 0;
+		font-size: 0.9rem;
+
+		thead {
+			position: sticky;
+			top: 0;
+			z-index: 10;
+			background: var(--background);
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+		}
+
+		th {
+			padding: 12px;
+			background: var(--background);
+			border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+			font-weight: 600;
+			text-align: left;
+			white-space: nowrap;
+
+			&.sticky-col {
+				position: sticky;
+				left: 0;
+				z-index: 11;
+				background: var(--background);
+				min-width: 160px;
+				max-width: 200px;
+				font-size: 0.85rem;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+				color: var(--color-tertiary, #666);
+				border-right: 2px solid rgba(0, 0, 0, 0.1);
+			}
+
+			&.item-header {
+				text-align: center;
+				padding: 8px 12px;
+				min-width: 120px;
+				max-width: 150px;
+			}
+		}
+
+		td {
+			padding: 12px;
+			border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+			vertical-align: middle;
+
+			&.sticky-col {
+				position: sticky;
+				left: 0;
+				z-index: 5;
+				background: var(--background);
+				border-right: 2px solid rgba(0, 0, 0, 0.1);
+				font-weight: 500;
+			}
+
+			&.value-cell {
+				text-align: center;
+				background: rgba(0, 0, 0, 0.02);
+			}
+		}
+
+		tbody tr:hover td {
+			background: rgba(255, 215, 0, 0.08);
+
+			&.sticky-col {
+				background: rgba(255, 215, 0, 0.12);
+			}
+		}
+	}
+
+	.item-header-content {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		align-items: center;
+
+		.item-rank-small {
+			background: var(--primary);
+			color: #000;
+			font-weight: 700;
+			font-size: 0.85rem;
+			padding: 4px 10px;
+			border-radius: 4px;
+		}
+
+		.item-name-small {
+			font-size: 0.9rem;
+			font-weight: 600;
+			color: var(--textColor);
+			line-height: 1.2;
+			word-wrap: break-word;
+			overflow-wrap: break-word;
+			max-width: 100%;
+		}
+
+		.item-total-small {
+			font-size: 0.8rem;
+			color: var(--primary);
+			font-weight: 700;
+		}
+	}
+
+	.criterion-label {
+		font-weight: 600;
+		color: var(--textColor);
+
+		&.total-label {
+			font-weight: 700;
+			font-size: 1rem;
+			text-transform: uppercase;
+		}
+	}
+
+	.criterion-label-content {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+
+		.criterion-label-name {
+			font-size: 0.9rem;
+		}
+
+		.criterion-label-weight {
+			font-size: 0.75rem;
+			color: var(--color-tertiary, #666);
+			font-weight: 500;
+		}
+	}
+
+	.cell-content {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		align-items: center;
+	}
+
+	.cell-value {
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: var(--color-tertiary, #666);
+
+		&.has-feature {
+			color: #008000;
+			font-size: 1.2rem;
+		}
+	}
+
+	.cell-points {
+		font-size: 0.8rem;
+		font-weight: 700;
+		color: var(--textColor);
+		background: rgba(255, 215, 0, 0.2);
+		padding: 2px 8px;
+		border-radius: 4px;
+
+		&.bonus {
+			background: rgba(34, 197, 94, 0.25);
+			color: #15803d;
+		}
+	}
+
+	.price-row td {
+		background: rgba(0, 0, 0, 0.03);
+		font-weight: 600;
+		color: var(--textColor);
+	}
+
+	.bonus-row {
+		td {
+			background: rgba(34, 197, 94, 0.08);
+		}
+
+		.bonus-cell {
+			font-weight: 700;
+		}
+	}
+
+	.total-row {
+		td {
+			background: rgba(255, 215, 0, 0.15);
+			font-weight: 700;
+			font-size: 1rem;
+			border-bottom: none;
+			padding: 14px 12px;
+		}
+
+		.total-cell {
+			color: var(--textColor);
+			font-size: 1.1rem;
+		}
+	}
+
 	@media (max-width: 1150px) {
 		.content-grid {
 			grid-template-columns: 1fr;
@@ -2192,6 +2578,85 @@
 
 		.access-denied h2 {
 			font-size: 1.4rem;
+		}
+
+		.view-breakdown-btn {
+			font-size: 0.85rem;
+			padding: 6px 12px;
+		}
+
+		.comparison-table {
+			font-size: 0.8rem;
+
+			th,
+			td {
+				padding: 8px 10px;
+
+				&.sticky-col {
+					min-width: 120px;
+					max-width: 160px;
+					font-size: 0.8rem;
+				}
+
+				&.item-header {
+					min-width: 100px;
+					max-width: 120px;
+					padding: 6px 8px;
+				}
+			}
+		}
+
+		.item-header-content {
+			gap: 4px;
+
+			.item-rank-small {
+				font-size: 0.75rem;
+				padding: 3px 8px;
+			}
+
+			.item-name-small {
+				font-size: 0.8rem;
+			}
+
+			.item-total-small {
+				font-size: 0.7rem;
+			}
+		}
+
+		.criterion-label-content {
+			.criterion-label-name {
+				font-size: 0.8rem;
+			}
+
+			.criterion-label-weight {
+				font-size: 0.7rem;
+			}
+		}
+
+		.cell-content {
+			gap: 3px;
+		}
+
+		.cell-value {
+			font-size: 0.8rem;
+
+			&.has-feature {
+				font-size: 1rem;
+			}
+		}
+
+		.cell-points {
+			font-size: 0.7rem;
+			padding: 2px 6px;
+		}
+
+		.total-row td {
+			padding: 10px 8px;
+			font-size: 0.9rem;
+		}
+
+		.total-row .total-cell {
+			font-size: 1rem;
 		}
 	}
 </style>
