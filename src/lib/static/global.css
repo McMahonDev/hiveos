@@ -1,60 +1,85 @@
 :root {
 	/* Define Colors as colors */
-	--green: #7dc95e;
-	--red: #ca2e55;
+	--green: #10b981;
+	--red: #ef4444;
 	--teal: rgb(32, 247, 229);
 	--black: #000;
 	--darkBlue: #1a1f51;
-	--grey: #231f20;
-	--lightGrey: #eee;
-	--lightGreyAlt: #f4f4f4;
+	--grey: #374151;
+	--lightGrey: #f3f4f6;
+	--lightGreyAlt: #f9fafb;
 	--white: #fff;
-	--transparentBlue: rgba(26, 31, 81, 0.17);
-	--yellow: #ffd400;
+	--transparentBlue: rgba(26, 31, 81, 0.08);
+	--yellow: #ffb700;
+	--yellowLight: #ffd666;
+	--yellowDark: #e6a000;
+	
+	/* Accent colors for modern UI */
+	--accent-blue: #3b82f6;
+	--accent-indigo: #6366f1;
+	--accent-purple: #8b5cf6;
+	--accent-pink: #ec4899;
 
 	/* Define Color intentions */
 	--primary: var(--yellow);
+	--primary-light: var(--yellowLight);
+	--primary-dark: var(--yellowDark);
+	--primary-gradient: linear-gradient(135deg, #ffb700 0%, #ffa000 100%);
 	--danger: var(--red);
+	--success: var(--green);
 	--background: var(--white);
 	--backgroundGrey: var(--lightGreyAlt);
 	--textColor: var(--grey);
+	--textColorLight: #6b7280;
 	--buttonTextColor: var(--black);
 	--lineColor: var(--transparentBlue);
+	--border: rgba(0, 0, 0, 0.08);
 	--cardBg: var(--white);
-	--headerBackground: var(--darkBlue);
+	--headerBackground: var(--white);
+	--headerBorder: var(--border);
 	--footerTextColor: var(--lightGrey);
 	--footerBackground: var(--primary);
-	--iconColor: var(--darkBlue);
+	--iconColor: var(--grey);
 	--placeholderBackground: var(--lightGreyAlt);
 	--placeholderLineColor: var(--lineColor);
 
 	/* Styles */
 	--line: solid 1px var(--lineColor);
-	--borderRadius: 10px;
+	--borderRadius: 12px;
 
 	/* Typeography */
 	--headingFont: 'Lexend', sans-serif;
 	--bodyFont: 'Lexend', sans-serif;
-	--baseFontSize: 100%;
+	--baseFontSize: 106.25%; /* 17px */
 	--h1: 2.8em;
 	--h2: 2.441em;
 	--h3: 1.953em;
 	--h4: 1.563em;
 	--h5: 1.25em;
-	--smallText: 0.8em;
+	--smallText: 0.875em;
 
-	/* Elevation */
-	--level-1: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-	--level-2: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-	--level-3: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-	--level-4: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-	--level-5: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-	--cardShadow: 0 4px 18px 2px rgb(26 31 81 / 0.1);
+	/* Elevation - Modern shadows */
+	--level-1: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06);
+	--level-2: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+	--level-3: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+	--level-4: 0 20px 25px rgba(0, 0, 0, 0.15), 0 10px 10px rgba(0, 0, 0, 0.04);
+	--level-5: 0 25px 50px rgba(0, 0, 0, 0.25);
+	--cardShadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+	--cardShadowHover: 0 8px 16px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.1);
 
-	/* Layouts */
-	--gridGap: 15px;
+	/* Layouts - 8px spacing system */
+	--spacing-xs: 8px;
+	--spacing-sm: 16px;
+	--spacing-md: 24px;
+	--spacing-lg: 32px;
+	--spacing-xl: 40px;
+	--spacing-2xl: 48px;
+	--spacing-3xl: 64px;
+	
+	--gridGap: var(--spacing-md);
 	--containerPadding: 2.5%;
-	--headerHeight: 100px;
+	--headerHeight: 80px;
+	--bottomNavHeight: 64px;
 	--footerHeight: 100px;
 
 	/* Container */
@@ -70,7 +95,7 @@ html {
 	box-sizing: border-box;
 }
 
-/*18px*/
+/*17px base*/
 *,
 *::before,
 *::after {
@@ -80,27 +105,30 @@ html {
 body {
 	font-family: var(--bodyFont);
 	font-weight: 400;
-	line-height: 1.75;
+	line-height: 1.8;
 	background: var(--background);
 	color: var(--textColor);
 	scrollbar-gutter: stable;
+	margin: 0;
+	padding: 0;
 }
 
 header {
-	--textColor: var(--black);
 	width: 100%;
 	left: 0;
 	top: 0;
 	color: var(--textColor);
 	background-color: var(--headerBackground);
-	box-shadow: var(--level-2);
+	border-bottom: 1px solid var(--headerBorder);
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	height: var(--headerHeight);
-	padding: 0 var(--containerPadding);
+	padding: 0 var(--spacing-md);
 	z-index: 100;
-	position: relative;
+	position: sticky;
+	backdrop-filter: blur(10px);
+	background-color: rgba(255, 255, 255, 0.95);
 }
 
 header nav a {
@@ -242,12 +270,15 @@ button {
 	-moz-appearance: none;
 	appearance: none;
 	color: var(--buttonTextColor);
-	background-color: var(--buttonColor);
+	background: var(--buttonColor);
 	border: none;
-	border-radius: 10px;
-	padding: 5px 25px;
+	border-radius: var(--borderRadius);
+	padding: 12px 28px;
 	box-shadow: var(--level-1);
-	transition: 0.3s ease-in-out box-shadow;
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	font-weight: 600;
+	cursor: pointer;
+	font-size: 1rem;
 }
 
 .ym_back_button {
@@ -258,18 +289,22 @@ button {
 	color: var(--buttonTextColor);
 	background-color: var(--buttonColor);
 	border: none;
-	border-radius: 10px;
-	padding: 5px 25px;
+	border-radius: var(--borderRadius);
+	padding: 12px 28px;
 	box-shadow: var(--level-1);
-	transition: 0.3s ease-in-out box-shadow;
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	font-weight: 600;
+	cursor: pointer;
 }
 
-button:hover {
+button:hover:not(:disabled) {
 	box-shadow: var(--level-2);
+	transform: translateY(-1px);
 }
 
-button:active {
-	box-shadow: none;
+button:active:not(:disabled) {
+	box-shadow: var(--level-1);
+	transform: translateY(0);
 }
 
 button[disabled] {
@@ -347,9 +382,16 @@ button.small {
 .card {
 	background-color: var(--cardBg);
 	margin: 0;
-	padding: 2em;
+	padding: var(--spacing-lg);
 	box-shadow: var(--cardShadow);
 	border-radius: var(--borderRadius);
+	border: 1px solid var(--border);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+	box-shadow: var(--cardShadowHover);
+	transform: translateY(-2px);
 }
 
 .card > *:first-child {

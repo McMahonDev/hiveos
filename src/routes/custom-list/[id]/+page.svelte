@@ -27,6 +27,13 @@
 	let hasInitialized = $state(false);
 	let initialViewMode = $state<string | null>(null);
 
+	// Reset initialization when listId changes
+	$effect(() => {
+		listId; // Track listId changes
+		hasInitialized = false;
+		initialViewMode = null;
+	});
+
 	// Auto-switch to the list's view mode if needed
 	$effect(() => {
 		if (customList?.current?.[0] && !hasInitialized) {
