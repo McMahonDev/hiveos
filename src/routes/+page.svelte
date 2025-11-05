@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Query } from 'zero-svelte';
 	import NewTab from '$lib/static/icons/newTab.svelte';
+	import ListIcon from '$lib/components/listIcon.svelte';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
 
 	let { data } = $props();
@@ -21,27 +22,6 @@
 			customLists = null;
 		}
 	});
-
-	function getListIcon(listType: string): string {
-		switch (listType) {
-			case 'shopping':
-				return '🛒';
-			case 'events':
-				return '📅';
-			case 'tasks':
-				return '✓';
-			case 'recipe':
-				return '🍳';
-			case 'messages':
-				return '💬';
-			case 'contacts':
-				return '👤';
-			case 'bookmarks':
-				return '🔖';
-			default:
-				return '📝';
-		}
-	}
 
 	function getListTypeName(listType: string): string {
 		switch (listType) {
@@ -77,48 +57,48 @@
 
 	const features = [
 		{
-			icon: '🛒',
+			icon: 'shopping',
 			title: 'Smart Shopping Lists',
 			description: 'Organize items by store, share with family, and never forget an item again.'
 		},
 		{
-			icon: '📅',
+			icon: 'events',
 			title: 'Event Planning',
 			description: 'Schedule events with dates and times. Get a "My Day" view of what\'s coming up.'
 		},
 		{
-			icon: '✓',
+			icon: 'tasks',
 			title: 'Task Management',
 			description: 'Drag & drop sortable tasks. Stay organized and productive with ease.'
 		},
 		{
-			icon: '📖',
+			icon: 'recipe',
 			title: 'Recipe Box',
 			description:
 				'Store recipes with ingredients, instructions, and cooking times all in one place.'
 		},
 		{
-			icon: '💬',
+			icon: 'messages',
 			title: 'Messages & Notes',
 			description: 'Share notes and reminders with your group. Keep everyone in the loop.'
 		},
 		{
-			icon: '👥',
+			icon: 'contacts',
 			title: 'Contact Management',
 			description: 'Store phone numbers, emails, and addresses. Your digital address book.'
 		},
 		{
-			icon: '🔖',
+			icon: 'bookmarks',
 			title: 'Bookmark Collections',
 			description: 'Save and organize your favorite links. Access them from anywhere.'
 		},
 		{
-			icon: '🌐',
+			icon: 'offline',
 			title: 'Works Offline',
 			description: "Full offline support with automatic sync when you're back online."
 		},
 		{
-			icon: '👪',
+			icon: 'shared',
 			title: 'Personal & Shared',
 			description: 'Toggle between personal mode and shared group mode instantly.'
 		}
@@ -289,7 +269,9 @@
 				{#each customLists.current as list (list.id)}
 					<a class="card list-card" href={`/custom-list/${list.id}`}>
 						<div class="card-header">
-							<span class="list-icon">{getListIcon(list.listType)}</span>
+							<span class="list-icon">
+								<ListIcon type={list.listType} size={32} />
+							</span>
 							<div class="list-info">
 								<h2>{list.name}</h2>
 								<span class="list-type">{getListTypeName(list.listType)}</span>
@@ -304,10 +286,12 @@
 			</div>
 		{:else if customLists?.current !== undefined}
 			<div class="empty-state">
-				<div class="empty-icon">📋</div>
+				<div class="empty-icon">
+					<ListIcon type="basic" size={64} />
+				</div>
 				<h2>No lists yet</h2>
 				<p>Create your first list to get started!</p>
-				<p class="hint">Click the "+ Create List" button in the sidebar</p>
+				<p class="hint">Click the "+" button to create your first list</p>
 			</div>
 		{/if}
 	</div>
@@ -358,7 +342,9 @@
 			<div class="features-grid">
 				{#each features as feature}
 					<div class="feature-card">
-						<div class="feature-icon">{feature.icon}</div>
+						<div class="feature-icon">
+							<ListIcon type={feature.icon} size={40} />
+						</div>
 						<h3>{feature.title}</h3>
 						<p>{feature.description}</p>
 					</div>
@@ -571,8 +557,15 @@
 			gap: 12px;
 
 			.list-icon {
-				font-size: 2rem;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				width: 48px;
+				height: 48px;
+				background: rgba(255, 183, 0, 0.1);
+				border-radius: 12px;
 				flex-shrink: 0;
+				color: var(--primary-dark);
 			}
 
 			.list-info {
@@ -621,9 +614,15 @@
 		padding: 60px 20px;
 
 		.empty-icon {
-			font-size: 4rem;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 96px;
+			height: 96px;
+			background: rgba(255, 183, 0, 0.08);
+			border-radius: 24px;
 			margin-bottom: 20px;
-			opacity: 0.5;
+			color: var(--textColorLight);
 		}
 
 		h2 {
@@ -980,11 +979,19 @@
 		}
 
 		.feature-icon {
-			font-size: 3rem;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 72px;
+			height: 72px;
+			background: rgba(255, 183, 0, 0.1);
+			border-radius: 16px;
 			margin-bottom: 15px;
+			color: var(--primary-dark);
 
 			@media screen and (max-width: 640px) {
-				font-size: 2.5rem;
+				width: 64px;
+				height: 64px;
 				margin-bottom: 12px;
 			}
 		}
@@ -1126,11 +1133,20 @@
 		}
 
 		.use-case-icon {
-			font-size: 3rem;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 72px;
+			height: 72px;
+			background: rgba(255, 183, 0, 0.1);
+			border-radius: 16px;
 			margin-bottom: 15px;
+			font-size: 2rem;
 
 			@media screen and (max-width: 640px) {
-				font-size: 2.5rem;
+				width: 64px;
+				height: 64px;
+				font-size: 1.75rem;
 			}
 		}
 

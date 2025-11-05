@@ -1,0 +1,115 @@
+/* Modern page transitions and animations */
+
+/* Fade and slide page transition */
+@keyframes fadeSlideIn {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* Smooth transitions for interactive elements */
+:global(*) {
+	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Loading skeleton animation */
+@keyframes shimmer {
+	0% {
+		background-position: -1000px 0;
+	}
+	100% {
+		background-position: 1000px 0;
+	}
+}
+
+:global(.skeleton) {
+	animation: shimmer 2s infinite;
+	background: linear-gradient(
+		to right,
+		#f0f0f0 0%,
+		#f8f8f8 20%,
+		#f0f0f0 40%,
+		#f0f0f0 100%
+	);
+	background-size: 1000px 100%;
+	border-radius: var(--borderRadius);
+}
+
+/* Smooth hover lift effect */
+:global(.hover-lift) {
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:global(.hover-lift:hover) {
+	transform: translateY(-2px);
+	box-shadow: var(--cardShadowHover);
+}
+
+/* Ripple effect for buttons */
+:global(.ripple) {
+	position: relative;
+	overflow: hidden;
+}
+
+:global(.ripple::after) {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 0;
+	height: 0;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.5);
+	transform: translate(-50%, -50%);
+	transition: width 0.6s, height 0.6s;
+}
+
+:global(.ripple:active::after) {
+	width: 300px;
+	height: 300px;
+}
+
+/* Smooth scrolling */
+:global(html) {
+	scroll-behavior: smooth;
+}
+
+/* Focus visible (for accessibility) */
+:global(*:focus-visible) {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+:global(*:focus:not(:focus-visible)) {
+	outline: none;
+}
+
+/* Smooth entrance animation for lists */
+:global(.stagger-in) {
+	animation: fadeSlideIn 0.4s ease-out backwards;
+}
+
+:global(.stagger-in:nth-child(1)) {
+	animation-delay: 0.05s;
+}
+:global(.stagger-in:nth-child(2)) {
+	animation-delay: 0.1s;
+}
+:global(.stagger-in:nth-child(3)) {
+	animation-delay: 0.15s;
+}
+:global(.stagger-in:nth-child(4)) {
+	animation-delay: 0.2s;
+}
+:global(.stagger-in:nth-child(5)) {
+	animation-delay: 0.25s;
+}
+:global(.stagger-in:nth-child(n + 6)) {
+	animation-delay: 0.3s;
+}
