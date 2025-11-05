@@ -1,11 +1,14 @@
 <script lang="ts">
 	import '$lib/static/normalize.css';
 	import '$lib/static/global.css';
+	import '$lib/static/animations.css';
 	import { fly } from 'svelte/transition';
 	import LogoutIcon from '$lib/static/icons/logoutIcon.svelte';
-	import MenuIcon from '$lib/static/icons/menuIcon.svelte';
-	import CloseIcon from '$lib/static/icons/closeIcon.svelte';
 	import ViewModeDropdown from '$lib/components/viewModeDropdown.svelte';
+	import BottomNav from '$lib/components/bottomNav.svelte';
+	import DesktopNav from '$lib/components/desktopNav.svelte';
+	import Fab from '$lib/components/fab.svelte';
+	import ListIcon from '$lib/components/listIcon.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { goto } from '$app/navigation';
 	import { invalidateAll } from '$app/navigation';
@@ -19,9 +22,7 @@
 	let { children, data } = $props();
 	let z = $derived(data.z);
 	let auth = $derived(data.auth);
-	let menuOpen = $state(false);
 	let inGroup = $derived(data.groupId !== data.id);
-	let menu = $state<HTMLElement | null>(null);
 	let createListModalOpen = $state(false);
 	let selectedListType = $state<
 		'basic' | 'shopping' | 'events' | 'tasks' | 'recipe' | 'messages' | 'contacts' | 'bookmarks'
@@ -30,17 +31,14 @@
 	let customLists = $state<Query<any, any, any> | undefined>(undefined);
 	let isCheckingSession = $state(false);
 
-	function toggleMenu() {
-		menuOpen = !menuOpen;
+	function openCreateListModal() {
+		createListModalOpen = true;
 	}
 
 	async function handleLogout() {
 		try {
 			await authClient.signOut();
-			menuOpen = false; // Close menu on logout
-
 			await invalidateAll(); // This will re-run all load functions
-
 			await goto('/account/login', { replaceState: true, noScroll: true });
 		} catch (error) {
 			console.error('Logout failed:', error);
@@ -92,35 +90,10 @@
 		} else {
 			customLists = undefined;
 		}
-
-		// named handlers so they can be removed on cleanup
-		function resizeHandler() {
-			if (window.innerWidth > 690) {
-				menuOpen = false;
-			}
-		}
-
-		function popstateHandler() {
-			menuOpen = false;
-		}
-
-		window.addEventListener('resize', resizeHandler);
-		window.addEventListener('popstate', popstateHandler);
-
-		return () => {
-			window.removeEventListener('resize', resizeHandler);
-			window.removeEventListener('popstate', popstateHandler);
-		};
 	});
-
-	function openCreateList() {
-		menuOpen = false;
-		createListModalOpen = true;
-	}
 
 	function createList(e: Event) {
 		e.preventDefault();
-		menuOpen = false;
 		createListModalOpen = false;
 		// get form data and create list logic here
 		const formData = new FormData(e.target as HTMLFormElement);
@@ -151,66 +124,32 @@
 {/if}
 
 <header>
-	<h1><a href="/">HiveOS</a></h1>
+	<div class="header-left">
+		<h1><a href="/">HiveOS</a></h1>
+		{#if auth}
+			<DesktopNav {data} />
+		{/if}
+	</div>
 
-	<nav>
+	<div class="header-right">
 		{#if auth}
 			<ViewModeDropdown {data} />
-			<button class="button logout" onclick={handleLogout}>Logout <LogoutIcon /></button>
-			<button onclick={toggleMenu} class="menu-button" aria-label="Open menu">
-				{#if menuOpen}
-					<CloseIcon />
-				{:else}
-					<MenuIcon />
-				{/if}
-			</button>
 		{:else}
-			<a href="/account/login">Login</a>
-			<a href="/account/register">Register</a>
+			<a href="/account/login" class="auth-link">Login</a>
+			<a href="/account/register" class="auth-link">Register</a>
 		{/if}
-	</nav>
+	</div>
 </header>
 
 <div class="main-layout">
 	{#if auth}
-		<aside bind:this={menu} class:menuOpen>
-			<ul>
-				<li><a onclick={() => (menuOpen = false)} href="/">Dashboard</a></li>
+		<!-- FAB for creating lists -->
+		<Fab onclick={openCreateListModal} />
 
-				<!-- Show My Day link if there are event-type lists -->
-				{#if customLists?.current && Array.isArray(customLists.current)}
-					{@const hasEventLists = customLists.current.some((list) => list.listType === 'events')}
-					{#if hasEventLists}
-						<li><a onclick={() => (menuOpen = false)} href="/my-day">My Day</a></li>
-					{/if}
-				{/if}
+		<!-- Bottom navigation for mobile -->
+		<BottomNav />
 
-				{#if customLists}
-					{#if customLists?.current && Array.isArray(customLists.current)}
-						{#each customLists.current as list (list.id)}
-							<li>
-								<a onclick={() => (menuOpen = false)} href={`/custom-list/${list.id}`}
-									>{list.name}</a
-								>
-							</li>
-						{/each}
-					{/if}
-				{/if}
-				<li class="create-list-item">
-					<button class="create-list-btn" onclick={() => openCreateList()}>+ Create List</button>
-				</li>
-				<li class="section-divider">
-					<span class="section-title">Tools</span>
-				</li>
-				<li>
-					<a onclick={() => (menuOpen = false)} href="/comparisons">Comparison Tool</a>
-				</li>
-				<li class="push-bottom">
-					<a onclick={() => (menuOpen = false)} href="/settings">Settings</a>
-				</li>
-				<li><a onclick={() => (menuOpen = false)} href="/account">Account</a></li>
-			</ul>
-		</aside>
+		<!-- Create List Modal -->
 		{#if createListModalOpen}
 			<div class="create-list-modal">
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -234,7 +173,9 @@
 									checked
 								/>
 								<div class="option-content">
-									<span class="option-icon">📝</span>
+									<span class="option-icon">
+										<ListIcon type="basic" size={24} />
+									</span>
 									<div class="option-text">
 										<strong>Basic List</strong>
 										<small>Simple checklist for any purpose</small>
@@ -250,7 +191,9 @@
 									bind:group={selectedListType}
 								/>
 								<div class="option-content">
-									<span class="option-icon">🛒</span>
+									<span class="option-icon">
+										<ListIcon type="shopping" size={24} />
+									</span>
 									<div class="option-text">
 										<strong>Shopping List</strong>
 										<small>Track items by store</small>
@@ -261,7 +204,9 @@
 							<label class="list-type-option">
 								<input type="radio" name="list-type" value="events" bind:group={selectedListType} />
 								<div class="option-content">
-									<span class="option-icon">📅</span>
+									<span class="option-icon">
+										<ListIcon type="events" size={24} />
+									</span>
 									<div class="option-text">
 										<strong>Events</strong>
 										<small>Schedule with dates & times</small>
@@ -272,7 +217,9 @@
 							<label class="list-type-option">
 								<input type="radio" name="list-type" value="tasks" bind:group={selectedListType} />
 								<div class="option-content">
-									<span class="option-icon">✓</span>
+									<span class="option-icon">
+										<ListIcon type="tasks" size={24} />
+									</span>
 									<div class="option-text">
 										<strong>Task List</strong>
 										<small>Sortable tasks with drag & drop</small>
@@ -283,7 +230,9 @@
 							<label class="list-type-option">
 								<input type="radio" name="list-type" value="recipe" bind:group={selectedListType} />
 								<div class="option-content">
-									<span class="option-icon">📖</span>
+									<span class="option-icon">
+										<ListIcon type="recipe" size={24} />
+									</span>
 									<div class="option-text">
 										<strong>Recipe Box</strong>
 										<small>Ingredients, instructions & cooking times</small>
@@ -300,7 +249,9 @@
 										bind:group={selectedListType}
 									/>
 									<div class="option-content">
-										<span class="option-icon">💬</span>
+										<span class="option-icon">
+											<ListIcon type="messages" size={24} />
+										</span>
 										<div class="option-text">
 											<strong>Messages</strong>
 											<small>Notes, reminders & communication</small>
@@ -317,7 +268,9 @@
 									bind:group={selectedListType}
 								/>
 								<div class="option-content">
-									<span class="option-icon">👥</span>
+									<span class="option-icon">
+										<ListIcon type="contacts" size={24} />
+									</span>
 									<div class="option-text">
 										<strong>Contacts</strong>
 										<small>Phone, email & address book</small>
@@ -333,7 +286,9 @@
 									bind:group={selectedListType}
 								/>
 								<div class="option-content">
-									<span class="option-icon">🔖</span>
+									<span class="option-icon">
+										<ListIcon type="bookmarks" size={24} />
+									</span>
 									<div class="option-text">
 										<strong>Bookmarks</strong>
 										<small>Save and organize links</small>
@@ -352,7 +307,7 @@
 		{/if}
 	{/if}
 
-	<main class:menuOpen>
+	<main>
 		{@render children()}
 	</main>
 </div>
@@ -360,238 +315,106 @@
 <!-- <footer></footer> -->
 
 <style>
+	:global(body) {
+		padding-bottom: var(--bottomNavHeight);
+	}
+
 	:global(body:has(.offline-banner, .syncing-banner)) header {
-		margin-top: 36px;
+		top: 36px;
 	}
 
 	@media (max-width: 640px) {
 		:global(body:has(.offline-banner, .syncing-banner)) header {
-			margin-top: 32px;
+			top: 32px;
+		}
+	}
+
+	@media screen and (min-width: 769px) {
+		:global(body) {
+			padding-bottom: 0;
 		}
 	}
 
 	header {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		grid-template-rows: 1fr;
-		padding: 20px;
-		background-color: var(--primary);
-		color: #000;
-		transition: margin-top 0.3s ease;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0 var(--spacing-md);
+		transition: top 0.3s ease;
 	}
 
-	nav {
+	.header-left {
 		display: flex;
-		container-type: inline-size;
-		justify-content: flex-end;
 		align-items: center;
-		gap: 20px;
-		a {
-			text-decoration: underline;
-			display: flex;
-			gap: 10px;
-		}
+		gap: var(--spacing-lg);
+	}
 
-		button.button {
-			background-color: #000;
-			--svg-fill: #fff;
-			color: #fff;
-			padding: 10px 20px;
-			border-radius: 5px;
-			border: none;
-			cursor: pointer;
-			text-decoration: none;
-			transition: all 0.3s ease;
-			box-shadow: var(--level-2);
-			display: flex;
-			align-items: center;
-			gap: 5px;
-
-			&:hover {
-				transform: translateY(-1px);
-			}
-			&:active {
-				transform: translateY(1px);
-			}
-			&.logout {
-				@media screen and (max-width: 690px) {
-					display: none;
-				}
-			}
-		}
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-md);
 	}
 
 	h1 {
-		font-size: 2rem;
-		color: #000;
+		font-size: 1.75rem;
+		font-weight: 700;
+		color: var(--textColor);
 		margin: 0;
 		padding: 0;
+
 		a {
 			text-decoration: none;
 			color: inherit;
+			transition: color 0.2s ease;
+
+			&:hover {
+				color: var(--primary);
+			}
+		}
+	}
+
+	.auth-link {
+		text-decoration: none;
+		color: var(--textColor);
+		font-weight: 500;
+		padding: var(--spacing-xs) var(--spacing-sm);
+		border-radius: 8px;
+		transition: all 0.2s ease;
+
+		&:hover {
+			background: rgba(0, 0, 0, 0.04);
+			color: var(--primary-dark);
+		}
+	}
+
+	@media screen and (max-width: 768px) {
+		h1 {
+			font-size: 1.5rem;
 		}
 	}
 
 	.main-layout {
-		display: grid;
-		grid-template-columns: 200px 2fr 200px;
-		grid-template-rows: 1fr;
-		gap: 20px;
-		/* height: calc(100dvh - var(--headerHeight) - var(--footerHeight)); */
-		/* min-height: calc(100vh - var(--headerHeight)); */
-
-		/* Single column centered layout when not authenticated */
-		&:not(:has(aside)) {
-			grid-template-columns: 1fr;
-			/* max-width: 600px; */
-			margin: 0 auto;
-			gap: 0;
-		}
-
-		@media screen and (max-width: 690px) {
-			grid-template-columns: 1fr;
-			grid-template-rows: auto 1fr;
-			--margin-left: var(--margin-right);
-		}
+		min-height: calc(100vh - var(--headerHeight));
 	}
-
-	/* Container query for smaller widths */
 
 	main {
-		padding: 20px;
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: var(--spacing-lg);
 		background-color: var(--background);
-		/* margin-right: var(--margin-right);
-		margin-left: var(--margin-left); */
-		opacity: 1;
-		transition: all 0.3s ease;
-		&.menuOpen {
-			opacity: 0;
-			pointer-events: none;
-		}
+		min-height: calc(100vh - var(--headerHeight) - var(--bottomNavHeight));
 	}
-	aside {
-		height: 100%;
-		width: max-content;
-		min-width: 200px;
-		padding: 20px;
-		background-color: var(--background);
-		transition: all 0.3s ease;
-		min-height: calc(100dvh - 100px);
 
-		@media screen and (max-width: 690px) {
-			overflow-y: auto;
-		}
-
-		ul {
-			list-style: none;
-			padding: 0;
-			margin: 0;
-			display: flex;
-			flex-direction: column;
-			justify-content: flex-start;
-			align-items: flex-start;
-			gap: 10px;
-			height: 100%;
-
-			li {
-				&.push-bottom {
-					margin-top: auto;
-				}
-				@media screen and (max-width: 690px) {
-					width: 100%;
-				}
-			}
-			a {
-				text-decoration: none;
-				color: var(--textColor);
-				font-size: 1.2rem;
-				font-weight: 600;
-				@media screen and (max-width: 690px) {
-					display: block;
-					width: 100%;
-					font-size: 1.5rem;
-					padding: 10px;
-					text-align: center;
-					cursor: pointer;
-				}
-			}
-			.create-list-item {
-				margin-top: 10px;
-				padding-top: 10px;
-				border-top: 1px solid rgba(0, 0, 0, 0.1);
-			}
-
-			.create-list-btn {
-				background-color: transparent;
-				border: 2px dashed rgba(0, 0, 0, 0.2);
-				cursor: pointer;
-				font-size: 1.2rem;
-				font-weight: 600;
-				color: var(--textColor);
-				width: 100%;
-				padding: 8px;
-				border-radius: 5px;
-				transition: all 0.2s ease;
-
-				&:hover {
-					background-color: rgba(0, 0, 0, 0.05);
-					border-color: rgba(0, 0, 0, 0.3);
-				}
-
-				@media screen and (max-width: 690px) {
-					font-size: 1.2rem;
-					padding: 12px;
-				}
-			}
-
-			.section-divider {
-				margin-top: 20px;
-				padding-top: 10px;
-				border-top: 1px solid rgba(0, 0, 0, 0.1);
-			}
-
-			.section-title {
-				font-size: 0.85rem;
-				font-weight: 700;
-				text-transform: uppercase;
-				letter-spacing: 0.5px;
-				color: var(--color-tertiary, #999);
-				display: block;
-				margin-bottom: 10px;
-			}
-		}
-
-		@media screen and (max-width: 690px) {
-			left: 0;
-			top: -100%;
-			position: fixed;
-			z-index: 9998;
-			width: 100%;
-			max-height: calc(100dvh - var(--headerHeight) - 32px);
-			text-align: center;
-			transition: top 0.3s ease;
-			overflow-y: auto;
-			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-
-			&.menuOpen {
-				top: calc(var(--headerHeight) + 32px);
-			}
-
-			:global(body:not(:has(.offline-banner, .syncing-banner))) & {
-				max-height: calc(100dvh - var(--headerHeight));
-
-				&.menuOpen {
-					top: var(--headerHeight);
-				}
-			}
+	@media screen and (min-width: 769px) {
+		main {
+			min-height: calc(100vh - var(--headerHeight));
+			padding: var(--spacing-xl);
 		}
 	}
 
-	.menu-button {
-		display: none;
-
-		@media screen and (max-width: 690px) {
-			display: block;
+	@media screen and (max-width: 640px) {
+		main {
+			padding: var(--spacing-md);
 		}
 	}
 
@@ -698,7 +521,11 @@
 					}
 
 					.option-icon {
-						font-size: 1.5rem;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						width: 32px;
+						height: 32px;
 					}
 
 					.option-text {
