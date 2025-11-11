@@ -113,9 +113,9 @@
 
 	<a href="/comparisons" class="nav-link" class:active={isActive('/comparisons')}> Tools </a>
 
-	{#if data?.isSuperadmin}
-		<a href="/admin" class="nav-link admin-link" class:active={isActive('/admin')}> Admin </a>
-	{/if}
+	<a href="/settings" class="nav-link" class:active={isActive('/settings')}> Settings </a>
+
+	<a href="/account" class="nav-link" class:active={isActive('/account')}> Account </a>
 </nav>
 
 <style>

@@ -147,7 +147,7 @@
 		<Fab onclick={openCreateListModal} />
 
 		<!-- Bottom navigation for mobile -->
-		<BottomNav />
+		<BottomNav {data} />
 
 		<!-- Create List Modal -->
 		{#if createListModalOpen}
@@ -395,6 +395,8 @@
 
 	.main-layout {
 		min-height: calc(100vh - var(--headerHeight));
+		position: relative;
+		z-index: 1;
 	}
 
 	main {

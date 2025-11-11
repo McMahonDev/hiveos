@@ -7,7 +7,7 @@ const url = import.meta.env?.VITE_CONNECTION_STRING;
 if (!url) throw new Error('CONNECTION_STRING is not set');
 
 export const load: LayoutLoad = async (event) => {
-	let { auth, id, groupId, name, JWT } = event.data;
+	let { auth, id, groupId, name, JWT, isSuperadmin } = event.data;
 	const authenticatedUser = auth && id && groupId ? { id, groupId } : null;
 	let z: Z<Schema> | undefined;
 
@@ -38,6 +38,7 @@ export const load: LayoutLoad = async (event) => {
 		groupId,
 		groupActive: false,
 		name,
+		isSuperadmin,
 		z
 	};
 };
