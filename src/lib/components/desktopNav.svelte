@@ -6,7 +6,6 @@
 	let { data } = $props<{ data: any }>();
 	let z = data.z;
 	let currentPath = $derived($page.url.pathname);
-	let isSuperadmin = $derived(data?.isSuperadmin ?? false);
 
 	// Query custom lists for dropdown
 	let customLists = $state<Query<any, any, any> | null>(null);
