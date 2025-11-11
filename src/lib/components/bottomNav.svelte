@@ -4,7 +4,7 @@
 	let { data } = $props<{ data: any }>();
 	let currentPath = $derived($page.url.pathname);
 
-	const baseNavItems = [
+	const navItems = [
 		{ href: '/', icon: 'home', label: 'Home', match: (path: string) => path === '/' },
 		{
 			href: '/my-day',
@@ -31,22 +31,6 @@
 			match: (path: string) => path === '/account'
 		}
 	];
-
-	// Add admin link if user is superadmin
-	const navItems = $derived(
-		data?.isSuperadmin
-			? [
-					...baseNavItems.slice(0, 2),
-					{
-						href: '/admin',
-						icon: 'admin',
-						label: 'Admin',
-						match: (path: string) => path === '/admin'
-					},
-					...baseNavItems.slice(2)
-				]
-			: baseNavItems
-	);
 
 	function isActive(item: (typeof navItems)[0]) {
 		return item.match(currentPath);
@@ -137,22 +121,6 @@
 						<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
 						<circle cx="12" cy="7" r="4" />
 					</svg>
-				{:else if item.icon === 'admin'}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="24"
-						height="24"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<path d="M12 2L2 7l10 5 10-5-10-5z" />
-						<path d="M2 17l10 5 10-5" />
-						<path d="M2 12l10 5 10-5" />
-					</svg>
 				{/if}
 			</span>
 			<span class="nav-label">{item.label}</span>
@@ -173,7 +141,7 @@
 		display: flex;
 		justify-content: space-around;
 		align-items: center;
-		padding: 0 var(--spacing-sm);
+		padding: 8px var(--spacing-xs);
 		z-index: 1000;
 		box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
 	}
@@ -183,14 +151,16 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 4px;
-		padding: var(--spacing-xs);
+		gap: 2px;
+		padding: 4px 8px;
 		text-decoration: none;
 		color: var(--textColorLight);
 		transition: all 0.2s ease;
 		border-radius: 12px;
-		min-width: 64px;
+		min-width: 60px;
+		max-width: 72px;
 		position: relative;
+		flex: 1;
 	}
 
 	.nav-item:active {
@@ -206,30 +176,13 @@
 		color: var(--black);
 	}
 
-	/* Special styling for admin link */
-	.nav-item[href='/admin'] .nav-icon {
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
-	}
-
-	.nav-item[href='/admin'].active .nav-icon {
-		background: linear-gradient(135deg, #7c8ff2 0%, #8659b0 100%);
-		color: white;
-		box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
-	}
-
-	.nav-item[href='/admin']:hover .nav-icon {
-		background: linear-gradient(135deg, #5568d3 0%, #653a8d 100%);
-		color: white;
-	}
-
 	.nav-icon {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 40px;
-		height: 40px;
-		border-radius: 12px;
+		width: 36px;
+		height: 36px;
+		border-radius: 10px;
 		transition: all 0.2s ease;
 	}
 
@@ -242,14 +195,15 @@
 	}
 
 	.nav-icon svg {
-		width: 24px;
-		height: 24px;
+		width: 22px;
+		height: 22px;
 	}
 
 	.nav-label {
-		font-size: 0.75rem;
+		font-size: 0.7rem;
 		font-weight: 500;
 		white-space: nowrap;
+		line-height: 1;
 	}
 
 	/* Hide on desktop */
@@ -261,17 +215,29 @@
 
 	/* Adjust for very small screens */
 	@media screen and (max-width: 360px) {
+		.bottom-nav {
+			padding: 6px 4px;
+		}
+
 		.nav-item {
-			min-width: 52px;
+			min-width: 50px;
+			max-width: 64px;
+			padding: 3px 6px;
+			gap: 1px;
+		}
+
+		.nav-icon {
+			width: 32px;
+			height: 32px;
 		}
 
 		.nav-label {
-			font-size: 0.7rem;
+			font-size: 0.65rem;
 		}
 
 		.nav-icon svg {
-			width: 20px;
-			height: 20px;
+			width: 18px;
+			height: 18px;
 		}
 	}
 </style>
