@@ -46,7 +46,8 @@ const user = table('user')
 		notify_weekly_summary: boolean(), // Weekly productivity report
 		notify_subscription_updates: boolean(), // Subscription/billing notifications
 		morning_briefing_time: string(), // Time for morning briefing (HH:mm format)
-		evening_wrapup_time: string() // Time for evening wrap-up (HH:mm format)
+		evening_wrapup_time: string(), // Time for evening wrap-up (HH:mm format)
+		superadmin: boolean() // Superadmin access for admin dashboard (database uses snake_case)
 	})
 	.primaryKey('id');
 

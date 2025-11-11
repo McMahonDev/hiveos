@@ -112,6 +112,10 @@
 	{/if}
 
 	<a href="/comparisons" class="nav-link" class:active={isActive('/comparisons')}> Tools </a>
+
+	{#if data?.isSuperadmin}
+		<a href="/admin" class="nav-link admin-link" class:active={isActive('/admin')}> Admin </a>
+	{/if}
 </nav>
 
 <style>
@@ -212,5 +216,23 @@
 	.dropdown-item:hover {
 		background: rgba(255, 183, 0, 0.12);
 		color: var(--primary-dark);
+	}
+
+	.admin-link {
+		margin-left: auto;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		color: white !important;
+		font-weight: 600;
+	}
+
+	.admin-link:hover {
+		background: linear-gradient(135deg, #5568d3 0%, #653a8d 100%);
+		color: white !important;
+	}
+
+	.admin-link.active {
+		background: linear-gradient(135deg, #7c8ff2 0%, #8659b0 100%);
+		color: white !important;
+		box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 	}
 </style>
