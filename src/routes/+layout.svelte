@@ -20,7 +20,6 @@
 	import { page } from '$app/stores';
 
 	let { children, data } = $props();
-	console.log('Layout data:', data);
 	let z = $derived(data.z);
 	let auth = $derived(data.auth);
 	let inGroup = $derived(data.groupId !== data.id);
