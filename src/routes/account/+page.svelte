@@ -993,6 +993,23 @@
 				</button>
 			</div>
 		</div>
+
+		<!-- Admin Card (only shown to superadmins) -->
+		{#if data?.isSuperadmin}
+			<div class="card admin-card">
+				<h2 class="card-title">⚡ Admin Panel</h2>
+				<p class="card-description">
+					Access administrative features and system management tools.
+				</p>
+				<a
+					href="/admin"
+					class="admin-button"
+					style="display: block; text-align: center; text-decoration: none;"
+				>
+					Open Admin Panel
+				</a>
+			</div>
+		{/if}
 	</div>
 </div>
 
@@ -1671,6 +1688,45 @@
 
 	.logout-all-button span:first-child {
 		font-size: 1.2rem;
+	}
+
+	/* Admin Card */
+	.admin-card {
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		border: none;
+		color: white;
+	}
+
+	.admin-card .card-title {
+		color: white;
+	}
+
+	.admin-card .card-description {
+		color: rgba(255, 255, 255, 0.9);
+	}
+
+	.admin-card:hover {
+		transform: translateY(-4px);
+		box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
+	}
+
+	.admin-button {
+		padding: 0.875rem 1.5rem;
+		background: white;
+		color: #667eea;
+		border: none;
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 700;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	}
+
+	.admin-button:hover {
+		background: #f8f9ff;
+		transform: translateY(-1px);
+		box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 	}
 
 	/* Subscription Actions */

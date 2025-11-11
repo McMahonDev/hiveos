@@ -20,6 +20,7 @@
 	import { page } from '$app/stores';
 
 	let { children, data } = $props();
+	console.log('Layout data:', data);
 	let z = $derived(data.z);
 	let auth = $derived(data.auth);
 	let inGroup = $derived(data.groupId !== data.id);
@@ -147,7 +148,7 @@
 		<Fab onclick={openCreateListModal} />
 
 		<!-- Bottom navigation for mobile -->
-		<BottomNav />
+		<BottomNav {data} />
 
 		<!-- Create List Modal -->
 		{#if createListModalOpen}
@@ -395,6 +396,8 @@
 
 	.main-layout {
 		min-height: calc(100vh - var(--headerHeight));
+		position: relative;
+		z-index: 1;
 	}
 
 	main {
