@@ -35,7 +35,8 @@ export const user = pgTable('user', {
 	notifyWeeklySummary: boolean('notify_weekly_summary').$defaultFn(() => false), // Weekly productivity report
 	notifySubscriptionUpdates: boolean('notify_subscription_updates').$defaultFn(() => true), // Subscription/billing notifications
 	morningBriefingTime: text('morning_briefing_time').$defaultFn(() => '08:00'), // Time for morning briefing (HH:mm format)
-	eveningWrapupTime: text('evening_wrapup_time').$defaultFn(() => '18:00') // Time for evening wrap-up (HH:mm format)
+	eveningWrapupTime: text('evening_wrapup_time').$defaultFn(() => '18:00'), // Time for evening wrap-up (HH:mm format)
+	superadmin: boolean('superadmin').$defaultFn(() => false) // Superadmin access for admin dashboard
 });
 
 export const session = pgTable('session', {

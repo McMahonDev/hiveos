@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 
+	let { data } = $props<{ data: any }>();
 	let currentPath = $derived($page.url.pathname);
 
-	const navItems = [
+	const baseNavItems = [
 		{ href: '/', icon: 'home', label: 'Home', match: (path: string) => path === '/' },
 		{
 			href: '/my-day',
@@ -30,6 +31,22 @@
 			match: (path: string) => path === '/account'
 		}
 	];
+
+	// Add admin link if user is superadmin
+	const navItems = $derived(
+		data?.isSuperadmin
+			? [
+					...baseNavItems.slice(0, 2),
+					{
+						href: '/admin',
+						icon: 'admin',
+						label: 'Admin',
+						match: (path: string) => path === '/admin'
+					},
+					...baseNavItems.slice(2)
+				]
+			: baseNavItems
+	);
 
 	function isActive(item: (typeof navItems)[0]) {
 		return item.match(currentPath);
@@ -120,6 +137,22 @@
 						<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
 						<circle cx="12" cy="7" r="4" />
 					</svg>
+				{:else if item.icon === 'admin'}
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path d="M12 2L2 7l10 5 10-5-10-5z" />
+						<path d="M2 17l10 5 10-5" />
+						<path d="M2 12l10 5 10-5" />
+					</svg>
 				{/if}
 			</span>
 			<span class="nav-label">{item.label}</span>
@@ -171,6 +204,23 @@
 	.nav-item.active .nav-icon {
 		background: var(--primary);
 		color: var(--black);
+	}
+
+	/* Special styling for admin link */
+	.nav-item[href='/admin'] .nav-icon {
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		color: white;
+	}
+
+	.nav-item[href='/admin'].active .nav-icon {
+		background: linear-gradient(135deg, #7c8ff2 0%, #8659b0 100%);
+		color: white;
+		box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+	}
+
+	.nav-item[href='/admin']:hover .nav-icon {
+		background: linear-gradient(135deg, #5568d3 0%, #653a8d 100%);
+		color: white;
 	}
 
 	.nav-icon {

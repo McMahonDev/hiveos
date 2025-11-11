@@ -19,6 +19,7 @@ export async function load({ request, url }) {
 	let userId: string;
 	let groupId: string;
 	let name: string = '';
+	let isSuperadmin: boolean = false;
 	let JWT: string | undefined = undefined;
 
 	// Use Better Auth to get the session
@@ -60,6 +61,7 @@ export async function load({ request, url }) {
 
 			if (userData[0]) {
 				name = userData[0].name;
+				isSuperadmin = userData[0].superadmin || false;
 			} else {
 				// If no user data is found, fall back to session user
 				console.log('No user data found, falling back to session user');
@@ -158,6 +160,7 @@ export async function load({ request, url }) {
 		id: userId,
 		groupId,
 		name,
+		isSuperadmin,
 		JWT
 	};
 }
