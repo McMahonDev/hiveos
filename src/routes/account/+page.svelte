@@ -998,9 +998,7 @@
 		{#if data?.isSuperadmin}
 			<div class="card admin-card">
 				<h2 class="card-title">⚡ Admin Panel</h2>
-				<p class="card-description">
-					Access administrative features and system management tools.
-				</p>
+				<p class="card-description">Access administrative features and system management tools.</p>
 				<a
 					href="/admin"
 					class="admin-button"
