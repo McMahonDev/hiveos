@@ -550,7 +550,7 @@ The HiveOS Team`;
     </div>
     
     <div style="text-align: center; margin: 32px 0;">
-      <a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}/events" 
+      <a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}/my-day" 
          style="display: inline-block; background: #4A90E2; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
         View Event
       </a>
