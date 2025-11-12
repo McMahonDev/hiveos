@@ -11,9 +11,7 @@
 	let groupMembership = $state<Query<any, any, any>>();
 	$effect(() => {
 		if (z?.current) {
-			groupMembership = new Query(
-				z.current.query.userGroupMembers.where('userId', userId)
-			);
+			groupMembership = new Query(z.current.query.userGroupMembers.where('userId', userId));
 		}
 	});
 
@@ -21,9 +19,7 @@
 	let userGroup = $state<Query<any, any, any>>();
 	$effect(() => {
 		if (z?.current && groupId) {
-			userGroup = new Query(
-				z.current.query.userGroups.where('id', groupId)
-			);
+			userGroup = new Query(z.current.query.userGroups.where('id', groupId));
 		}
 	});
 
@@ -31,9 +27,7 @@
 	let allGroupMembers = $state<Query<any, any, any>>();
 	$effect(() => {
 		if (z?.current && groupId) {
-			allGroupMembers = new Query(
-				z.current.query.userGroupMembers.where('userGroupId', groupId)
-			);
+			allGroupMembers = new Query(z.current.query.userGroupMembers.where('userGroupId', groupId));
 		}
 	});
 
@@ -41,10 +35,7 @@
 	let sharedShoppingItems = $state<Query<any, any, any>>();
 	$effect(() => {
 		if (z?.current && groupId) {
-			sharedShoppingItems = new Query(
-				z.current.query.shoppingList
-					.where('viewMode', 'shared')
-			);
+			sharedShoppingItems = new Query(z.current.query.shoppingList.where('viewMode', 'shared'));
 		}
 	});
 
@@ -53,9 +44,7 @@
 	$effect(() => {
 		if (z?.current && groupId) {
 			groupShoppingItems = new Query(
-				z.current.query.shoppingList
-					.where('assignedToId', groupId)
-					.where('viewMode', 'shared')
+				z.current.query.shoppingList.where('assignedToId', groupId).where('viewMode', 'shared')
 			);
 		}
 	});
@@ -76,7 +65,7 @@
 
 <section class="debug-container">
 	<h1>Shared Lists Debug Information</h1>
-	
+
 	<div class="debug-section">
 		<h2>Current User</h2>
 		<p><strong>User ID:</strong> {userId}</p>
@@ -90,9 +79,12 @@
 				<ul>
 					{#each groupMembership.current as membership}
 						<li>
-							<strong>Member ID:</strong> {membership.id}<br>
-							<strong>User Group ID:</strong> {membership.userGroupId}<br>
-							<strong>Is Admin:</strong> {membership.isAdmin ? 'Yes' : 'No'}
+							<strong>Member ID:</strong>
+							{membership.id}<br />
+							<strong>User Group ID:</strong>
+							{membership.userGroupId}<br />
+							<strong>Is Admin:</strong>
+							{membership.isAdmin ? 'Yes' : 'No'}
 						</li>
 					{/each}
 				</ul>
@@ -129,9 +121,12 @@
 				<ul>
 					{#each allGroupMembers.current as member}
 						<li>
-							<strong>User ID:</strong> {member.userId}<br>
-							<strong>Is Admin:</strong> {member.isAdmin ? 'Yes' : 'No'}<br>
-							<strong>Joined:</strong> {new Date(member.joinedAt).toLocaleString()}
+							<strong>User ID:</strong>
+							{member.userId}<br />
+							<strong>Is Admin:</strong>
+							{member.isAdmin ? 'Yes' : 'No'}<br />
+							<strong>Joined:</strong>
+							{new Date(member.joinedAt).toLocaleString()}
 						</li>
 					{/each}
 				</ul>
@@ -151,12 +146,18 @@
 				<ul>
 					{#each sharedShoppingItems.current as item}
 						<li>
-							<strong>Name:</strong> {item.name}<br>
-							<strong>Assigned To ID:</strong> {item.assignedToId}<br>
-							<strong>Created By:</strong> {item.createdById}<br>
-							<strong>View Mode:</strong> {item.viewMode}<br>
-							<strong>Store:</strong> {item.store || 'N/A'}<br>
-							<strong>Match:</strong> {item.assignedToId === groupId ? '✅ MATCHES YOUR GROUP' : '❌ Different Group'}
+							<strong>Name:</strong>
+							{item.name}<br />
+							<strong>Assigned To ID:</strong>
+							{item.assignedToId}<br />
+							<strong>Created By:</strong>
+							{item.createdById}<br />
+							<strong>View Mode:</strong>
+							{item.viewMode}<br />
+							<strong>Store:</strong>
+							{item.store || 'N/A'}<br />
+							<strong>Match:</strong>
+							{item.assignedToId === groupId ? '✅ MATCHES YOUR GROUP' : '❌ Different Group'}
 						</li>
 					{/each}
 				</ul>
@@ -175,10 +176,14 @@
 				<ul>
 					{#each groupShoppingItems.current as item}
 						<li>
-							<strong>Name:</strong> {item.name}<br>
-							<strong>Created By:</strong> {item.createdById}<br>
-							<strong>Store:</strong> {item.store || 'N/A'}<br>
-							<strong>Status:</strong> {item.status ? 'Completed' : 'Pending'}
+							<strong>Name:</strong>
+							{item.name}<br />
+							<strong>Created By:</strong>
+							{item.createdById}<br />
+							<strong>Store:</strong>
+							{item.store || 'N/A'}<br />
+							<strong>Status:</strong>
+							{item.status ? 'Completed' : 'Pending'}
 						</li>
 					{/each}
 				</ul>
