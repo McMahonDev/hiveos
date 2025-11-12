@@ -1,4 +1,4 @@
-import { redirect } from '@sveltejs/kit';
+import { redirect, fail } from '@sveltejs/kit';
 import { auth } from '$lib/auth/auth';
 import { db } from '$lib/server/db/index';
 import { user, userGroups, userGroupMembers, events, shoppingList, tasks } from '$lib/server/db/schema';
@@ -154,5 +154,59 @@ export async function load({ request }: { request: Request }) {
 	} catch (error) {
 		console.error('Error fetching admin analytics:', error);
 		throw redirect(302, '/');
+	}
+}
+
+export const actions = {
+	forceDowngrade: async ({ request }: { request: Request }) => {
+		// Check if user is authenticated and superadmin
+		const session = await auth.api.getSession({
+			headers: request.headers
+		});
+
+		if (!session) {
+			return fail(401, { error: 'Not authenticated' });
+		}
+
+		const userData = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
+
+		if (!userData[0] || !userData[0].superadmin) {
+			return fail(403, { error: 'Not authorized - superadmin only' });
+		}
+
+		// Get form data
+		const formData = await request.formData();
+		const targetUserId = formData.get('userId')?.toString();
+
+		if (!targetUserId) {
+			return fail(400, { error: 'User ID is required' });
+		}
+
+		try {
+			// Get the user to downgrade
+			const targetUser = await db.select().from(user).where(eq(user.id, targetUserId)).limit(1);
+
+			if (!targetUser[0]) {
+				return fail(404, { error: 'User not found' });
+			}
+
+			// Force immediate downgrade to free tier
+			await db
+				.update(user)
+				.set({
+					subscriptionTier: 'free',
+					subscriptionStatus: 'canceled',
+					currentPeriodEnd: new Date() // Set to now to force immediate expiry
+				})
+				.where(eq(user.id, targetUserId));
+
+			return {
+				success: true,
+				message: `User ${targetUser[0].email} has been downgraded to free tier immediately`
+			};
+		} catch (error) {
+			console.error('Error forcing downgrade:', error);
+			return fail(500, { error: 'Failed to downgrade user' });
+		}
 	}
 };

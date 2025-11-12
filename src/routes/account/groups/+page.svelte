@@ -60,6 +60,13 @@
 			: null
 	);
 
+	// Query group activity log
+	let groupActivityLogs = $derived(
+		z && z.current && activeGroupId
+			? new Query(z.current.query.groupActivityLog.where('groupId', activeGroupId))
+			: null
+	);
+
 	// State for code generation
 	let showCodeGenerator = $state(false);
 	let newCodePrefix = $state('');
@@ -93,6 +100,9 @@
 			createdAt: Date.now()
 		});
 
+		// Log activity
+		logGroupActivity('access_code_generated', undefined, { code: code, maxUses: codeMaxUses });
+
 		generatedCode = code;
 		successMessage = `Access code "${code}" created successfully!`;
 
@@ -120,13 +130,51 @@
 		}
 	}
 
+	function regenerateAccessCode(oldCode: any) {
+		if (!isAdmin || !group) return;
+
+		// Delete old code
+		z?.current.mutate.accessCodes.delete({ id: oldCode.id });
+
+		// Generate new code with same parameters
+		const prefix = oldCode.code.split('-')[0];
+		const randomPart = nanoid(8).toUpperCase();
+		const newCodeStr = `${prefix}-${randomPart}`;
+
+		z?.current.mutate.accessCodes.insert({
+			id: nanoid(),
+			code: newCodeStr,
+			groupId: group.id,
+			createdById: userId,
+			usesRemaining: oldCode.maxUses,
+			maxUses: oldCode.maxUses,
+			expiresAt: oldCode.expiresAt ? Date.now() + (oldCode.expiresAt - oldCode.createdAt) : null,
+			createdAt: Date.now()
+		});
+
+		generatedCode = newCodeStr;
+		successMessage = `Access code regenerated: "${newCodeStr}"`;
+		setTimeout(() => {
+			successMessage = '';
+			generatedCode = null;
+		}, 5000);
+	}
+
 	function toggleMemberAdmin(memberId: string, currentAdminStatus: boolean) {
 		if (!isAdmin) return;
+
+		const member = allGroupMembers?.current?.find((m) => m.id === memberId);
+		const targetUserId = member?.userId;
 
 		z?.current.mutate.userGroupMembers.update({
 			id: memberId,
 			isAdmin: !currentAdminStatus
 		});
+
+		// Log activity
+		if (targetUserId) {
+			logGroupActivity(!currentAdminStatus ? 'admin_promoted' : 'admin_demoted', targetUserId);
+		}
 
 		successMessage = `Member ${!currentAdminStatus ? 'promoted to' : 'removed from'} admin`;
 		setTimeout(() => {
@@ -149,6 +197,9 @@
 				// DO NOT change subscription_tier - it's independent of group membership
 			});
 
+			// Log activity
+			logGroupActivity('member_removed', memberUserId);
+
 			successMessage = 'Member removed from group';
 			setTimeout(() => {
 				successMessage = '';
@@ -170,6 +221,28 @@
 			return member?.email || '';
 		}
 		return '';
+	}
+
+	function getMemberTier(memberId: string): string {
+		if (z && z.current) {
+			const member = new Query(z.current.query.user.where('id', memberId)).current[0];
+			return member?.subscription_tier || 'free';
+		}
+		return 'free';
+	}
+
+	function logGroupActivity(actionType: string, targetUserId?: string, metadata?: any) {
+		if (!z?.current || !group?.id) return;
+
+		z.current.mutate.groupActivityLog.insert({
+			id: nanoid(),
+			groupId: group.id,
+			actorUserId: userId,
+			actionType: actionType,
+			targetUserId: targetUserId || null,
+			metadata: metadata ? JSON.stringify(metadata) : null,
+			createdAt: Date.now()
+		});
 	}
 
 	function copyToClipboard(text: string) {
@@ -218,21 +291,20 @@
 			}
 		}
 
-		// Check if the invited user exists and has a paid subscription
+		// Allow inviting any user (free or paid)
+		// Free users will see upgrade prompts when accessing group features
 		const invitedUser = z?.current
 			? new Query(z.current.query.user.where('email', email)).current[0]
 			: null;
 
-		// Only paid users (individual or family tier) can be invited to groups
 		if (invitedUser) {
 			const tier = invitedUser.subscription_tier;
 			if (tier !== 'individual' && tier !== 'family') {
-				errorMessage =
-					'Only paid users can be invited to groups. The invited user must upgrade to an Individual ($5/mo) or Family plan first.';
+				// Show info message instead of blocking
+				successMessage = `Invitation sent to ${email}. Note: Free users will need to upgrade to access all group features.`;
 				setTimeout(() => {
-					errorMessage = '';
+					successMessage = '';
 				}, 5000);
-				return;
 			}
 		}
 
@@ -258,9 +330,13 @@
 		event.preventDefault();
 		if (!isAdmin || !group) return;
 
+		const tier = userRecord?.subscription_tier || 'unknown';
+		const tierName =
+			tier === 'individual' ? 'Individual ($5/mo)' : tier === 'family' ? 'Family ($20/mo)' : tier;
+
 		if (
 			!confirm(
-				'Are you sure you want to delete this group? This action cannot be undone and all members will be removed.'
+				`Are you sure you want to delete this group?\n\n⚠️ Important: Your ${tierName} subscription will remain active and you will continue to be billed. Deleting the group does NOT cancel your subscription.\n\nTo cancel your subscription, visit Account Settings > Subscription.\n\nThis action cannot be undone and all members will be removed from the group.`
 			)
 		) {
 			return;
@@ -303,6 +379,19 @@
 		<div class="alert alert-error">{errorMessage}</div>
 	{/if}
 
+	{#if userRecord?.subscription_tier === 'free'}
+		<div class="alert alert-info upgrade-prompt">
+			<strong>🔒 Limited Access:</strong> You're on a free account in this group.
+			<a
+				href="/account/upgrade"
+				style="color: inherit; text-decoration: underline; font-weight: 600;"
+			>
+				Upgrade to Individual ($5/mo)
+			</a>
+			to create your own groups and unlock full collaboration features.
+		</div>
+	{/if}
+
 	{#if !group}
 		<div class="card empty-state">
 			<h2>No Active Group</h2>
@@ -312,6 +401,12 @@
 			</p>
 		</div>
 	{:else}
+		<div class="info-banner subscription-info">
+			💡 <strong>Note:</strong> Your subscription and group membership are independent. Leaving or
+			deleting this group will <strong>not</strong> affect your billing or subscription status. To
+			manage your subscription, visit <a href="/account/subscription">Subscription Settings</a>.
+		</div>
+
 		<!-- Group Info Card -->
 		<div class="card group-info-card">
 			<div class="card-header">
@@ -325,7 +420,17 @@
 						{#if group.groupType === 'individual'}
 							{allGroupMembers?.current?.length ?? 0} members
 						{:else if group.maxMembers}
-							{allGroupMembers?.current?.length ?? 0} / {group.maxMembers}
+							{@const currentCount = allGroupMembers?.current?.length ?? 0}
+							{@const isAlmostFull = currentCount >= group.maxMembers - 1}
+							{@const isFull = currentCount >= group.maxMembers}
+							<span class:warning={isAlmostFull} class:full={isFull}>
+								{currentCount} / {group.maxMembers}
+								{#if isFull}
+									<span class="capacity-badge full">Full</span>
+								{:else if isAlmostFull}
+									<span class="capacity-badge warning">Almost Full</span>
+								{/if}
+							</span>
 						{:else}
 							{allGroupMembers?.current?.length ?? 0} members
 						{/if}
@@ -344,13 +449,30 @@
 
 		<!-- Access Codes Section (Admin Only) -->
 		{#if isAdmin}
+			{@const currentCount = allGroupMembers?.current?.length ?? 0}
+			{@const maxMembers = group?.maxMembers}
+			{@const isFull = maxMembers && currentCount >= maxMembers}
 			<div class="card access-codes-card">
 				<div class="card-header">
 					<h2 class="card-title">Access Codes</h2>
-					<button class="primary-button" onclick={() => (showCodeGenerator = !showCodeGenerator)}>
-						{showCodeGenerator ? 'Cancel' : '+ Generate Code'}
+					<button
+						class="primary-button"
+						onclick={() => (showCodeGenerator = !showCodeGenerator)}
+						disabled={isFull && !showCodeGenerator}
+					>
+						{isFull && !showCodeGenerator
+							? 'Group Full'
+							: showCodeGenerator
+								? 'Cancel'
+								: '+ Generate Code'}
 					</button>
 				</div>
+				{#if isFull}
+					<div class="alert alert-error">
+						<strong>⚠️ Group Full:</strong> Cannot generate new access codes when at capacity ({maxMembers}
+						members).
+					</div>
+				{/if}
 
 				{#if showCodeGenerator}
 					<div class="code-generator">
@@ -425,29 +547,50 @@
 								</thead>
 								<tbody>
 									{#each accessCodes.current as code}
-										<tr class:expired={isCodeExpired(code.expiresAt)}>
+										{@const isExpired = isCodeExpired(code.expiresAt)}
+										{@const isExhausted = code.usesRemaining !== null && code.usesRemaining <= 0}
+										{@const isActive = !isExpired && !isExhausted}
+										<tr class:expired={isExpired} class:exhausted={isExhausted}>
 											<td>
 												<button
 													class="code-cell"
 													onclick={() => copyToClipboard(code.code)}
 													title="Click to copy"
+													disabled={!isActive}
 												>
 													{code.code}
 												</button>
+												{#if isExpired}
+													<span class="status-badge expired">Expired</span>
+												{:else if isExhausted}
+													<span class="status-badge exhausted">No Uses Left</span>
+												{:else}
+													<span class="status-badge active">Active</span>
+												{/if}
 											</td>
 											<td>{getUsageText(code)}</td>
 											<td>
-												{#if isCodeExpired(code.expiresAt)}
-													<span class="expired-badge">Expired</span>
+												{#if isExpired}
+													<span class="expired-text">Expired</span>
 												{:else}
 													{formatDate(code.expiresAt)}
 												{/if}
 											</td>
 											<td>{formatDate(code.createdAt)}</td>
 											<td>
-												<button class="delete-button" onclick={() => deleteAccessCode(code.id)}>
-													Delete
-												</button>
+												<div class="code-actions">
+													{#if !isActive}
+														<button
+															class="regenerate-button"
+															onclick={() => regenerateAccessCode(code)}
+														>
+															Regenerate
+														</button>
+													{/if}
+													<button class="delete-button" onclick={() => deleteAccessCode(code.id)}>
+														Delete
+													</button>
+												</div>
 											</td>
 										</tr>
 									{/each}
@@ -470,6 +613,7 @@
 					{#each allGroupMembers.current as member}
 						{@const memberName = getMemberName(member.userId)}
 						{@const memberEmail = getMemberEmail(member.userId)}
+						{@const memberTier = getMemberTier(member.userId)}
 						{@const isCurrentUser = member.userId === userId}
 						{@const isMemberAdmin = member.isAdmin}
 
@@ -488,6 +632,19 @@
 								<div class="member-meta">
 									<span class="member-role">
 										{isMemberAdmin ? '👑 Admin' : '👤 Member'}
+									</span>
+									<span class="member-tier" class:free-tier={memberTier === 'free'}>
+										{#if memberTier === 'free' && group?.groupType === 'family'}
+											🎁 Guest (via family code)
+										{:else if memberTier === 'free'}
+											Free Account
+										{:else if memberTier === 'individual'}
+											💳 Individual Plan
+										{:else if memberTier === 'family'}
+											👨‍👩‍👧‍👦 Family Plan
+										{:else}
+											{memberTier}
+										{/if}
 									</span>
 									<span class="member-joined">Joined {formatDate(member.joinedAt)}</span>
 								</div>
@@ -517,14 +674,95 @@
 			{/if}
 		</div>
 
+		<!-- Group Activity Log Section -->
+		<div class="card">
+			<h3>📋 Activity Log</h3>
+			{#if groupActivityLogs && groupActivityLogs.current && groupActivityLogs.current.length > 0}
+				{@const sortedLogs = [...groupActivityLogs.current].sort(
+					(a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)
+				)}
+				{@const recentLogs = sortedLogs.slice(0, 50)}
+				<div class="activity-feed">
+					{#each recentLogs as log}
+						{@const actorUser = z?.current
+							? new Query(z.current.query.user.where('id', log.actorUserId)).current[0]
+							: null}
+						{@const actorName = actorUser?.name || actorUser?.email || 'Unknown User'}
+						{@const targetUser =
+							log.targetUserId && z?.current
+								? new Query(z.current.query.user.where('id', log.targetUserId)).current[0]
+								: null}
+						{@const targetName = targetUser?.name || targetUser?.email || 'Unknown User'}
+						<div class="activity-item">
+							<div class="activity-icon">
+								{#if log.actionType === 'member_added'}
+									➕
+								{:else if log.actionType === 'member_removed'}
+									➖
+								{:else if log.actionType === 'admin_promoted'}
+									👑
+								{:else if log.actionType === 'admin_demoted'}
+									👤
+								{:else if log.actionType === 'access_code_generated'}
+									🔑
+								{:else}
+									📝
+								{/if}
+							</div>
+							<div class="activity-content">
+								<div class="activity-description">
+									<strong>{actorName}</strong>
+									{#if log.actionType === 'member_added'}
+										added <strong>{targetName}</strong> to the group
+									{:else if log.actionType === 'member_removed'}
+										removed <strong>{targetName}</strong> from the group
+									{:else if log.actionType === 'admin_promoted'}
+										promoted <strong>{targetName}</strong> to admin
+									{:else if log.actionType === 'admin_demoted'}
+										removed admin from <strong>{targetName}</strong>
+									{:else if log.actionType === 'access_code_generated'}
+										generated a new access code
+										{#if log.metadata}
+											{@const meta = JSON.parse(log.metadata)}
+											{#if meta.codeType === 'personal'}
+												(personal)
+											{:else if meta.codeType === 'family'}
+												(family, max uses: {meta.maxUses})
+											{/if}
+										{/if}
+									{:else}
+										performed action: {log.actionType}
+									{/if}
+								</div>
+								<div class="activity-timestamp">
+									{formatDate(log.createdAt)}
+								</div>
+							</div>
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<p class="empty-message">No activity recorded yet.</p>
+			{/if}
+		</div>
+
 		<!-- Email-based Invite Members Section (Admin Only) -->
 		{#if isAdmin}
+			{@const currentCount = allGroupMembers?.current?.length ?? 0}
+			{@const maxMembers = group?.maxMembers}
+			{@const isFull = maxMembers && currentCount >= maxMembers}
 			<div class="card invite-members-card">
 				<h2 class="card-title">Invite Members by Email</h2>
 				<p class="card-description">Send direct email invitations to specific users.</p>
+				{#if isFull}
+					<div class="alert alert-error">
+						<strong>⚠️ Group Full:</strong> This group has reached its maximum capacity ({maxMembers}
+						members). Remove a member before inviting new ones.
+					</div>
+				{/if}
 				<div class="info-banner">
-					<strong>Note:</strong> Only paid users (Individual or Family plan) can be invited to groups.
-					Free users must upgrade to Individual ($5/mo) before accepting an invitation.
+					<strong>Note:</strong> Free users can now be invited and will see upgrade prompts for full
+					access.
 				</div>
 				<form onsubmit={inviteMemberByEmail} class="invite-form">
 					<div class="input-group">
@@ -535,9 +773,12 @@
 							name="email"
 							placeholder="colleague@example.com"
 							required
+							disabled={isFull}
 						/>
 					</div>
-					<button class="primary-button" type="submit">Send Invitation</button>
+					<button class="primary-button" type="submit" disabled={isFull}>
+						{isFull ? 'Group Full' : 'Send Invitation'}
+					</button>
 				</form>
 			</div>
 
@@ -1070,6 +1311,194 @@
 		background: #b8184a;
 		transform: translateY(-1px);
 		box-shadow: var(--level-2);
+	}
+
+	/* Capacity Indicators */
+	.capacity-badge {
+		display: inline-block;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		font-weight: 600;
+		margin-left: 0.5rem;
+	}
+
+	.capacity-badge.warning {
+		background: rgba(255, 165, 0, 0.2);
+		color: #ff8c00;
+	}
+
+	.capacity-badge.full {
+		background: rgba(220, 38, 38, 0.2);
+		color: #dc2626;
+	}
+
+	.stat-value .warning {
+		color: #ff8c00;
+	}
+
+	.stat-value .full {
+		color: #dc2626;
+	}
+
+	.alert-info.upgrade-prompt {
+		background: rgba(59, 130, 246, 0.1);
+		border-left: 3px solid #3b82f6;
+		color: var(--textColor);
+	}
+
+	/* Access Code Status Badges */
+	.status-badge {
+		display: inline-block;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.7rem;
+		font-weight: 600;
+		margin-left: 0.5rem;
+		text-transform: uppercase;
+	}
+
+	.status-badge.active {
+		background: rgba(34, 197, 94, 0.2);
+		color: #16a34a;
+	}
+
+	.status-badge.expired {
+		background: rgba(220, 38, 38, 0.2);
+		color: #dc2626;
+	}
+
+	.status-badge.exhausted {
+		background: rgba(251, 146, 60, 0.2);
+		color: #ea580c;
+	}
+
+	tr.expired {
+		opacity: 0.6;
+	}
+
+	tr.exhausted {
+		opacity: 0.7;
+	}
+
+	.expired-text {
+		color: #dc2626;
+		font-weight: 600;
+	}
+
+	.code-cell:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.code-actions {
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.regenerate-button {
+		padding: 0.5rem 0.875rem;
+		background: #3b82f6;
+		color: white;
+		border: none;
+		border-radius: 6px;
+		font-size: 0.875rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.regenerate-button:hover {
+		background: #2563eb;
+	}
+
+	.alert-error {
+		background: rgba(220, 38, 38, 0.1);
+		border-left: 3px solid #dc2626;
+		padding: 0.875rem 1rem;
+		border-radius: 6px;
+		margin-bottom: 1rem;
+		color: var(--textColor);
+	}
+
+	/* Member Tier Display */
+	.member-tier {
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		font-weight: 600;
+		background: rgba(59, 130, 246, 0.15);
+		color: #3b82f6;
+	}
+
+	.member-tier.free-tier {
+		background: rgba(156, 163, 175, 0.15);
+		color: #6b7280;
+	}
+
+	.subscription-info {
+		background: rgba(147, 197, 253, 0.15);
+		border-left: 3px solid #3b82f6;
+	}
+
+	.subscription-info a {
+		color: #3b82f6;
+		font-weight: 600;
+		text-decoration: underline;
+	}
+
+	/* Activity Log Styles */
+	.activity-feed {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		max-height: 600px;
+		overflow-y: auto;
+	}
+
+	.activity-item {
+		display: flex;
+		gap: 0.875rem;
+		padding: 0.875rem;
+		background: var(--cardBackground);
+		border: 1px solid rgba(255, 255, 255, 0.05);
+		border-radius: 8px;
+		transition: all 0.2s ease;
+	}
+
+	.activity-item:hover {
+		background: rgba(255, 255, 255, 0.02);
+		border-color: rgba(255, 255, 255, 0.1);
+	}
+
+	.activity-icon {
+		font-size: 1.5rem;
+		line-height: 1;
+		flex-shrink: 0;
+	}
+
+	.activity-content {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.activity-description {
+		font-size: 0.9375rem;
+		color: var(--textColor);
+		line-height: 1.5;
+	}
+
+	.activity-description strong {
+		font-weight: 600;
+		color: #60a5fa;
+	}
+
+	.activity-timestamp {
+		font-size: 0.8125rem;
+		color: rgba(255, 255, 255, 0.5);
 	}
 
 	@media (max-width: 768px) {

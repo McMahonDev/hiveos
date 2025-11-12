@@ -245,6 +245,18 @@ const accessCodes = table('accessCodes')
 	})
 	.primaryKey('id');
 
+const groupActivityLog = table('groupActivityLog')
+	.columns({
+		id: string(),
+		groupId: string(), // Reference to userGroups
+		actorUserId: string(), // User who performed the action
+		actionType: string(), // 'member_added', 'member_removed', 'admin_promoted', 'admin_demoted', 'access_code_generated', 'group_settings_changed'
+		targetUserId: string().optional(), // User affected by the action (if applicable)
+		metadata: string().optional(), // JSON string with additional data
+		createdAt: number() // When the action occurred
+	})
+	.primaryKey('id');
+
 // Comparison tool tables
 const comparisons = table('comparisons')
 	.columns({
@@ -421,6 +433,24 @@ const accessCodesRelationships = relationships(accessCodes, ({ one }) => ({
 	})
 }));
 
+const groupActivityLogRelationships = relationships(groupActivityLog, ({ one }) => ({
+	group: one({
+		sourceField: ['groupId'],
+		destSchema: userGroups,
+		destField: ['id']
+	}),
+	actor: one({
+		sourceField: ['actorUserId'],
+		destSchema: user,
+		destField: ['id']
+	}),
+	target: one({
+		sourceField: ['targetUserId'],
+		destSchema: user,
+		destField: ['id']
+	})
+}));
+
 const comparisonsRelationships = relationships(comparisons, ({ one }) => ({
 	createdBy: one({
 		sourceField: ['createdById'],
@@ -489,6 +519,7 @@ export const schema = createSchema({
 		customListItems,
 		viewModeCategories,
 		accessCodes,
+		groupActivityLog,
 		comparisons,
 		comparisonCriteria,
 		comparisonItems,
@@ -506,6 +537,7 @@ export const schema = createSchema({
 		customListItemRelationships,
 		viewModeCategoriesRelationships,
 		accessCodesRelationships,
+		groupActivityLogRelationships,
 		comparisonsRelationships,
 		comparisonCriteriaRelationships,
 		comparisonItemsRelationships,
@@ -528,6 +560,7 @@ export type CustomList = Row<typeof schema.tables.customLists>;
 export type CustomListItem = Row<typeof schema.tables.customListItems>;
 export type ViewModeCategory = Row<typeof schema.tables.viewModeCategories>;
 export type AccessCode = Row<typeof schema.tables.accessCodes>;
+export type GroupActivityLog = Row<typeof schema.tables.groupActivityLog>;
 export type Comparison = Row<typeof schema.tables.comparisons>;
 export type ComparisonCriterion = Row<typeof schema.tables.comparisonCriteria>;
 export type ComparisonItem = Row<typeof schema.tables.comparisonItems>;
@@ -626,6 +659,12 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 		authData: AuthData,
 		{ cmp }: ExpressionBuilder<Schema, 'accessCodes'>
 	) => cmp('createdById', '=', authData.sub);
+
+	// GroupActivityLog - viewable by group members
+	const canViewGroupActivityLog = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'groupActivityLog'>
+	) => (authData.groupId ? cmp('groupId', '=', authData.groupId) : cmp('id', '=', '__never__'));
 
 	// Comparisons - user must be creator OR it's shared with their group
 	const isComparisonCreator = (
@@ -770,6 +809,17 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 					postMutation: [isAccessCodeCreator]
 				},
 				delete: [isAccessCodeCreator] // Only creator/admin can delete
+			}
+		},
+		groupActivityLog: {
+			row: {
+				select: [canViewGroupActivityLog], // Only group members can view
+				insert: ANYONE_CAN, // System can log activities
+				update: {
+					preMutation: [], // Activity logs are immutable - deny all updates
+					postMutation: []
+				},
+				delete: [canViewGroupActivityLog] // Group members can delete old logs
 			}
 		},
 		comparisons: {

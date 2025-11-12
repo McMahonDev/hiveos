@@ -100,6 +100,12 @@
 <div class="auth-container">
 	<h1>Login</h1>
 
+	<div class="info-banner free-tier-warning">
+		<strong>ℹ️ Free Account Notice:</strong> Free accounts are limited to one active device. Logging
+		in here will automatically log you out from other devices.
+		<a href="/account/upgrade">Upgrade to Individual ($5/mo)</a> for multi-device access.
+	</div>
+
 	{#if successMessage}
 		<div class="auth-success">{successMessage}</div>
 	{/if}
@@ -208,5 +214,22 @@
 		color: #2e7d32;
 		border-radius: 8px;
 		font-weight: 500;
+	}
+
+	.free-tier-warning {
+		background: rgba(59, 130, 246, 0.1);
+		border: 1px solid rgba(59, 130, 246, 0.3);
+		border-radius: 8px;
+		padding: 1rem;
+		margin-bottom: 1.5rem;
+		font-size: 0.9rem;
+		line-height: 1.5;
+		color: var(--textColor, #333);
+	}
+
+	.free-tier-warning a {
+		color: #3b82f6;
+		font-weight: 600;
+		text-decoration: underline;
 	}
 </style>

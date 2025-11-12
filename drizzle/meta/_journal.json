@@ -162,6 +162,13 @@
       "when": 1762962806748,
       "tag": "0022_shocking_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1762974582871,
+      "tag": "0023_wooden_machine_man",
+      "breakpoints": true
     }
   ]
 }
