@@ -83,10 +83,9 @@
 		// set or clear the Query instance when auth / z.current changes
 		if (auth && z?.current) {
 			// Filter custom lists by current view mode
+			// Note: permissions in zero-schema.ts control who can see what
 			const viewMode = viewModeState.currentMode;
-			customLists = new Query(
-				z.current.query.customLists.where('createdById', data.id).where('viewMode', viewMode)
-			);
+			customLists = new Query(z.current.query.customLists.where('viewMode', viewMode));
 		} else {
 			customLists = undefined;
 		}
@@ -99,22 +98,24 @@
 		const formData = new FormData(e.target as HTMLFormElement);
 		const listName = formData.get('list-name');
 		const id = nanoid();
+		const listData = {
+			id,
+			name: listName as string,
+			createdById: data.id,
+			createdAt: Date.now(),
+			viewMode: viewModeState.currentMode,
+			listType: selectedListType,
+			groupId: viewModeState.currentMode === 'shared' ? data.groupId : null
+		};
 		z?.current?.mutate.customLists
-			.insert({
-				id,
-				name: listName as string,
-				createdById: data.id,
-				createdAt: Date.now(),
-				viewMode: viewModeState.currentMode,
-				listType: selectedListType
-			})
+			.insert(listData)
 			.then(() => {
 				(e.target as HTMLFormElement).reset();
 				selectedListType = 'basic'; // Reset to default
 				goto(`/custom-list/${id}`);
 			})
 			.catch((err) => {
-				console.error('insert failed', err);
+				console.error('List insert failed:', err);
 			});
 	}
 </script>

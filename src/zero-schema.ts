@@ -176,7 +176,8 @@ const customLists = table('customLists')
 		createdById: string(),
 		createdAt: number(),
 		viewMode: string(), // 'personal', 'shared', or custom category ID
-		listType: string() // 'basic', 'shopping', 'events', 'tasks', 'recipe', 'messages', 'contacts', 'bookmarks'
+		listType: string(), // 'basic', 'shopping', 'events', 'tasks', 'recipe', 'messages', 'contacts', 'bookmarks'
+		groupId: string().optional() // The group this list belongs to (for shared lists)
 	})
 	.primaryKey('id');
 
@@ -189,6 +190,7 @@ const customListItems = table('customListItems')
 		customListId: string(),
 		createdAt: number(),
 		viewMode: string(), // 'personal', 'shared', or custom category ID
+		groupId: string().optional(), // The group this item belongs to (for shared items)
 		// Shopping list fields
 		store: string().optional(),
 		// Events fields
@@ -579,17 +581,39 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 		{ cmp }: ExpressionBuilder<Schema, 'userGroupMembers'>
 	) => cmp('userGroupCreatorId', '=', authData.sub);
 
-	// Custom lists permissions - user must be creator OR assigned to it
+	// Custom lists permissions - user must be creator OR it's shared with their group
 	const isCustomListCreator = (
 		authData: AuthData,
 		{ cmp }: ExpressionBuilder<Schema, 'customLists'>
 	) => cmp('createdById', '=', authData.sub);
+
+	const canViewOrMutateCustomList = (
+		authData: AuthData,
+		{ or, cmp, and }: ExpressionBuilder<Schema, 'customLists'>
+	) =>
+		or(
+			cmp('createdById', '=', authData.sub),
+			authData.groupId
+				? and(cmp('viewMode', '=', 'shared'), cmp('groupId', '=', authData.groupId))
+				: cmp('id', '=', '__never__')
+		);
 
 	// Custom list items - must have access to parent list
 	const isCustomListItemCreator = (
 		authData: AuthData,
 		{ cmp }: ExpressionBuilder<Schema, 'customListItems'>
 	) => cmp('createdById', '=', authData.sub);
+
+	const canViewOrMutateCustomListItem = (
+		authData: AuthData,
+		{ or, cmp, and }: ExpressionBuilder<Schema, 'customListItems'>
+	) =>
+		or(
+			cmp('createdById', '=', authData.sub),
+			authData.groupId
+				? and(cmp('viewMode', '=', 'shared'), cmp('groupId', '=', authData.groupId))
+				: cmp('id', '=', '__never__')
+		);
 
 	// ViewModeCategories - user must be the owner
 	const isViewModeCategoryOwner = (
@@ -706,24 +730,24 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 		},
 		customLists: {
 			row: {
-				select: [isCustomListCreator],
-				insert: [isCustomListCreator],
+				select: [canViewOrMutateCustomList],
+				insert: [canViewOrMutateCustomList],
 				update: {
-					preMutation: [isCustomListCreator],
-					postMutation: [isCustomListCreator]
+					preMutation: [canViewOrMutateCustomList],
+					postMutation: [canViewOrMutateCustomList]
 				},
 				delete: [isCustomListCreator]
 			}
 		},
 		customListItems: {
 			row: {
-				select: [isCustomListItemCreator],
-				insert: [isCustomListItemCreator],
+				select: [canViewOrMutateCustomListItem],
+				insert: [canViewOrMutateCustomListItem],
 				update: {
-					preMutation: [isCustomListItemCreator],
-					postMutation: [isCustomListItemCreator]
+					preMutation: [canViewOrMutateCustomListItem],
+					postMutation: [canViewOrMutateCustomListItem]
 				},
-				delete: [isCustomListItemCreator]
+				delete: [canViewOrMutateCustomListItem]
 			}
 		},
 		viewModeCategories: {

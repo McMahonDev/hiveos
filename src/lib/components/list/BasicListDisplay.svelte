@@ -10,9 +10,10 @@
 		listId: string;
 		userId: string;
 		viewMode: string;
+		groupId: string;
 	}
 
-	let { customListItems, z, listId, userId, viewMode }: Props = $props();
+	let { customListItems, z, listId, userId, viewMode, groupId }: Props = $props();
 
 	let addModal = $state(false);
 
@@ -28,7 +29,8 @@
 			customListId: listId,
 			createdById: userId,
 			createdAt: Date.now(),
-			viewMode: viewMode
+			viewMode: viewMode,
+			groupId: viewMode === 'shared' ? groupId : null
 		};
 
 		z?.current.mutate.customListItems.insert(itemData);

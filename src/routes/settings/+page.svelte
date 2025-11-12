@@ -42,9 +42,7 @@
 	// Query list counts for each view mode
 	function getListCount(viewMode: string): number {
 		if (!z?.current) return 0;
-		const lists = new Query(
-			z.current.query.customLists.where('createdById', id).where('viewMode', viewMode)
-		);
+		const lists = new Query(z.current.query.customLists.where('viewMode', viewMode));
 		return lists.current?.length || 0;
 	}
 </script>

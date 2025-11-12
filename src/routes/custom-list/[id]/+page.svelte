@@ -18,9 +18,7 @@
 	const id = data.id;
 	const groupId = data.groupId;
 
-	let customList = $derived(
-		z ? new Query(z?.current.query.customLists.where('id', listId).where('createdById', id)) : null
-	);
+	let customList = $derived(z ? new Query(z?.current.query.customLists.where('id', listId)) : null);
 
 	let listType = $derived(customList?.current?.[0]?.listType || 'basic');
 
@@ -127,6 +125,7 @@
 					{z}
 					{listId}
 					userId={id}
+					{groupId}
 					viewMode={viewModeState.currentMode}
 				/>
 			{:else if listType === 'basic'}
@@ -135,6 +134,7 @@
 					{z}
 					{listId}
 					userId={id}
+					{groupId}
 					viewMode={viewModeState.currentMode}
 				/>
 			{:else if listType === 'tasks'}
@@ -143,6 +143,7 @@
 					{z}
 					{listId}
 					userId={id}
+					{groupId}
 					viewMode={viewModeState.currentMode}
 				/>
 			{:else if listType === 'events'}
@@ -151,6 +152,7 @@
 					{z}
 					{listId}
 					userId={id}
+					{groupId}
 					viewMode={viewModeState.currentMode}
 				/>
 			{:else if listType === 'recipe'}
@@ -159,6 +161,7 @@
 					{z}
 					{listId}
 					userId={id}
+					{groupId}
 					viewMode={viewModeState.currentMode}
 				/>
 			{:else if listType === 'messages'}
@@ -167,6 +170,7 @@
 					{z}
 					{listId}
 					userId={id}
+					{groupId}
 					viewMode={viewModeState.currentMode}
 				/>
 			{:else if listType === 'contacts'}
@@ -175,6 +179,7 @@
 					{z}
 					{listId}
 					userId={id}
+					{groupId}
 					viewMode={viewModeState.currentMode}
 				/>
 			{:else if listType === 'bookmarks'}
@@ -183,6 +188,7 @@
 					{z}
 					{listId}
 					userId={id}
+					{groupId}
 					viewMode={viewModeState.currentMode}
 				/>
 			{/if}
