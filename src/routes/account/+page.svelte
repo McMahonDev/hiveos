@@ -781,11 +781,11 @@
 		</div>
 
 		<!-- Access Code Card (for users not in a group) -->
-		{#if !groupId && (user?.current[0]?.subscription_tier === 'free' || user?.current[0]?.subscription_tier === 'individual')}
+		{#if !groupId || groupId === '' || groupId === userId}
 			<div class="card access-code-card">
 				<h2 class="card-title">Join with Access Code</h2>
 				<p class="card-description">
-					{#if user?.current[0]?.subscription_tier === 'free'}
+					{#if user?.current[0]?.subscription_tier === 'free' || !user?.current[0]?.subscription_tier}
 						Have an access code from a family group? Enter it below to join for free!
 					{:else}
 						Have an access code? Enter it below to join a group.
