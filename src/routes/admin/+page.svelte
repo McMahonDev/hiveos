@@ -145,6 +145,38 @@
 		</div>
 	</div>
 
+	<!-- Testing Tools -->
+	<div class="testing-tools">
+		<h2>🧪 Testing Tools</h2>
+		<div class="tool-card">
+			<h3>Force Account Downgrade</h3>
+			<p class="tool-description">
+				Instantly downgrade a paid account to free tier for testing purposes. This bypasses the
+				<code>currentPeriodEnd</code> date and immediately sets the account to free tier. Use this to
+				test edge cases like what happens when a family admin downgrades or when a group member loses
+				their subscription.
+			</p>
+			<form method="POST" action="?/forceDowngrade" class="downgrade-form">
+				<div class="form-group">
+					<label for="userId">User ID to Downgrade:</label>
+					<input
+						type="text"
+						id="userId"
+						name="userId"
+						placeholder="Enter user ID"
+						required
+						class="form-input"
+					/>
+				</div>
+				<button type="submit" class="danger-button">⚡ Force Downgrade to Free</button>
+			</form>
+			<div class="warning-box">
+				<strong>⚠️ Warning:</strong> This action immediately changes the user's subscription to free
+				tier. Use only in testing/development environments.
+			</div>
+		</div>
+	</div>
+
 	<!-- Recent Users -->
 	<div class="recent-users">
 		<h2>Recent Users</h2>
@@ -152,6 +184,7 @@
 			<table>
 				<thead>
 					<tr>
+						<th>User ID</th>
 						<th>Name</th>
 						<th>Email</th>
 						<th>Tier</th>
@@ -161,6 +194,9 @@
 				<tbody>
 					{#each analytics.recentUsers as user}
 						<tr>
+							<td>
+								<code class="user-id">{user.id}</code>
+							</td>
 							<td>{user.name}</td>
 							<td>{user.email}</td>
 							<td>
@@ -310,6 +346,107 @@
 		padding: 20px;
 	}
 
+	/* Testing Tools */
+	.testing-tools {
+		background: var(--level-1);
+		border-radius: 12px;
+		padding: 24px;
+		box-shadow: var(--level-2);
+		margin-bottom: 30px;
+		border: 2px solid #f59e0b;
+	}
+
+	.testing-tools h2 {
+		margin: 0 0 20px 0;
+		font-size: 1.25rem;
+		color: var(--text-primary);
+	}
+
+	.tool-card {
+		background: var(--level-2);
+		border-radius: 8px;
+		padding: 20px;
+	}
+
+	.tool-card h3 {
+		margin: 0 0 12px 0;
+		font-size: 1.1rem;
+		color: var(--text-primary);
+	}
+
+	.tool-description {
+		color: var(--text-secondary);
+		margin-bottom: 20px;
+		line-height: 1.6;
+	}
+
+	.tool-description code {
+		background: var(--level-3);
+		padding: 2px 6px;
+		border-radius: 4px;
+		font-family: monospace;
+		font-size: 0.9em;
+	}
+
+	.downgrade-form {
+		margin-bottom: 16px;
+	}
+
+	.form-group {
+		margin-bottom: 16px;
+	}
+
+	.form-group label {
+		display: block;
+		margin-bottom: 8px;
+		font-weight: 600;
+		color: var(--text-primary);
+	}
+
+	.form-input {
+		width: 100%;
+		padding: 12px;
+		border: 1px solid var(--level-3);
+		border-radius: 6px;
+		background: var(--level-1);
+		color: var(--text-primary);
+		font-size: 1rem;
+		font-family: monospace;
+	}
+
+	.form-input:focus {
+		outline: none;
+		border-color: #3b82f6;
+	}
+
+	.danger-button {
+		background: #dc2626;
+		color: white;
+		border: none;
+		padding: 12px 24px;
+		border-radius: 8px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.danger-button:hover {
+		background: #b91c1c;
+		transform: translateY(-1px);
+	}
+
+	.warning-box {
+		background: rgba(245, 158, 11, 0.1);
+		border: 1px solid #f59e0b;
+		border-radius: 6px;
+		padding: 12px;
+		color: var(--text-primary);
+	}
+
+	.warning-box strong {
+		color: #f59e0b;
+	}
+
 	/* Recent Users Table */
 	.recent-users {
 		background: var(--level-1);
@@ -322,6 +459,15 @@
 		margin: 0 0 20px 0;
 		font-size: 1.25rem;
 		color: var(--text-primary);
+	}
+
+	.user-id {
+		font-family: monospace;
+		font-size: 0.8rem;
+		background: var(--level-2);
+		padding: 4px 8px;
+		border-radius: 4px;
+		color: #60a5fa;
 	}
 
 	.users-table {

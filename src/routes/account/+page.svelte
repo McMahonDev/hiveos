@@ -164,6 +164,19 @@
 
 	function deleteGroup(event: Event) {
 		event.preventDefault();
+
+		const tier = user?.current?.[0]?.subscription_tier || 'unknown';
+		const tierName =
+			tier === 'individual' ? 'Individual ($5/mo)' : tier === 'family' ? 'Family ($20/mo)' : tier;
+
+		if (
+			!confirm(
+				`Are you sure you want to delete this group?\n\n⚠️ Important: Your ${tierName} subscription will remain active and you will continue to be billed. Deleting the group does NOT cancel your subscription.\n\nTo cancel your subscription, visit the Subscription page.\n\nThis action cannot be undone.`
+			)
+		) {
+			return;
+		}
+
 		if (group?.current[0]?.id) {
 			z?.current.mutate.userGroups.delete({ id: group.current[0]?.id });
 			const memberId = userGroupMembers?.current[0]?.id;
@@ -201,24 +214,22 @@
 			}
 		}
 
-		// Check if the invited user exists and has a paid subscription
+		// Allow inviting any user (free or paid)
+		// Free users will see upgrade prompts when trying to access group features
 		const invitedUser = z?.current
 			? new Query(z.current.query.user.where('email', email)).current[0]
 			: null;
 
-		// Only paid users (individual or family tier) can be invited to groups
 		if (invitedUser) {
 			const tier = invitedUser.subscription_tier;
 			if (tier !== 'individual' && tier !== 'family') {
-				alert(
-					'Only paid users can be invited to groups. The invited user must upgrade to an Individual ($5/mo) or Family plan first.'
+				// Warn but allow the invitation
+				console.log(
+					'Inviting free user:',
+					email,
+					'- they will need to upgrade to access group features'
 				);
-				return;
 			}
-		} else {
-			// User doesn't exist yet - they'll need to sign up with a paid plan
-			// We can still send the invite, but they'll need to upgrade when accepting
-			console.log('Inviting non-existent user:', email, '- they must sign up with a paid plan');
 		}
 
 		const id = nanoid();
@@ -236,14 +247,10 @@
 	function acceptRequest(event: Event) {
 		event.preventDefault();
 
-		// Check if user has a paid subscription before accepting
+		// Free users can accept invitations, but will see upgrade prompts
+		// No longer blocking group join for free users
 		const currentTier = user?.current?.[0]?.subscription_tier;
-		if (currentTier !== 'individual' && currentTier !== 'family') {
-			alert(
-				'You must have a paid subscription (Individual $5/mo or Family plan) to join a group. Please upgrade your account first.'
-			);
-			return;
-		}
+		const isFreeUser = currentTier !== 'individual' && currentTier !== 'family';
 
 		const target = event?.target as HTMLElement;
 		const requestId = target?.closest('li')?.dataset.id;
@@ -941,12 +948,31 @@
 				</div>
 				<p class="card-description">Overview of your group's activity and members.</p>
 				<div class="stats-grid">
-					<div class="stat-box">
-						<div class="stat-info">
-							<span class="stat-number">{allGroupMembers?.current?.length ?? 0}</span>
-							<span class="stat-label">Members</span>
+					{#if allGroupMembers && group?.current[0]}
+						{@const currentCount = allGroupMembers?.current?.length ?? 0}
+						{@const maxMembers = group?.current[0]?.maxMembers}
+						{@const isAlmostFull = maxMembers && currentCount >= maxMembers - 1}
+						{@const isFull = maxMembers && currentCount >= maxMembers}
+						<div class="stat-box">
+							<div class="stat-info">
+								<span class="stat-number" class:warning={isAlmostFull} class:full={isFull}>
+									{#if maxMembers}
+										{currentCount} / {maxMembers}
+									{:else}
+										{currentCount}
+									{/if}
+								</span>
+								<span class="stat-label">
+									Members
+									{#if isFull}
+										<span class="capacity-badge-small full">Full</span>
+									{:else if isAlmostFull}
+										<span class="capacity-badge-small warning">Almost Full</span>
+									{/if}
+								</span>
+							</div>
 						</div>
-					</div>
+					{/if}
 					<!-- <div class="stat-box">
 						<div class="stat-info">
 							<span class="stat-number">{groupEvents?.current?.length ?? 0}</span>
@@ -1754,6 +1780,34 @@
 		background: var(--level-2);
 		border-color: var(--primary);
 		color: var(--primary);
+	}
+
+	/* Capacity Indicators */
+	.capacity-badge-small {
+		display: inline-block;
+		padding: 0.2rem 0.4rem;
+		border-radius: 3px;
+		font-size: 0.7rem;
+		font-weight: 600;
+		margin-left: 0.5rem;
+	}
+
+	.capacity-badge-small.warning {
+		background: rgba(255, 165, 0, 0.2);
+		color: #ff8c00;
+	}
+
+	.capacity-badge-small.full {
+		background: rgba(220, 38, 38, 0.2);
+		color: #dc2626;
+	}
+
+	.stat-number.warning {
+		color: #ff8c00;
+	}
+
+	.stat-number.full {
+		color: #dc2626;
 	}
 
 	/* Responsive adjustments */

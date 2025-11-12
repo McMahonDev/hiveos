@@ -141,6 +141,16 @@ export const accessCodes = pgTable('accessCodes', {
 	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
 });
 
+export const groupActivityLog = pgTable('groupActivityLog', {
+	id: text('id').primaryKey(),
+	groupId: text('groupId').notNull(),
+	actorUserId: text('actorUserId').notNull(),
+	actionType: text('actionType').notNull(),
+	targetUserId: text('targetUserId'),
+	metadata: text('metadata'),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
+});
+
 // --- Comparison Tool Tables ---
 export const comparisons = pgTable('comparisons', {
 	id: text('id').primaryKey(),
