@@ -60,7 +60,29 @@
 	};
 
 	const tier = $derived(user?.subscription_tier || 'free');
-	const info = $derived(tierInfo[tier] || tierInfo.free);
+	const isInGroup = $derived(!!user?.active_group_id && user.active_group_id !== user.id);
+	const isFamilyGuest = $derived(tier === 'free' && isInGroup);
+
+	// Special info for family guests
+	const displayInfo = $derived(() => {
+		if (isFamilyGuest) {
+			return {
+				name: 'Family Guest',
+				color: '#7b1fa2',
+				bgColor: '#f3e5f5',
+				features: [
+					'Access to group features',
+					'Free via family access code',
+					'Sync with group members',
+					'Real-time collaboration'
+				],
+				price: 'Free (via family)'
+			};
+		}
+		return tierInfo[tier] || tierInfo.free;
+	});
+
+	const info = $derived(displayInfo());
 	const isFreeTier = $derived(tier === 'free');
 	const isPaidTier = $derived(tier === 'individual' || tier === 'family');
 
@@ -93,7 +115,18 @@
 		{/each}
 	</ul>
 
-	{#if isFreeTier && user?.active_group_id}
+	{#if isFamilyGuest}
+		<div class="status-explainer">
+			<h4>Your Access Status</h4>
+			<p>You're a guest in a family group and have free access to group features.</p>
+			<ul class="status-list">
+				<li>✓ No payment required</li>
+				<li>✓ Full group collaboration access</li>
+				<li>ℹ️ Access ends if you leave the group</li>
+			</ul>
+			<p class="upgrade-note">Want to create your own groups? Upgrade to Individual plan.</p>
+		</div>
+	{:else if isFreeTier && user?.active_group_id}
 		<div class="group-notice">
 			<p>✨ You're in a group! Upgrade to Individual to create your own groups and collaborate.</p>
 		</div>
@@ -179,6 +212,47 @@
 		color: #1565c0;
 		font-size: 0.9rem;
 		line-height: 1.5;
+	}
+
+	.status-explainer {
+		background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+		border: 2px solid #7b1fa2;
+		border-radius: 8px;
+		padding: 1rem;
+		margin: 1rem 0 0 0;
+	}
+
+	.status-explainer h4 {
+		margin: 0 0 0.5rem 0;
+		color: #7b1fa2;
+		font-size: 1rem;
+	}
+
+	.status-explainer p {
+		margin: 0.5rem 0;
+		color: #4a148c;
+		font-size: 0.9rem;
+		line-height: 1.5;
+	}
+
+	.status-list {
+		list-style: none;
+		padding: 0;
+		margin: 0.75rem 0;
+	}
+
+	.status-list li {
+		padding: 0.25rem 0;
+		color: #4a148c;
+		font-size: 0.875rem;
+	}
+
+	.upgrade-note {
+		margin-top: 0.75rem;
+		padding-top: 0.75rem;
+		border-top: 1px solid rgba(123, 31, 162, 0.3);
+		font-weight: 600;
+		font-size: 0.875rem;
 	}
 
 	.tier-actions {
