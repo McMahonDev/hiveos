@@ -52,9 +52,10 @@
 	$effect(() => {
 		if (z?.current) {
 			// Get all event-type custom lists for current view mode
+			// Zero permissions handle filtering - will show lists created by user
+			// OR shared lists belonging to their group
 			eventLists = new Query(
 				z.current.query.customLists
-					.where('createdById', data.id)
 					.where('viewMode', viewModeState.currentMode)
 					.where('listType', 'events')
 			);
@@ -75,11 +76,11 @@
 
 	$effect(() => {
 		if (z?.current) {
-			// Query ALL custom list items for the current user/view mode
-			// We'll filter by event list IDs client-side
+			// Query ALL custom list items for the current view mode
+			// Zero permissions handle filtering - will show items created by user
+			// OR items from shared lists belonging to their group
 			events = new Query(
 				z.current.query.customListItems
-					.where('createdById', data.id)
 					.where('viewMode', viewModeState.currentMode)
 					.orderBy('date', 'asc')
 			);
