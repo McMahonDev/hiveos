@@ -52,7 +52,6 @@ export async function load({ request, url }) {
 				.from(userGroupMembers)
 				.where(eq(userGroupMembers.userId, session.user.id))
 				.limit(1);
-			console.log('User group membership:', userGroupMembership);
 
 			// If user is in a group, use that groupId, otherwise use userId as groupId
 			groupId = userGroupMembership[0]?.userGroupId || session.user.id;
@@ -62,9 +61,6 @@ export async function load({ request, url }) {
 			if (userData[0]) {
 				name = userData[0].name;
 				isSuperadmin = userData[0].superadmin || false;
-			} else {
-				// If no user data is found, fall back to session user
-				console.log('No user data found, falling back to session user');
 			}
 
 			// Sign JWT after computing groupId so the token's auth payload includes groupId
@@ -81,23 +77,6 @@ export async function load({ request, url }) {
 					expiresIn: '24h'
 				}
 			);
-			try {
-				const eventsForGroup = await db
-					.select()
-					.from(events)
-					.where(eq(events.assignedToId, groupId))
-					.limit(5);
-				console.log(
-					'DEBUG events assigned to group',
-					groupId,
-					'count:',
-					eventsForGroup.length,
-					'sample:',
-					eventsForGroup.map((e) => ({ id: e.id, assignedToId: e.assignedToId })).slice(0, 3)
-				);
-			} catch (err) {
-				console.error('DEBUG: error querying events for groupId', groupId, err);
-			}
 
 			// Create default lists if they don't exist for this user
 			try {

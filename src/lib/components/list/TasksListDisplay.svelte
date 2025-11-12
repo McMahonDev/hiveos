@@ -10,9 +10,10 @@
 		listId: string;
 		userId: string;
 		viewMode: string;
+		groupId: string;
 	}
 
-	let { customListItems, z, listId, userId, viewMode }: Props = $props();
+	let { customListItems, z, listId, userId, viewMode, groupId }: Props = $props();
 
 	let addModal = $state(false);
 
@@ -36,6 +37,7 @@
 			createdById: userId,
 			createdAt: Date.now(),
 			viewMode: viewMode,
+			groupId: viewMode === 'shared' ? groupId : null,
 			sortOrder: maxOrder + 1
 		};
 
