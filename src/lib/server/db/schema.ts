@@ -79,7 +79,8 @@ export const customLists = pgTable('customLists', {
 	createdById: text('createdById'),
 	createdAt: timestamp('createdAt').$defaultFn(() => new Date()),
 	viewMode: text('viewMode'),
-	listType: text('listType') // 'basic', 'shopping', 'events', 'tasks', 'recipe', 'messages', 'contacts', 'bookmarks'
+	listType: text('listType'), // 'basic', 'shopping', 'events', 'tasks', 'recipe', 'messages', 'contacts', 'bookmarks'
+	groupId: text('groupId') // The group this list belongs to (for shared lists)
 });
 
 export const customListItems = pgTable('customListItems', {
@@ -90,6 +91,7 @@ export const customListItems = pgTable('customListItems', {
 	customListId: text('customListId'),
 	createdAt: timestamp('createdAt').$defaultFn(() => new Date()),
 	viewMode: text('viewMode'),
+	groupId: text('groupId'), // The group this item belongs to (for shared items)
 	// Shopping list fields
 	store: text('store'),
 	// Events fields

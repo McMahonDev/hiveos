@@ -14,9 +14,7 @@
 	$effect(() => {
 		if (z?.current) {
 			customLists = new Query(
-				z.current.query.customLists
-					.where('createdById', data.id)
-					.where('viewMode', viewModeState.currentMode)
+				z.current.query.customLists.where('viewMode', viewModeState.currentMode)
 			);
 		} else {
 			customLists = null;
@@ -44,15 +42,33 @@
 		}
 	}
 
-	// Query items count for each list
+	// Create a reactive map to store Query objects for each list's items
+	let itemQueries = $state<Map<string, Query<any, any, any>>>(new Map());
+
+	// Update item queries when lists change
+	$effect(() => {
+		if (z?.current && customLists?.current) {
+			const newQueries = new Map<string, Query<any, any, any>>();
+
+			for (const list of customLists.current) {
+				const itemsQuery = new Query(
+					z.current.query.customListItems
+						.where('customListId', list.id)
+						.where('viewMode', viewModeState.currentMode)
+				);
+				newQueries.set(list.id, itemsQuery);
+			}
+
+			itemQueries = newQueries;
+		}
+	});
+
+	// Query items count for each list - now truly reactive
 	function getItemCount(listId: string): number {
-		if (!z?.current) return 0;
-		const items = new Query(
-			z.current.query.customListItems
-				.where('customListId', listId)
-				.where('viewMode', viewModeState.currentMode)
-		);
-		return items.current?.length || 0;
+		const query = itemQueries.get(listId);
+		if (!query) return 0;
+		const count = query.current?.length || 0;
+		return count;
 	}
 
 	const features = [
