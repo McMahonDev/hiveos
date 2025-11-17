@@ -14,19 +14,19 @@ export function calculatePriceBonus(
 	// No price, no bonus
 	if (itemPrice === null || itemPrice === undefined) return 0;
 
-	// Filter valid prices and sort descending (highest to lowest)
+	// Filter valid prices and sort ascending (lowest to highest)
 	const validPrices = allPrices
 		.filter((p): p is number => p !== null && p !== undefined)
-		.sort((a, b) => b - a);
+		.sort((a, b) => a - b);
 
 	// Need at least 2 items with prices to calculate bonus
 	if (validPrices.length < 2) return 0;
 
-	// Find position of this item's price (0 = most expensive)
+	// Find position of this item's price (0 = cheapest)
 	const position = validPrices.indexOf(itemPrice);
 	if (position === -1) return 0;
 
-	// Calculate tier: highest price gets 0, second gets 1, third gets 2, etc.
+	// Calculate tier: lowest price gets highest tier, highest price gets 0
 	const tier = validPrices.length - 1 - position;
 
 	// Apply weight to the tier bonus
