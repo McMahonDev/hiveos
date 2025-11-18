@@ -423,7 +423,7 @@
 
 	.create-list-modal {
 		position: fixed;
-		top: 0;
+		/* top: 0; */
 		left: 0;
 		right: 0;
 		bottom: 0;
@@ -432,6 +432,7 @@
 		align-items: center;
 		justify-content: center;
 		padding: 20px;
+		height: calc(100% - var(--headerHeight));
 
 		.modal-backdrop {
 			position: absolute;
@@ -452,7 +453,7 @@
 			z-index: 10001;
 			max-width: 500px;
 			width: 100%;
-			max-height: 90vh;
+			max-height: calc(90vh - 60px);
 			overflow-y: auto;
 		}
 

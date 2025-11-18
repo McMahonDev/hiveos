@@ -304,7 +304,6 @@
 
 	.modal-overlay {
 		position: fixed;
-		top: 0;
 		left: 0;
 		right: 0;
 		bottom: 0;
@@ -315,6 +314,7 @@
 		z-index: 1000;
 		padding: 20px;
 		backdrop-filter: blur(2px);
+		height: calc(100% - var(--headerHeight));
 	}
 
 	.modal-content {
@@ -324,12 +324,12 @@
 		box-shadow: var(--level-3);
 		width: 100%;
 		max-width: 600px;
-		max-height: 90vh;
+		max-height: calc(90vh - 60px);
 		overflow-y: auto;
 		animation: slideUp 0.3s ease-out;
 
 		@media screen and (max-width: 690px) {
-			max-height: 85vh;
+			max-height: calc(85vh - 60px);
 			padding: 16px;
 		}
 	}
