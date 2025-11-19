@@ -331,8 +331,9 @@ export async function enforceSubscriptionCancellations(): Promise<{
 }> {
 	const now = new Date();
 	const gracePeriodEnd = new Date(now.getTime() - GRACE_PERIOD_HOURS * 60 * 60 * 1000);
+	const gracePeriodEndTimestamp = gracePeriodEnd.toISOString();
 
-	console.log(`\u23F0 Checking for subscriptions expired before ${gracePeriodEnd.toISOString()} (${GRACE_PERIOD_HOURS}h grace period)`);
+	console.log(`\u23F0 Checking for subscriptions expired before ${gracePeriodEndTimestamp} (${GRACE_PERIOD_HOURS}h grace period)`);
 
 	// Find all users with:
 	// 1. cancel_at_period_end = true
@@ -343,7 +344,7 @@ export async function enforceSubscriptionCancellations(): Promise<{
 		.from(user)
 		.where(
 			sql`${user.cancelAtPeriodEnd} = true 
-			AND ${user.currentPeriodEnd} < ${gracePeriodEnd} 
+			AND ${user.currentPeriodEnd} < ${gracePeriodEndTimestamp} 
 			AND ${user.subscriptionTier} != 'free'`
 		);
 
