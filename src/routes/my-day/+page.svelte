@@ -1366,7 +1366,6 @@
 	/* Modal Styles */
 	.modal-overlay {
 		position: fixed;
-		top: 0;
 		left: 0;
 		right: 0;
 		bottom: 0;
@@ -1374,9 +1373,10 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 1000;
+		z-index: 10000;
 		padding: 20px;
 		backdrop-filter: blur(4px);
+		height: calc(100% - var(--headerHeight));
 	}
 
 	.modal-content {
@@ -1384,11 +1384,13 @@
 		border-radius: 12px;
 		max-width: 600px;
 		width: 100%;
-		max-height: 80vh;
+		max-height: calc(90vh - 60px);
 		overflow-y: auto;
 		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 		animation: slideIn 0.2s ease-out;
 		border: 2px solid var(--level-1);
+		position: relative;
+		z-index: 10001;
 	}
 
 	@keyframes slideIn {

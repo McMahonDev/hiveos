@@ -136,9 +136,9 @@ header nav a {
 	text-decoration: none;
 }
 
-header nav a + a {
+/* header nav a + a {
 	margin-left: 10px;
-}
+} */
 
 footer {
 	background: var(--footerBackground);

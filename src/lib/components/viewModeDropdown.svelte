@@ -466,7 +466,6 @@
 
 	.modal-overlay {
 		position: fixed;
-		top: 0;
 		left: 0;
 		right: 0;
 		bottom: 0;
@@ -474,7 +473,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 2000;
+		height: calc(100% - var(--headerHeight));
 	}
 
 	.modal-content {
@@ -484,6 +483,9 @@
 		max-width: 500px;
 		width: 90%;
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+		position: relative;
+		z-index: 10001;
+		max-height: calc(90vh - 60px);
 	}
 
 	.modal-content h3 {
