@@ -97,6 +97,60 @@ Coolify allows you to add cron jobs that will hit HTTP endpoints. For each notif
 
 ---
 
+#### **Subscription Enforcement** (Every hour)
+
+- **Schedule**: `0 * * * *` (runs every hour on the hour)
+- **Command**:
+  ```bash
+  curl -X POST https://your-domain.com/api/cron/enforce-subscriptions \
+    -H "Authorization: Bearer YOUR_CRON_SECRET_HERE"
+  ```
+
+**What it does:**
+
+- Checks for subscriptions where `cancel_at_period_end = true` and `current_period_end` has passed (with 48-hour grace period)
+- Downgrades users from paid tiers (Individual/Family) to free tier
+- Updates `subscription_status` to `canceled`
+- Deletes family groups and removes all members
+- Sends downgrade notification emails to affected users
+- Logs all downgrade actions for audit purposes
+
+---
+
+#### **Subscription Warning - 7 Days** (Daily at 10 AM UTC)
+
+- **Schedule**: `0 10 * * *` (runs daily at 10:00 AM UTC)
+- **Command**:
+  ```bash
+  curl -X POST https://your-domain.com/api/cron/subscription-warning-7days \
+    -H "Authorization: Bearer YOUR_CRON_SECRET_HERE"
+  ```
+
+**What it does:**
+
+- Finds users with subscriptions ending in approximately 7 days
+- Sends warning email reminding them of upcoming cancellation
+- Gives users time to reactivate before data loss
+
+---
+
+#### **Subscription Warning - 1 Day** (Daily at 10 AM UTC)
+
+- **Schedule**: `0 10 * * *` (runs daily at 10:00 AM UTC)
+- **Command**:
+  ```bash
+  curl -X POST https://your-domain.com/api/cron/subscription-warning-1day \
+    -H "Authorization: Bearer YOUR_CRON_SECRET_HERE"
+  ```
+
+**What it does:**
+
+- Finds users with subscriptions ending in approximately 1 day
+- Sends final warning email with urgency
+- Last chance for users to reactivate and prevent data loss
+
+---
+
 ### 4. Coolify UI Steps
 
 If Coolify provides a UI for scheduled tasks:
@@ -314,12 +368,15 @@ Example:
 
 Your scheduled tasks setup should look like this in Coolify:
 
-| Task Name        | Schedule       | Endpoint                     |
-| ---------------- | -------------- | ---------------------------- |
-| Morning Briefing | `0 * * * *`    | `/api/cron/morning-briefing` |
-| Evening Wrapup   | `0 * * * *`    | `/api/cron/evening-wrapup`   |
-| Event Reminders  | `0 * * * *`    | `/api/cron/event-reminders`  |
-| Group Activity   | `*/30 * * * *` | `/api/cron/group-activity`   |
+| Task Name                     | Schedule       | Endpoint                               |
+| ----------------------------- | -------------- | -------------------------------------- |
+| Morning Briefing              | `0 * * * *`    | `/api/cron/morning-briefing`           |
+| Evening Wrapup                | `0 * * * *`    | `/api/cron/evening-wrapup`             |
+| Event Reminders               | `0 * * * *`    | `/api/cron/event-reminders`            |
+| Group Activity                | `*/30 * * * *` | `/api/cron/group-activity`             |
+| Subscription Enforcement      | `0 * * * *`    | `/api/cron/enforce-subscriptions`      |
+| Subscription Warning (7 days) | `0 10 * * *`   | `/api/cron/subscription-warning-7days` |
+| Subscription Warning (1 day)  | `0 10 * * *`   | `/api/cron/subscription-warning-1day`  |
 
 All authenticated with `Authorization: Bearer YOUR_CRON_SECRET`.
 

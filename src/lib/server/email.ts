@@ -674,3 +674,316 @@ The HiveOS Team`;
 		html
 	});
 }
+
+/**
+ * Send notification when a user's subscription is downgraded
+ */
+export async function sendSubscriptionDowngradeNotification({
+	userEmail,
+	userName,
+	previousTier,
+	reason
+}: {
+	userEmail: string;
+	userName: string;
+	previousTier: string;
+	reason: 'expired' | 'canceled';
+}) {
+	const tierNames: Record<string, string> = {
+		individual: 'Individual Plan ($5/month)',
+		family: 'Family Plan ($20/month)'
+	};
+
+	const tierName = tierNames[previousTier] || previousTier;
+	const reasonText = reason === 'expired' 
+		? 'your subscription period has ended' 
+		: 'your subscription was canceled';
+
+	const subject = `Your HiveOS subscription has ended`;
+
+	const text = `Hi ${userName},
+
+This is to confirm that your ${tierName} subscription has ended because ${reasonText}.
+
+Your account has been downgraded to the Free plan. You still have access to HiveOS, but some premium features are no longer available:
+
+What you've lost:
+• Group collaboration features
+• Unlimited storage
+• Premium notification settings
+• Priority support
+
+${previousTier === 'family' ? `\nYour family group has been deleted and all members have been removed.\n` : ''}
+
+What you still have:
+• All your personal lists, tasks, and events
+• Access to all 8 list types
+• Basic notification features
+• Web and mobile access
+
+Want to keep your premium features? You can resubscribe anytime at:
+${process.env.VITE_APP_URL || 'https://hiveos.app'}/account/upgrade
+
+Questions? Reply to this email or visit our support page.
+
+Best regards,
+The HiveOS Team`;
+
+	const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="margin: 0; color: #fff; font-size: 28px; font-weight: 800;">📋 Subscription Update</h1>
+  </div>
+  
+  <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 16px; margin-top: 0;">Hi ${userName},</p>
+    
+    <div style="background: #fff3cd; border-left: 4px solid #f39c12; padding: 20px; margin: 24px 0; border-radius: 4px;">
+      <p style="margin: 0; font-size: 16px;">
+        Your <strong>${tierName}</strong> subscription has ended because ${reasonText}.
+      </p>
+    </div>
+    
+    <p style="font-size: 16px;">Your account has been downgraded to the <strong>Free plan</strong>. You still have access to HiveOS, but some premium features are no longer available.</p>
+    
+    <div style="background: #fee; padding: 20px; margin: 24px 0; border-radius: 8px; border: 1px solid #fcc;">
+      <h3 style="margin: 0 0 12px 0; color: #c00; font-size: 18px;">What you've lost:</h3>
+      <ul style="margin: 0; padding-left: 20px;">
+        <li>Group collaboration features</li>
+        <li>Unlimited storage</li>
+        <li>Premium notification settings</li>
+        <li>Priority support</li>
+      </ul>
+      ${previousTier === 'family' ? `<p style="margin: 12px 0 0 0; color: #c00;"><strong>⚠️ Your family group has been deleted and all members have been removed.</strong></p>` : ''}
+    </div>
+    
+    <div style="background: #efe; padding: 20px; margin: 24px 0; border-radius: 8px; border: 1px solid #cfc;">
+      <h3 style="margin: 0 0 12px 0; color: #060; font-size: 18px;">What you still have:</h3>
+      <ul style="margin: 0; padding-left: 20px;">
+        <li>All your personal lists, tasks, and events</li>
+        <li>Access to all 8 list types</li>
+        <li>Basic notification features</li>
+        <li>Web and mobile access</li>
+      </ul>
+    </div>
+    
+    <div style="text-align: center; margin: 32px 0;">
+      <p style="font-size: 16px; margin-bottom: 16px;">Want to keep your premium features?</p>
+      <a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}/account/upgrade" 
+         style="display: inline-block; background: #f39c12; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        Resubscribe Now
+      </a>
+    </div>
+    
+    <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 32px 0;">
+    
+    <p style="font-size: 14px; color: #666; margin: 0;">
+      Questions? Reply to this email or visit our support page.<br><br>
+      Best regards,<br>
+      The HiveOS Team
+    </p>
+  </div>
+</body>
+</html>`;
+
+	await sendEmail({
+		to: userEmail,
+		subject,
+		text,
+		html
+	});
+}
+
+/**
+ * Send notification to group member when they are removed due to owner's subscription ending
+ */
+export async function sendGroupMemberRemovedNotification({
+	userEmail,
+	userName,
+	groupName,
+	ownerName
+}: {
+	userEmail: string;
+	userName: string;
+	groupName: string;
+	ownerName: string;
+}) {
+	const subject = `You've been removed from "${groupName}"`;
+
+	const text = `Hi ${userName},
+
+This is to inform you that you have been removed from the group "${groupName}" because ${ownerName}'s Family Plan subscription has ended.
+
+What this means for you:
+• You no longer have access to "${groupName}"
+• All shared lists, tasks, and events from this group are no longer visible to you
+• Your personal lists and data remain intact
+• You've been switched back to personal mode
+
+If you need group collaboration features, you can:
+• Upgrade to an Individual Plan ($5/month) to join other groups
+• Subscribe to a Family Plan ($20/month) to create your own groups
+
+We're sorry to see the group go! If you have any questions, please don't hesitate to reach out.
+
+Best regards,
+The HiveOS Team
+
+${process.env.VITE_APP_URL || 'https://hiveos.app'}/account/upgrade`;
+
+	const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="margin: 0; color: #fff; font-size: 28px; font-weight: 800;">👥 Group Update</h1>
+  </div>
+  
+  <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 16px; margin-top: 0;">Hi ${userName},</p>
+    
+    <div style="background: #ffebee; border-left: 4px solid #e74c3c; padding: 20px; margin: 24px 0; border-radius: 4px;">
+      <p style="margin: 0; font-size: 16px;">
+        You have been removed from the group <strong>"${groupName}"</strong> because ${ownerName}'s Family Plan subscription has ended.
+      </p>
+    </div>
+    
+    <div style="background: #fafafa; padding: 20px; margin: 24px 0; border-radius: 8px;">
+      <h3 style="margin: 0 0 12px 0; color: #000; font-size: 18px;">What this means for you:</h3>
+      <ul style="margin: 0; padding-left: 20px;">
+        <li>You no longer have access to "${groupName}"</li>
+        <li>All shared lists, tasks, and events from this group are no longer visible to you</li>
+        <li>Your personal lists and data remain intact</li>
+        <li>You've been switched back to personal mode</li>
+      </ul>
+    </div>
+    
+    <div style="background: #e3f2fd; padding: 20px; margin: 24px 0; border-radius: 8px; border: 1px solid #90caf9;">
+      <h3 style="margin: 0 0 12px 0; color: #1976d2; font-size: 18px;">Need group features?</h3>
+      <p style="margin: 0;">If you need group collaboration features, you can:</p>
+      <ul style="margin: 8px 0; padding-left: 20px;">
+        <li>Upgrade to an Individual Plan ($5/month) to join other groups</li>
+        <li>Subscribe to a Family Plan ($20/month) to create your own groups</li>
+      </ul>
+    </div>
+    
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}/account/upgrade" 
+         style="display: inline-block; background: #1976d2; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        View Plans
+      </a>
+    </div>
+    
+    <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 32px 0;">
+    
+    <p style="font-size: 14px; color: #666; margin: 0;">
+      We're sorry to see the group go! If you have any questions, please don't hesitate to reach out.<br><br>
+      Best regards,<br>
+      The HiveOS Team
+    </p>
+  </div>
+</body>
+</html>`;
+
+	await sendEmail({
+		to: userEmail,
+		subject,
+		text,
+		html
+	});
+}
+
+
+
+/**
+ * Send warning email 7 days before subscription cancellation
+ */
+export async function sendSubscriptionCancellationWarning7Days({
+userEmail,
+userName,
+tier,
+endDate
+}: {
+userEmail: string;
+userName: string;
+tier: string;
+endDate: string;
+}) {
+const tierNames: Record<string, string> = {
+individual: 'Individual Plan ($5/month)',
+family: 'Family Plan ($20/month)'
+};
+
+const tierName = tierNames[tier] || tier;
+
+const subject = 'Your HiveOS subscription ends in 7 days';
+
+const text = `Hi ${userName},
+
+This is a friendly reminder that your ${tierName} subscription is set to cancel on ${endDate}.
+
+Want to keep your premium features?
+You can reactivate your subscription anytime before ${endDate} by visiting:
+${process.env.VITE_APP_URL || 'https://hiveos.app'}/account/subscription
+
+Best regards,
+The HiveOS Team`;
+
+await sendEmail({
+to: userEmail,
+subject,
+text
+});
+}
+
+/**
+ * Send warning email 1 day before subscription cancellation
+ */
+export async function sendSubscriptionCancellationWarning1Day({
+userEmail,
+userName,
+tier,
+endDate
+}: {
+userEmail: string;
+userName: string;
+tier: string;
+endDate: string;
+}) {
+const tierNames: Record<string, string> = {
+individual: 'Individual Plan ($5/month)',
+family: 'Family Plan ($20/month)'
+};
+
+const tierName = tierNames[tier] || tier;
+
+const subject = 'Last chance! Your HiveOS subscription ends tomorrow';
+
+const text = `Hi ${userName},
+
+This is your final reminder that your ${tierName} subscription ends TOMORROW on ${endDate}.
+
+This is your last chance to keep your premium features!
+
+Reactivate now:
+${process.env.VITE_APP_URL || 'https://hiveos.app'}/account/subscription
+
+Best regards,
+The HiveOS Team`;
+
+await sendEmail({
+to: userEmail,
+subject,
+text
+});
+}
