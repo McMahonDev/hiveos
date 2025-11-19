@@ -12,12 +12,17 @@
  */
 
 import { db } from './db';
-import { user } from './db/schema';
-import { eq } from 'drizzle-orm';
+import { user, userGroups, userGroupMembers, customLists, customListItems, events, shoppingList, tasks, accessCodes, groupActivityLog } from './db/schema';
+import { eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { sendSubscriptionDowngradeNotification, sendGroupMemberRemovedNotification } from './email';
 
 // Mock Stripe configuration (replace with real config later)
 const MOCK_MODE = true; // Set to false when using real Stripe
+
+// Grace period: Give users 48 hours after period end before enforcing cancellation
+// This prevents accidental data loss from payment processing delays
+const GRACE_PERIOD_HOURS = 48;
 
 // Price IDs (in real implementation, these come from Stripe dashboard)
 export const PRICE_IDS = {
@@ -137,6 +142,14 @@ export async function cancelSubscription(
 	if (MOCK_MODE) {
 		// Mock implementation
 		if (immediate) {
+			const previousTier = userData.subscriptionTier;
+
+			// For family tier users, clean up their groups before downgrade
+			if (previousTier === 'family') {
+				console.log(`🧹 Immediate cancellation: cleaning up family groups for ${userData.email}...`);
+				await cleanupGroupsForDowngradedUser(userId);
+			}
+
 			// Cancel immediately
 			await db
 				.update(user)
@@ -305,6 +318,198 @@ export async function createPortalSession(userId: string, returnUrl: string): Pr
 	// return session.url;
 
 	throw new Error('Real Stripe not configured yet');
+}
+
+/**
+ * Enforce subscription cancellations for expired subscriptions
+ * Called by cron job to check for subscriptions that should be downgraded
+ * Returns count of users affected
+ */
+export async function enforceSubscriptionCancellations(): Promise<{
+	downgraded: number;
+	details: Array<{ userId: string; email: string; tier: string }>;
+}> {
+	const now = new Date();
+	const gracePeriodEnd = new Date(now.getTime() - GRACE_PERIOD_HOURS * 60 * 60 * 1000);
+
+	console.log(`\u23F0 Checking for subscriptions expired before ${gracePeriodEnd.toISOString()} (${GRACE_PERIOD_HOURS}h grace period)`);
+
+	// Find all users with:
+	// 1. cancel_at_period_end = true
+	// 2. current_period_end is past the grace period
+	// 3. subscription_tier is not 'free'
+	const usersToDowngrade = await db
+		.select()
+		.from(user)
+		.where(
+			sql`${user.cancelAtPeriodEnd} = true 
+			AND ${user.currentPeriodEnd} < ${gracePeriodEnd} 
+			AND ${user.subscriptionTier} != 'free'`
+		);
+
+	const details: Array<{ userId: string; email: string; tier: string }> = [];
+
+	for (const userData of usersToDowngrade) {
+		const previousTier = userData.subscriptionTier;
+
+		// For family tier users, clean up their groups
+		if (previousTier === 'family') {
+			console.log(`🧹 Cleaning up family groups for ${userData.email}...`);
+			await cleanupGroupsForDowngradedUser(userData.id);
+		}
+
+		// Downgrade to free tier
+		await db
+			.update(user)
+			.set({
+				subscriptionTier: 'free',
+				subscriptionStatus: 'canceled',
+				cancelAtPeriodEnd: false
+				// Keep subscriptionId, customerId, currentPeriodEnd for records
+			})
+			.where(eq(user.id, userData.id));
+
+		details.push({
+			userId: userData.id,
+			email: userData.email,
+			tier: previousTier || 'unknown'
+		});
+
+		console.log(
+			`✅ Downgraded user ${userData.email} from ${previousTier} to free (period ended ${userData.currentPeriodEnd})`
+		);
+
+		// Send notification email to downgraded user
+		try {
+			await sendSubscriptionDowngradeNotification({
+				userEmail: userData.email,
+				userName: userData.name,
+				previousTier: previousTier || 'unknown',
+				reason: 'expired'
+			});
+			console.log(`   📧 Sent downgrade notification to ${userData.email}`);
+		} catch (emailError) {
+			console.error(`   ❌ Failed to send downgrade email to ${userData.email}:`, emailError);
+			// Don't fail the whole process if email fails
+		}
+	}
+
+	return {
+		downgraded: details.length,
+		details
+	};
+}
+
+/**
+ * Clean up all groups owned by a downgraded user
+ * Removes all group content, members, and the group itself
+ */
+async function cleanupGroupsForDowngradedUser(userId: string): Promise<void> {
+	// Find all groups created by this user
+	const userCreatedGroups = await db
+		.select()
+		.from(userGroups)
+		.where(eq(userGroups.createdById, userId));
+
+	console.log(`   Found ${userCreatedGroups.length} groups to clean up`);
+
+	for (const group of userCreatedGroups) {
+		await deleteGroupAndContent(group.id);
+	}
+}
+
+/**
+ * Delete a group and all its associated content
+ * This includes: custom lists, list items, events, shopping lists, tasks, access codes, activity logs, and members
+ */
+async function deleteGroupAndContent(groupId: string): Promise<void> {
+	console.log(`   Deleting group ${groupId}...`);
+
+	// Get group info for notifications
+	const [groupInfo] = await db.select().from(userGroups).where(eq(userGroups.id, groupId)).limit(1);
+	const groupName = groupInfo?.name || 'Unknown Group';
+
+	// Get group creator info
+	const [creatorInfo] = await db.select().from(user).where(eq(user.id, groupInfo?.createdById || '')).limit(1);
+	const creatorName = creatorInfo?.name || 'Group owner';
+
+	// Get all members before deletion so we can reset their active_group_id and notify them
+	const members = await db
+		.select()
+		.from(userGroupMembers)
+		.where(eq(userGroupMembers.userGroupId, groupId));
+
+	// Delete custom list items for lists belonging to this group
+	const groupCustomLists = await db
+		.select()
+		.from(customLists)
+		.where(eq(customLists.groupId, groupId));
+
+	for (const list of groupCustomLists) {
+		await db.delete(customListItems).where(eq(customListItems.customListId, list.id));
+		console.log(`     Deleted items from custom list ${list.id}`);
+	}
+
+	// Delete custom lists
+	await db.delete(customLists).where(eq(customLists.groupId, groupId));
+	console.log(`     Deleted custom lists`);
+
+	// Delete events assigned to this group
+	await db.delete(events).where(eq(events.assignedToId, groupId));
+	console.log(`     Deleted events`);
+
+	// Delete shopping list items assigned to this group
+	await db.delete(shoppingList).where(eq(shoppingList.assignedToId, groupId));
+	console.log(`     Deleted shopping list items`);
+
+	// Delete tasks assigned to this group
+	await db.delete(tasks).where(eq(tasks.assignedToId, groupId));
+	console.log(`     Deleted tasks`);
+
+	// Delete access codes
+	await db.delete(accessCodes).where(eq(accessCodes.groupId, groupId));
+	console.log(`     Deleted access codes`);
+
+	// Delete activity logs
+	await db.delete(groupActivityLog).where(eq(groupActivityLog.groupId, groupId));
+	console.log(`     Deleted activity logs`);
+
+	// Reset active_group_id for all members to their own userId (personal mode) and notify them
+	for (const member of members) {
+		// Skip the creator
+		if (member.userId === groupInfo?.createdById) continue;
+
+		await db
+			.update(user)
+			.set({ activeGroupId: member.userId })
+			.where(eq(user.id, member.userId));
+		console.log(`     Reset active_group_id for member ${member.userId}`);
+
+		// Get member info and send notification
+		const [memberInfo] = await db.select().from(user).where(eq(user.id, member.userId)).limit(1);
+		if (memberInfo) {
+			try {
+				await sendGroupMemberRemovedNotification({
+					userEmail: memberInfo.email,
+					userName: memberInfo.name,
+					groupName: groupName,
+					ownerName: creatorName
+				});
+				console.log(`     📧 Sent removal notification to ${memberInfo.email}`);
+			} catch (emailError) {
+				console.error(`     ❌ Failed to send removal email to ${memberInfo.email}:`, emailError);
+				// Don't fail the whole process if email fails
+			}
+		}
+	}
+
+	// Delete all group members
+	await db.delete(userGroupMembers).where(eq(userGroupMembers.userGroupId, groupId));
+	console.log(`     Removed all ${members.length} members`);
+
+	// Finally, delete the group itself
+	await db.delete(userGroups).where(eq(userGroups.id, groupId));
+	console.log(`   ✅ Group ${groupId} and all content deleted`);
 }
 
 /**
