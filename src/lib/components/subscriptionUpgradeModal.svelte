@@ -122,7 +122,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 1000;
+		z-index: 10000;
 		padding: 1rem;
 	}
 
@@ -134,6 +134,8 @@
 		max-height: 90vh;
 		overflow-y: auto;
 		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+		position: relative;
+		z-index: 10001;
 	}
 
 	.modal-header {

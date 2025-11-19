@@ -1851,7 +1851,6 @@
 	/* Modal styles */
 	.modal {
 		position: fixed;
-		top: 0;
 		left: 0;
 		right: 0;
 		bottom: 0;
@@ -1860,6 +1859,7 @@
 		align-items: center;
 		justify-content: center;
 		padding: 20px;
+		height: calc(100% - var(--headerHeight));
 	}
 
 	.modal-backdrop {
@@ -1888,6 +1888,17 @@
 			margin-top: 0;
 			margin-bottom: 20px;
 			color: var(--textColor);
+		}
+
+		&.large {
+			max-width: 95vw;
+			width: auto;
+			min-width: 600px;
+
+			@media (max-width: 768px) {
+				min-width: auto;
+				width: 100%;
+			}
 		}
 	}
 
@@ -2079,9 +2090,9 @@
 		}
 	}
 
-	.modal-box.large {
+	/* .modal-box.large {
 		max-width: 700px;
-	}
+	} */
 
 	.modal-header {
 		display: flex;
@@ -2302,7 +2313,7 @@
 			background: rgba(255, 215, 0, 0.08);
 
 			&.sticky-col {
-				background: rgba(255, 215, 0, 0.12);
+				background: rgb(255, 247, 204);
 			}
 		}
 	}
