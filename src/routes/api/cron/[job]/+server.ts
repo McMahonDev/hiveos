@@ -389,6 +389,8 @@ async function handleSubscriptionWarning7Days() {
 	try {
 		const now = new Date();
 		const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+		const nowTimestamp = now.toISOString();
+		const sevenDaysTimestamp = sevenDaysFromNow.toISOString();
 		
 		// Find users with cancel_at_period_end = true and period ending in ~7 days
 		const usersToWarn = await db
@@ -396,8 +398,8 @@ async function handleSubscriptionWarning7Days() {
 			.from(user)
 			.where(
 				sql`${user.cancelAtPeriodEnd} = true 
-				AND ${user.currentPeriodEnd} >= ${now}
-				AND ${user.currentPeriodEnd} <= ${sevenDaysFromNow}
+				AND ${user.currentPeriodEnd} >= ${nowTimestamp}
+				AND ${user.currentPeriodEnd} <= ${sevenDaysTimestamp}
 				AND ${user.subscriptionTier} != 'free'`
 			);
 
@@ -445,6 +447,8 @@ async function handleSubscriptionWarning1Day() {
 	try {
 		const now = new Date();
 		const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+		const nowTimestamp = now.toISOString();
+		const oneDayTimestamp = oneDayFromNow.toISOString();
 		
 		// Find users with cancel_at_period_end = true and period ending in ~1 day
 		const usersToWarn = await db
@@ -452,8 +456,8 @@ async function handleSubscriptionWarning1Day() {
 			.from(user)
 			.where(
 				sql`${user.cancelAtPeriodEnd} = true 
-				AND ${user.currentPeriodEnd} >= ${now}
-				AND ${user.currentPeriodEnd} <= ${oneDayFromNow}
+				AND ${user.currentPeriodEnd} >= ${nowTimestamp}
+				AND ${user.currentPeriodEnd} <= ${oneDayTimestamp}
 				AND ${user.subscriptionTier} != 'free'`
 			);
 
