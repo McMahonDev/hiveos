@@ -10,7 +10,9 @@
 	// Query custom lists for dropdown
 	let customLists = $state<Query<any, any, any> | null>(null);
 	let showListsDropdown = $state(false);
+	let showToolsDropdown = $state(false);
 	let dropdownRef = $state<HTMLDivElement | null>(null);
+	let toolsDropdownRef = $state<HTMLDivElement | null>(null);
 
 	$effect(() => {
 		if (z?.current) {
@@ -30,9 +32,12 @@
 			if (dropdownRef && !dropdownRef.contains(event.target as Node)) {
 				showListsDropdown = false;
 			}
+			if (toolsDropdownRef && !toolsDropdownRef.contains(event.target as Node)) {
+				showToolsDropdown = false;
+			}
 		}
 
-		if (showListsDropdown) {
+		if (showListsDropdown || showToolsDropdown) {
 			document.addEventListener('mousedown', handleClickOutside);
 			return () => {
 				document.removeEventListener('mousedown', handleClickOutside);
@@ -45,6 +50,7 @@
 		const path = currentPath;
 		if (path) {
 			showListsDropdown = false;
+			showToolsDropdown = false;
 		}
 	});
 
@@ -55,6 +61,10 @@
 
 	function handleListClick() {
 		showListsDropdown = false;
+	}
+
+	function handleToolClick() {
+		showToolsDropdown = false;
 	}
 </script>
 
@@ -111,7 +121,53 @@
 		</div>
 	{/if}
 
-	<a href="/comparisons" class="nav-link" class:active={isActive('/comparisons')}> Tools </a>
+	<!-- Tools dropdown -->
+	<div class="nav-dropdown" bind:this={toolsDropdownRef}>
+		<button
+			class="nav-link dropdown-trigger"
+			class:active={currentPath.startsWith('/comparisons') ||
+				currentPath.startsWith('/expense-notebook')}
+			onclick={() => (showToolsDropdown = !showToolsDropdown)}
+		>
+			Tools
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				width="16"
+				height="16"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				class="chevron"
+				class:open={showToolsDropdown}
+			>
+				<polyline points="6 9 12 15 18 9" />
+			</svg>
+		</button>
+
+		{#if showToolsDropdown}
+			<div class="dropdown-menu">
+				<a
+					href="/comparisons"
+					class="dropdown-item"
+					class:active={currentPath.startsWith('/comparisons')}
+					onclick={handleToolClick}
+				>
+					Comparison Tool
+				</a>
+				<a
+					href="/expense-notebook"
+					class="dropdown-item"
+					class:active={currentPath.startsWith('/expense-notebook')}
+					onclick={handleToolClick}
+				>
+					Expense Notebook
+				</a>
+			</div>
+		{/if}
+	</div>
 
 	<a href="/account" class="nav-link" class:active={isActive('/account')}> Account </a>
 </nav>

@@ -198,6 +198,33 @@ export const comparisonItemValues = pgTable('comparisonItemValues', {
 	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
 });
 
+// --- Expense Notebook Tables ---
+export const expenseNotebooks = pgTable('expenseNotebooks', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	description: text('description'),
+	createdById: text('createdById').notNull(),
+	viewMode: text('viewMode').notNull(),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date()),
+	updatedAt: timestamp('updatedAt').$defaultFn(() => new Date())
+});
+
+export const expenseNotebookItems = pgTable('expenseNotebookItems', {
+	id: text('id').primaryKey(),
+	notebookId: text('notebookId').notNull(),
+	name: text('name').notNull(),
+	amount: real('amount').notNull(),
+	type: text('type').notNull(), // 'income' or 'expense'
+	frequency: text('frequency').notNull(), // 'recurring' or 'one-time'
+	category: text('category'),
+	startDate: timestamp('startDate').notNull(),
+	endDate: timestamp('endDate'),
+	recurrenceInterval: text('recurrenceInterval'), // 'daily', 'weekly', 'biweekly', 'monthly', 'yearly'
+	notes: text('notes'),
+	createdById: text('createdById').notNull(),
+	createdAt: timestamp('createdAt').$defaultFn(() => new Date())
+});
+
 // --- Relationships ---
 // Users <-> Tasks
 export const usersRelations = relations(user, ({ many }) => ({
@@ -353,6 +380,26 @@ export const comparisonItemValuesRelations = relations(comparisonItemValues, ({ 
 	}),
 	createdBy: one(user, {
 		fields: [comparisonItemValues.createdById],
+		references: [user.id]
+	})
+}));
+
+// --- Expense Notebook Relationships ---
+export const expenseNotebooksRelations = relations(expenseNotebooks, ({ one, many }) => ({
+	createdBy: one(user, {
+		fields: [expenseNotebooks.createdById],
+		references: [user.id]
+	}),
+	items: many(expenseNotebookItems)
+}));
+
+export const expenseNotebookItemsRelations = relations(expenseNotebookItems, ({ one }) => ({
+	notebook: one(expenseNotebooks, {
+		fields: [expenseNotebookItems.notebookId],
+		references: [expenseNotebooks.id]
+	}),
+	createdBy: one(user, {
+		fields: [expenseNotebookItems.createdById],
 		references: [user.id]
 	})
 }));

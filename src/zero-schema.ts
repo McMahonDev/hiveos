@@ -312,6 +312,37 @@ const comparisonItemValues = table('comparisonItemValues')
 	})
 	.primaryKey('id');
 
+// Expense Notebook tables
+const expenseNotebooks = table('expenseNotebooks')
+	.columns({
+		id: string(),
+		name: string(), // e.g., "Monthly Budget", "Vacation Planning"
+		description: string().optional(), // Optional description
+		createdById: string(),
+		viewMode: string(), // 'personal', 'shared', or custom category ID
+		createdAt: number(),
+		updatedAt: number()
+	})
+	.primaryKey('id');
+
+const expenseNotebookItems = table('expenseNotebookItems')
+	.columns({
+		id: string(),
+		notebookId: string(), // Reference to expenseNotebooks
+		name: string(), // e.g., "Salary", "Rent", "Groceries"
+		amount: number(), // The monetary amount
+		type: string(), // 'income' or 'expense'
+		frequency: string(), // 'recurring' or 'one-time'
+		category: string().optional(), // 'fixed' (for expenses) or just general category
+		startDate: number(), // When this income/expense starts (timestamp)
+		endDate: number().optional(), // When it ends (optional, for one-time or finite recurring)
+		recurrenceInterval: string().optional(), // 'daily', 'weekly', 'biweekly', 'monthly', 'yearly'
+		notes: string().optional(), // Optional notes
+		createdById: string(),
+		createdAt: number()
+	})
+	.primaryKey('id');
+
 // Relationships
 
 const taskRelationships = relationships(tasks, ({ one }) => ({
@@ -503,6 +534,27 @@ const comparisonItemValuesRelationships = relationships(comparisonItemValues, ({
 	})
 }));
 
+const expenseNotebooksRelationships = relationships(expenseNotebooks, ({ one }) => ({
+	createdBy: one({
+		sourceField: ['createdById'],
+		destSchema: user,
+		destField: ['id']
+	})
+}));
+
+const expenseNotebookItemsRelationships = relationships(expenseNotebookItems, ({ one }) => ({
+	notebook: one({
+		sourceField: ['notebookId'],
+		destSchema: expenseNotebooks,
+		destField: ['id']
+	}),
+	createdBy: one({
+		sourceField: ['createdById'],
+		destSchema: user,
+		destField: ['id']
+	})
+}));
+
 export const schema = createSchema({
 	tables: [
 		user,
@@ -523,7 +575,9 @@ export const schema = createSchema({
 		comparisons,
 		comparisonCriteria,
 		comparisonItems,
-		comparisonItemValues
+		comparisonItemValues,
+		expenseNotebooks,
+		expenseNotebookItems
 	],
 	relationships: [
 		taskRelationships,
@@ -541,7 +595,9 @@ export const schema = createSchema({
 		comparisonsRelationships,
 		comparisonCriteriaRelationships,
 		comparisonItemsRelationships,
-		comparisonItemValuesRelationships
+		comparisonItemValuesRelationships,
+		expenseNotebooksRelationships,
+		expenseNotebookItemsRelationships
 	]
 });
 
@@ -565,6 +621,8 @@ export type Comparison = Row<typeof schema.tables.comparisons>;
 export type ComparisonCriterion = Row<typeof schema.tables.comparisonCriteria>;
 export type ComparisonItem = Row<typeof schema.tables.comparisonItems>;
 export type ComparisonItemValue = Row<typeof schema.tables.comparisonItemValues>;
+export type ExpenseNotebook = Row<typeof schema.tables.expenseNotebooks>;
+export type ExpenseNotebookItem = Row<typeof schema.tables.expenseNotebookItems>;
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	const isUser = (authData: AuthData, { cmp }: ExpressionBuilder<Schema, 'user'>) =>
@@ -697,6 +755,27 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 	const isComparisonItemValueCreator = (
 		authData: AuthData,
 		{ cmp }: ExpressionBuilder<Schema, 'comparisonItemValues'>
+	) => cmp('createdById', '=', authData.sub);
+
+	// Expense Notebooks - user must be creator OR it's shared with their group
+	const isExpenseNotebookCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'expenseNotebooks'>
+	) => cmp('createdById', '=', authData.sub);
+
+	const canViewOrMutateExpenseNotebook = (
+		authData: AuthData,
+		{ or, cmp }: ExpressionBuilder<Schema, 'expenseNotebooks'>
+	) =>
+		or(
+			cmp('createdById', '=', authData.sub),
+			authData.groupId ? cmp('viewMode', '=', 'shared') : cmp('id', '=', '__never__')
+		);
+
+	// Expense Notebook Items - must have access to parent notebook
+	const isExpenseNotebookItemCreator = (
+		authData: AuthData,
+		{ cmp }: ExpressionBuilder<Schema, 'expenseNotebookItems'>
 	) => cmp('createdById', '=', authData.sub);
 
 	return {
@@ -864,6 +943,28 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 					postMutation: [isComparisonItemValueCreator]
 				},
 				delete: [isComparisonItemValueCreator]
+			}
+		},
+		expenseNotebooks: {
+			row: {
+				select: [canViewOrMutateExpenseNotebook],
+				insert: [canViewOrMutateExpenseNotebook],
+				update: {
+					preMutation: [canViewOrMutateExpenseNotebook],
+					postMutation: [canViewOrMutateExpenseNotebook]
+				},
+				delete: [canViewOrMutateExpenseNotebook]
+			}
+		},
+		expenseNotebookItems: {
+			row: {
+				select: [isExpenseNotebookItemCreator],
+				insert: [isExpenseNotebookItemCreator],
+				update: {
+					preMutation: [isExpenseNotebookItemCreator],
+					postMutation: [isExpenseNotebookItemCreator]
+				},
+				delete: [isExpenseNotebookItemCreator]
 			}
 		}
 	};
