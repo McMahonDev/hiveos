@@ -16,7 +16,8 @@
 			href: '/comparisons',
 			icon: 'tools',
 			label: 'Tools',
-			match: (path: string) => path.startsWith('/comparisons')
+			match: (path: string) =>
+				path.startsWith('/comparisons') || path.startsWith('/expense-notebook')
 		},
 		{
 			href: '/account',
