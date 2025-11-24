@@ -4,6 +4,7 @@
 	import { Query } from 'zero-svelte';
 	import { nanoid } from 'nanoid';
 	import { viewModeState } from '$lib/state/viewMode.svelte.ts';
+	import { createWorker } from 'tesseract.js';
 
 	let { data } = $props();
 	let z = $derived(data.z);
@@ -31,6 +32,12 @@
 		'monthly'
 	);
 	let newItemNotes = $state('');
+
+	// OCR states
+	let isProcessingImage = $state(false);
+	let ocrError = $state('');
+	let imagePreview = $state<string | null>(null);
+	let percentCompleted = $state(0);
 
 	$effect(() => {
 		if (z?.current && notebookId) {
@@ -225,7 +232,350 @@
 		newItemEndDate = '';
 		newItemRecurrenceInterval = 'monthly';
 		newItemNotes = '';
+		imagePreview = null;
+		ocrError = '';
 		addItemModalOpen = true;
+	}
+
+	async function handleImageUpload(e: Event) {
+		const input = e.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+
+		// Show preview
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			imagePreview = e.target?.result as string;
+		};
+		reader.readAsDataURL(file);
+
+		// Process with OCR
+		await processImageWithOCR(file);
+	}
+
+	async function processImageWithOCR(file: File) {
+		isProcessingImage = true;
+		ocrError = '';
+
+		try {
+			const worker = await createWorker('eng', 1, {
+				logger: (m) => {
+					if (m.status === 'recognizing text') {
+						percentCompleted = m.progress ? Math.round(m.progress * 100) : 0;
+					}
+				}
+			});
+
+			const {
+				data: { text }
+			} = await worker.recognize(file);
+
+			await worker.terminate();
+
+			if (!text || text.trim().length === 0) {
+				throw new Error('No text extracted from image');
+			}
+
+			// Parse the extracted text
+			parseExpenseData(text);
+		} catch (err) {
+			console.error('OCR Error:', err);
+			ocrError = `Failed to process image: ${err instanceof Error ? err.message : 'Unknown error'}`;
+		} finally {
+			isProcessingImage = false;
+		}
+	}
+
+	function parseExpenseData(text: string) {
+		// Clean up the text
+		const lines = text
+			.split('\n')
+			.map((l) => l.trim())
+			.filter((l) => l.length > 0);
+
+		// Parse amount - look for realistic expense amounts (avoid timestamps, small numbers, etc.)
+		const amountRegex = /\$\s*(\d+[,\d]*\.?\d{0,2})\b/g; // Only match amounts with $ sign
+		const amounts = [...text.matchAll(amountRegex)]
+			.map((m) => parseFloat(m[1].replace(/,/g, '')))
+			.filter((n) => !isNaN(n) && n >= 1.0 && n < 100000); // Reasonable expense range: $1 to $100k
+
+		if (amounts.length > 0) {
+			// For credit card/receipt screenshots, typically the first substantial $ amount is what you want
+			// Or if there's only one large amount, use that
+			if (amounts.length === 1) {
+				newItemAmount = amounts[0];
+			} else {
+				// Take the first substantial amount (usually the transaction you're focusing on)
+				newItemAmount = amounts[0];
+			}
+		}
+
+		// Parse merchant/vendor name - look for known patterns
+		let merchantName = '';
+
+		// Common non-merchant terms to skip
+		const skipTerms = [
+			'balance',
+			'current',
+			'available',
+			'pending',
+			'posted',
+			'transaction',
+			'transactions',
+			'payment',
+			'credit',
+			'debit',
+			'total',
+			'amount',
+			'date',
+			'description',
+			'merchant',
+			'purchase',
+			'withdrawal',
+			'deposit',
+			'transfer',
+			'fee',
+			'yesterday',
+			'statement',
+			'account',
+			'card',
+			'visa',
+			'mastercard',
+			'discover',
+			'amex',
+			'rewards',
+			'monday',
+			'tuesday',
+			'wednesday',
+			'thursday',
+			'friday',
+			'saturday',
+			'sunday',
+			'today',
+			'january',
+			'february',
+			'march',
+			'april',
+			'may',
+			'june',
+			'july',
+			'august',
+			'september',
+			'october',
+			'november',
+			'december',
+			'home',
+			'family',
+			'cards'
+		];
+
+		// Look for lines that have a merchant name followed by a dollar amount
+		// This is the typical pattern: "Merchant Name $XX.XX"
+		const merchantPatternRegex = /^(.+?)\s+\$[\d,]+\.?\d{0,2}/;
+
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i];
+			const match = line.match(merchantPatternRegex);
+
+			if (match) {
+				let potentialMerchant = match[1].trim();
+
+				// Clean up
+				potentialMerchant = potentialMerchant
+					.replace(/^[^a-zA-Z]+/, '') // Remove leading non-letters
+					.replace(/[^a-zA-Z\s\-\&\.'\d]+$/, '') // Remove trailing junk
+					.trim();
+
+				// Check if it's not a skip term
+				const lowerMerchant = potentialMerchant.toLowerCase();
+				const isSkipTerm = skipTerms.some(
+					(term) =>
+						lowerMerchant === term ||
+						lowerMerchant.startsWith(term + ' ') ||
+						lowerMerchant.endsWith(' ' + term)
+				);
+
+				if (!isSkipTerm && potentialMerchant.length >= 3 && potentialMerchant.length <= 50) {
+					merchantName = potentialMerchant;
+					break;
+				}
+			}
+		}
+
+		// If no merchant found, try a simpler approach - look for capitalized words before amounts
+		if (!merchantName) {
+			for (let i = 0; i < Math.min(15, lines.length); i++) {
+				const line = lines[i];
+
+				// Skip obvious UI elements
+				if (line.length < 3 || line.length > 60) continue;
+				if (/^\d+[:\-\/]/.test(line)) continue; // Skip timestamps/dates at start
+				if (/^[\d\s\.\,\$\-\:\/\%\=\—\(\)\[\]]+$/.test(line)) continue; // Skip lines with only symbols/numbers
+
+				const lowerLine = line.toLowerCase();
+				const hasSkipTerm = skipTerms.some((term) => lowerLine.includes(term));
+				if (hasSkipTerm) {
+					continue;
+				}
+
+				// Look for lines with actual business words (at least 3 letters)
+				if (/[a-zA-Z]{3,}/.test(line)) {
+					let cleaned = line
+						.replace(/^[^a-zA-Z]+/, '') // Remove leading non-letters
+						.replace(/\s+/g, ' ')
+						.trim();
+
+					// Remove dollar amounts from the name
+					cleaned = cleaned.replace(/\$[\d,]+\.?\d{0,2}.*$/, '').trim();
+
+					if (cleaned.length >= 3 && cleaned.length <= 50) {
+						merchantName = cleaned;
+						break;
+					}
+				}
+			}
+		}
+
+		// Set the merchant name or fallback
+		if (merchantName) {
+			newItemName = merchantName;
+		} else {
+			newItemName = 'Expense from receipt';
+		}
+
+		// Parse date - look for recent dates (current year or last year)
+		const currentYear = new Date().getFullYear();
+		const datePatterns = [
+			/\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2})\b/i, // "Nov 19" format
+			/\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\b/, // MM/DD/YYYY
+			/\b(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})\b/ // YYYY/MM/DD
+		];
+
+		for (const pattern of datePatterns) {
+			const match = text.match(pattern);
+			if (match) {
+				let dateStr = match[1];
+
+				// If it's "Nov 19" format, add current year
+				if (!/\d{4}/.test(dateStr)) {
+					dateStr = `${dateStr} ${currentYear}`;
+				}
+
+				const parsedDate = new Date(dateStr);
+				if (
+					!isNaN(parsedDate.getTime()) &&
+					parsedDate.getFullYear() >= currentYear - 1 &&
+					parsedDate.getFullYear() <= currentYear + 1
+				) {
+					newItemStartDate = parsedDate.toISOString().split('T')[0];
+					break;
+				}
+			}
+		}
+
+		// Enhanced category detection
+		const fullText = text.toLowerCase();
+
+		if (
+			/\b(shell|chevron|exxon|mobil|bp|arco|texaco|76|valero|circle\s*k|7-eleven|gas|fuel|petroleum|gulf)\b/i.test(
+				fullText
+			)
+		) {
+			newItemCategory = 'transportation';
+		} else if (/\b(valvoline|oil|auto|car\s*wash|repair)\b/i.test(fullText)) {
+			newItemCategory = 'transportation';
+		} else if (
+			/\b(walmart|target|costco|amazon|ebay|best\s*buy|home\s*depot|lowes)\b/i.test(fullText)
+		) {
+			newItemCategory = 'shopping';
+		} else if (
+			/\b(safeway|kroger|publix|whole\s*foods|trader\s*joe|grocery|market|supermarket|food\s*mart)\b/i.test(
+				fullText
+			)
+		) {
+			newItemCategory = 'groceries';
+		} else if (
+			/\b(mcdonald|burger|pizza|restaurant|cafe|coffee|starbucks|dunkin|chipotle|subway|taco\s*bell|wendy|kfc|domino|dining|bar|grill)\b/i.test(
+				fullText
+			)
+		) {
+			newItemCategory = 'dining';
+		} else if (
+			/\b(hotel|motel|airbnb|airline|flight|uber|lyft|airport|travel|booking)\b/i.test(fullText)
+		) {
+			newItemCategory = 'travel';
+		}
+
+		// Set as one-time by default
+		newItemFrequency = 'one-time';
+	}
+
+	function parseExpenseDataFromAI(extractedData: any, description: string) {
+		// Parse amount
+		if (extractedData.amount) {
+			const amountStr = extractedData.amount.replace(/[^\d.]/g, '');
+			const amount = parseFloat(amountStr);
+			if (!isNaN(amount) && amount > 0) {
+				newItemAmount = amount;
+			}
+		}
+
+		// Parse merchant name
+		if (extractedData.merchant) {
+			const merchant = extractedData.merchant.trim();
+			if (merchant.length > 0 && merchant.length < 50) {
+				newItemName = merchant;
+			}
+		}
+
+		// Parse date
+		if (extractedData.date) {
+			try {
+				const parsedDate = new Date(extractedData.date);
+				if (!isNaN(parsedDate.getTime())) {
+					newItemStartDate = parsedDate.toISOString().split('T')[0];
+				}
+			} catch (err) {
+				// Silently fail if date parsing fails
+			}
+		}
+
+		// Use image description to infer category
+		const lowerDesc = description.toLowerCase();
+		if (
+			lowerDesc.includes('restaurant') ||
+			lowerDesc.includes('food') ||
+			lowerDesc.includes('meal')
+		) {
+			newItemCategory = 'dining';
+		} else if (
+			lowerDesc.includes('gas') ||
+			lowerDesc.includes('fuel') ||
+			lowerDesc.includes('station')
+		) {
+			newItemCategory = 'transportation';
+		} else if (lowerDesc.includes('store') || lowerDesc.includes('shop')) {
+			newItemCategory = 'shopping';
+		} else if (lowerDesc.includes('grocery') || lowerDesc.includes('supermarket')) {
+			newItemCategory = 'groceries';
+		}
+
+		// Fallback to original name if none found
+		if (!newItemName || newItemName === 'Expense from receipt') {
+			// Try to extract from description
+			const words = description.split(' ');
+			const capitalizedWords = words.filter((w) => /^[A-Z][a-z]+/.test(w));
+			if (capitalizedWords.length > 0) {
+				newItemName = capitalizedWords.slice(0, 3).join(' ');
+			} else {
+				newItemName = 'Expense from receipt';
+			}
+		}
+
+		// Set as one-time by default
+		newItemFrequency = 'one-time';
+
+		isProcessingImage = false;
 	}
 
 	async function addItem(e: Event) {
@@ -603,6 +953,71 @@
 		<div class="modal-backdrop" onclick={() => (addItemModalOpen = false)}></div>
 		<div class="modal-box">
 			<h2>Add {newItemType === 'income' ? 'Income' : 'Expense'}</h2>
+
+			<!-- Image Upload Section -->
+			{#if newItemType === 'expense'}
+				<div class="image-upload-section">
+					<label for="expense-image" class="image-upload-label">
+						<div class="upload-prompt">
+							{#if imagePreview}
+								<img src={imagePreview} alt="Receipt preview" class="image-preview" />
+							{:else}
+								<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+									<path
+										d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+									<polyline
+										points="17 8 12 3 7 8"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+									<line
+										x1="12"
+										y1="3"
+										x2="12"
+										y2="15"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+								<p>Upload receipt or invoice</p>
+								<span>Click to browse or drag & drop</span>
+							{/if}
+						</div>
+					</label>
+					<input
+						type="file"
+						id="expense-image"
+						accept="image/*"
+						onchange={handleImageUpload}
+						style="display: none;"
+					/>
+
+					{#if isProcessingImage}
+						<div class="processing-status">
+							<div class="spinner"></div>
+							<div class="processing-info">
+								<span>Processing image with OCR...</span>
+								<div class="progress-bar-container">
+									<div class="progress-bar" style="width: {percentCompleted}%"></div>
+								</div>
+								<span class="progress-text">{percentCompleted}%</span>
+							</div>
+						</div>
+					{/if}
+					{#if ocrError}
+						<div class="error-message">
+							{ocrError}
+						</div>
+					{/if}
+				</div>
+			{/if}
+
 			<form onsubmit={addItem}>
 				<div class="form-group">
 					<label for="item-name">Name</label>
@@ -1248,6 +1663,124 @@
 		&:hover {
 			background-color: #d0d0d0;
 		}
+	}
+
+	/* Image Upload Styles */
+	.image-upload-section {
+		margin-bottom: 24px;
+		padding: 16px;
+		background: rgba(0, 0, 0, 0.02);
+		border-radius: 8px;
+	}
+
+	.image-upload-label {
+		display: block;
+		cursor: pointer;
+	}
+
+	.upload-prompt {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 32px 16px;
+		border: 2px dashed rgba(0, 0, 0, 0.2);
+		border-radius: 8px;
+		transition: all 0.2s ease;
+		background: var(--background);
+
+		&:hover {
+			border-color: var(--primary);
+			background: rgba(0, 0, 0, 0.02);
+		}
+
+		svg {
+			color: var(--color-tertiary, #666);
+			margin-bottom: 12px;
+		}
+
+		p {
+			margin: 0 0 4px 0;
+			font-weight: 600;
+			color: var(--textColor);
+		}
+
+		span {
+			font-size: 0.85rem;
+			color: var(--color-tertiary, #666);
+		}
+	}
+
+	.image-preview {
+		max-width: 100%;
+		max-height: 200px;
+		border-radius: 8px;
+		object-fit: contain;
+	}
+
+	.processing-status {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-top: 12px;
+		padding: 12px;
+		background: rgba(76, 175, 80, 0.1);
+		border-radius: 6px;
+		color: #4caf50;
+		font-size: 0.9rem;
+	}
+
+	.processing-info {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.progress-bar-container {
+		width: 100%;
+		height: 8px;
+		background: rgba(76, 175, 80, 0.2);
+		border-radius: 4px;
+		overflow: hidden;
+	}
+
+	.progress-bar {
+		height: 100%;
+		background: #4caf50;
+		border-radius: 4px;
+		transition: width 0.3s ease;
+	}
+
+	.progress-text {
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: #4caf50;
+	}
+
+	.spinner {
+		width: 20px;
+		height: 20px;
+		border: 2px solid rgba(76, 175, 80, 0.3);
+		border-top-color: #4caf50;
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+		flex-shrink: 0;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	.error-message {
+		margin-top: 12px;
+		padding: 12px;
+		background: rgba(244, 67, 54, 0.1);
+		border-radius: 6px;
+		color: #f44336;
+		font-size: 0.9rem;
 	}
 
 	@media (max-width: 1024px) {
