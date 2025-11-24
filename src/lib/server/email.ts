@@ -981,9 +981,29 @@ ${process.env.VITE_APP_URL || 'https://hiveos.app'}/account/subscription
 Best regards,
 The HiveOS Team`;
 
+const html = `
+<html>
+  <body style="font-family: Arial, sans-serif; color: #222;">
+    <div style="max-width: 480px; margin: 0 auto; border: 1px solid #eee; padding: 24px; background: #fafbfc;">
+      <h2 style="color: #2d7ff9;">Last chance! Your HiveOS subscription ends tomorrow</h2>
+      <p>Hi ${userName},</p>
+      <p>This is your final reminder that your <strong>${tierName}</strong> subscription ends <strong>TOMORROW</strong> on <strong>${endDate}</strong>.</p>
+      <p>This is your last chance to keep your premium features!</p>
+      <p>
+        <a href="${process.env.VITE_APP_URL || 'https://hiveos.app'}/account/subscription" style="display: inline-block; background: #2d7ff9; color: #fff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-weight: bold;">
+          Reactivate now
+        </a>
+      </p>
+      <p style="margin-top: 32px;">Best regards,<br>The HiveOS Team</p>
+    </div>
+  </body>
+</html>
+`;
+
 await sendEmail({
-to: userEmail,
-subject,
-text
+  to: userEmail,
+  subject,
+  text,
+  html
 });
 }
