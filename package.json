@@ -48,6 +48,7 @@
 		"postgres": "^3.4.7",
 		"process": "^0.11.10",
 		"stream-browserify": "^3.0.0",
+		"tesseract.js": "^6.0.1",
 		"util": "^0.12.5",
 		"workerd": "^1.20250614.0",
 		"zero-svelte": "^0.3.6"

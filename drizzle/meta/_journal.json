@@ -169,6 +169,13 @@
       "when": 1762974582871,
       "tag": "0023_wooden_machine_man",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1763599044697,
+      "tag": "0024_wealthy_inertia",
+      "breakpoints": true
     }
   ]
 }

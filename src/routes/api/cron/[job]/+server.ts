@@ -13,8 +13,11 @@ import {
 	sendMorningBriefing,
 	sendEveningWrapup,
 	sendEventReminder,
-	sendGroupActivityNotification
+	sendGroupActivityNotification,
+	sendSubscriptionCancellationWarning7Days,
+	sendSubscriptionCancellationWarning1Day
 } from '$lib/server/email';
+import { enforceSubscriptionCancellations } from '$lib/server/subscriptions';
 
 // Secret key for authenticating cron requests (set in environment variables)
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -48,6 +51,15 @@ export const POST: RequestHandler = async ({ params, request }) => {
 				// This would typically be triggered by a webhook or realtime system
 				// but can be run as a check for recent activity
 				return await handleGroupActivity();
+
+			case 'enforce-subscriptions':
+				return await handleSubscriptionEnforcement();
+
+			case 'subscription-warning-7days':
+				return await handleSubscriptionWarning7Days();
+
+			case 'subscription-warning-1day':
+				return await handleSubscriptionWarning1Day();
 
 			default:
 				return json({ error: 'Unknown job type' }, { status: 400 });
@@ -366,4 +378,152 @@ async function handleGroupActivity() {
 		successful: successCount,
 		failed: errorCount
 	});
+}
+
+/**
+ * Send warning emails 7 days before subscription cancellation
+ */
+async function handleSubscriptionWarning7Days() {
+	console.log('📧 Starting 7-day subscription warning job...');
+
+	try {
+		const now = new Date();
+		const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+		const nowTimestamp = now.toISOString();
+		const sevenDaysTimestamp = sevenDaysFromNow.toISOString();
+		
+		// Find users with cancel_at_period_end = true and period ending in ~7 days
+		const usersToWarn = await db
+			.select()
+			.from(user)
+			.where(
+				sql`${user.cancelAtPeriodEnd} = true 
+				AND ${user.currentPeriodEnd} >= ${nowTimestamp}
+				AND ${user.currentPeriodEnd} <= ${sevenDaysTimestamp}
+				AND ${user.subscriptionTier} != 'free'`
+			);
+
+		let successCount = 0;
+		let errorCount = 0;
+
+		for (const u of usersToWarn) {
+			try {
+				const endDate = u.currentPeriodEnd?.toLocaleDateString() || 'soon';
+				
+				await sendSubscriptionCancellationWarning7Days({
+					userEmail: u.email,
+					userName: u.name,
+					tier: u.subscriptionTier || 'unknown',
+					endDate
+				});
+				
+				console.log(`✅ Sent 7-day warning to ${u.email}`);
+				successCount++;
+			} catch (error) {
+				console.error(`❌ Failed to send 7-day warning to ${u.email}:`, error);
+				errorCount++;
+			}
+		}
+
+		return json({
+			success: true,
+			job: 'subscription-warning-7days',
+			processed: usersToWarn.length,
+			successful: successCount,
+			failed: errorCount
+		});
+	} catch (error) {
+		console.error('❌ Error in 7-day warning job:', error);
+		throw error;
+	}
+}
+
+/**
+ * Send warning emails 1 day before subscription cancellation
+ */
+async function handleSubscriptionWarning1Day() {
+	console.log('📧 Starting 1-day subscription warning job...');
+
+	try {
+		const now = new Date();
+		const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+		const nowTimestamp = now.toISOString();
+		const oneDayTimestamp = oneDayFromNow.toISOString();
+		
+		// Find users with cancel_at_period_end = true and period ending in ~1 day
+		const usersToWarn = await db
+			.select()
+			.from(user)
+			.where(
+				sql`${user.cancelAtPeriodEnd} = true 
+				AND ${user.currentPeriodEnd} >= ${nowTimestamp}
+				AND ${user.currentPeriodEnd} <= ${oneDayTimestamp}
+				AND ${user.subscriptionTier} != 'free'`
+			);
+
+		let successCount = 0;
+		let errorCount = 0;
+
+		for (const u of usersToWarn) {
+			try {
+				const endDate = u.currentPeriodEnd?.toLocaleDateString() || 'tomorrow';
+				
+				await sendSubscriptionCancellationWarning1Day({
+					userEmail: u.email,
+					userName: u.name,
+					tier: u.subscriptionTier || 'unknown',
+					endDate
+				});
+				
+				console.log(`✅ Sent 1-day warning to ${u.email}`);
+				successCount++;
+			} catch (error) {
+				console.error(`❌ Failed to send 1-day warning to ${u.email}:`, error);
+				errorCount++;
+			}
+		}
+
+		return json({
+			success: true,
+			job: 'subscription-warning-1day',
+			processed: usersToWarn.length,
+			successful: successCount,
+			failed: errorCount
+		});
+	} catch (error) {
+		console.error('❌ Error in 1-day warning job:', error);
+		throw error;
+	}
+}
+
+/**
+ * Enforce subscription cancellations for expired subscriptions
+ * Checks for users whose subscription period has ended and downgrades them
+ */
+async function handleSubscriptionEnforcement() {
+	console.log('🔍 Starting subscription enforcement job...');
+
+	try {
+		const result = await enforceSubscriptionCancellations();
+
+		console.log(`✅ Subscription enforcement complete:`);
+		console.log(`   - Users downgraded: ${result.downgraded}`);
+
+		if (result.details.length > 0) {
+			console.log('   - Details:');
+			for (const detail of result.details) {
+				console.log(`     • ${detail.email} (${detail.tier} → free)`);
+			}
+		}
+
+		return json({
+			success: true,
+			job: 'enforce-subscriptions',
+			downgraded: result.downgraded,
+			details: result.details
+		});
+	} catch (error) {
+		console.error('❌ Error enforcing subscriptions:', error);
+		throw error;
+	}
 }

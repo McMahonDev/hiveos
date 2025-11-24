@@ -3,6 +3,7 @@ import { auth } from '$lib/auth/auth';
 import { db } from '$lib/server/db/index';
 import { user, userGroups, userGroupMembers, events, shoppingList, tasks } from '$lib/server/db/schema';
 import { eq, gte, sql, and, count, isNotNull } from 'drizzle-orm';
+import { enforceSubscriptionCancellations } from '$lib/server/subscriptions';
 
 export async function load({ request }: { request: Request }) {
 	// Check if user is authenticated
@@ -207,6 +208,47 @@ export const actions = {
 		} catch (error) {
 			console.error('Error forcing downgrade:', error);
 			return fail(500, { error: 'Failed to downgrade user' });
+		}
+	},
+
+	enforceSubscriptions: async ({ request }: { request: Request }) => {
+		// Check if user is authenticated and superadmin
+		const session = await auth.api.getSession({
+			headers: request.headers
+		});
+
+		if (!session) {
+			return fail(401, { error: 'Not authenticated' });
+		}
+
+		const userData = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
+
+		if (!userData[0] || !userData[0].superadmin) {
+			return fail(403, { error: 'Not authorized - superadmin only' });
+		}
+
+		try {
+			console.log('🔧 Admin manually triggered subscription enforcement');
+			const result = await enforceSubscriptionCancellations();
+
+			if (result.downgraded === 0) {
+				return {
+					success: true,
+					message: 'No subscriptions needed enforcement',
+					downgraded: 0,
+					details: []
+				};
+			}
+
+			return {
+				success: true,
+				message: `Successfully enforced ${result.downgraded} subscription cancellation(s)`,
+				downgraded: result.downgraded,
+				details: result.details
+			};
+		} catch (error) {
+			console.error('Error enforcing subscriptions:', error);
+			return fail(500, { error: 'Failed to enforce subscription cancellations' });
 		}
 	}
 };

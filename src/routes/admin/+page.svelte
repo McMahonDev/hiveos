@@ -1,5 +1,7 @@
 <script lang="ts">
-	let { data } = $props<{ data: any }>();
+	import { enhance } from '$app/forms';
+
+	let { data, form } = $props<{ data: any; form?: any }>();
 
 	const { analytics } = data;
 
@@ -148,6 +150,57 @@
 	<!-- Testing Tools -->
 	<div class="testing-tools">
 		<h2>🧪 Testing Tools</h2>
+
+		{#if form?.success}
+			<div class="success-message">
+				✅ {form.message}
+				{#if form.downgraded !== undefined}
+					<div class="enforcement-details">
+						<strong>Users affected: {form.downgraded}</strong>
+						{#if form.details && form.details.length > 0}
+							<ul>
+								{#each form.details as detail}
+									<li>{detail.email} ({detail.tier} → free)</li>
+								{/each}
+							</ul>
+						{/if}
+					</div>
+				{/if}
+			</div>
+		{/if}
+
+		{#if form?.error}
+			<div class="error-message">
+				❌ {form.error}
+			</div>
+		{/if}
+
+		<!-- Subscription Enforcement Tool -->
+		<div class="tool-card">
+			<h3>⏰ Enforce Subscription Cancellations</h3>
+			<p class="tool-description">
+				Manually trigger subscription enforcement to check for expired subscriptions. This will:
+			</p>
+			<ul class="tool-features">
+				<li>
+					Find users with <code>cancel_at_period_end = true</code> and
+					<code>current_period_end</code> in the past
+				</li>
+				<li>Downgrade them from Individual/Family to Free tier</li>
+				<li>Delete family groups and all associated content</li>
+				<li>Remove all members from affected groups</li>
+				<li>Send notification emails to affected users</li>
+			</ul>
+			<form method="POST" action="?/enforceSubscriptions" use:enhance>
+				<button type="submit" class="action-button"> 🔄 Run Subscription Enforcement Now </button>
+			</form>
+			<div class="info-box">
+				<strong>ℹ️ Info:</strong> This runs the same process as the hourly cron job. Safe to run multiple
+				times - only affects users whose subscriptions should be canceled.
+			</div>
+		</div>
+
+		<!-- Force Downgrade Tool -->
 		<div class="tool-card">
 			<h3>Force Account Downgrade</h3>
 			<p class="tool-description">
@@ -156,7 +209,7 @@
 				test edge cases like what happens when a family admin downgrades or when a group member loses
 				their subscription.
 			</p>
-			<form method="POST" action="?/forceDowngrade" class="downgrade-form">
+			<form method="POST" action="?/forceDowngrade" use:enhance class="downgrade-form">
 				<div class="form-group">
 					<label for="userId">User ID to Downgrade:</label>
 					<input
@@ -435,6 +488,24 @@
 		transform: translateY(-1px);
 	}
 
+	.action-button {
+		background: #3b82f6;
+		color: white;
+		border: none;
+		padding: 12px 24px;
+		border-radius: 8px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		width: 100%;
+		font-size: 1rem;
+	}
+
+	.action-button:hover {
+		background: #2563eb;
+		transform: translateY(-1px);
+	}
+
 	.warning-box {
 		background: rgba(245, 158, 11, 0.1);
 		border: 1px solid #f59e0b;
@@ -445,6 +516,71 @@
 
 	.warning-box strong {
 		color: #f59e0b;
+	}
+
+	.info-box {
+		background: rgba(59, 130, 246, 0.1);
+		border: 1px solid #3b82f6;
+		border-radius: 6px;
+		padding: 12px;
+		color: var(--text-primary);
+		margin-top: 12px;
+	}
+
+	.info-box strong {
+		color: #3b82f6;
+	}
+
+	.success-message {
+		background: rgba(34, 197, 94, 0.1);
+		border: 1px solid #22c55e;
+		border-radius: 8px;
+		padding: 16px;
+		margin-bottom: 20px;
+		color: var(--text-primary);
+	}
+
+	.error-message {
+		background: rgba(239, 68, 68, 0.1);
+		border: 1px solid #ef4444;
+		border-radius: 8px;
+		padding: 16px;
+		margin-bottom: 20px;
+		color: var(--text-primary);
+	}
+
+	.enforcement-details {
+		margin-top: 12px;
+		padding-top: 12px;
+		border-top: 1px solid rgba(34, 197, 94, 0.3);
+	}
+
+	.enforcement-details ul {
+		margin: 8px 0 0 20px;
+		list-style: disc;
+	}
+
+	.enforcement-details li {
+		margin: 4px 0;
+		font-size: 0.9rem;
+	}
+
+	.tool-features {
+		margin: 12px 0;
+		padding-left: 20px;
+		list-style: disc;
+	}
+
+	.tool-features li {
+		margin: 6px 0;
+		color: var(--text-secondary);
+	}
+
+	.tool-features code {
+		background: var(--level-2);
+		padding: 2px 6px;
+		border-radius: 3px;
+		font-size: 0.85rem;
 	}
 
 	/* Recent Users Table */
